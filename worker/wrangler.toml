@@ -1,0 +1,23 @@
+# wrangler.toml
+
+name = "family-budget-api"
+main = "src/index.ts"
+compatibility_date = "2026-02-09"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# ✅ Local/dev fallback only. For prod, set via: `npx wrangler secret put SESSION_SECRET`
+SESSION_SECRET = "dev-secret-change-me"
+
+[[d1_databases]]
+# ✅ This MUST match c.env.DB in your worker
+binding = "DB"
+
+# ✅ Your D1 database name
+database_name = "budget_db"
+
+# ✅ Your D1 database id
+database_id = "dd44c966-4b30-4c6c-a887-a03969fdaacd"
+
+# ✅ Optional: same DB for preview/local deploys
+preview_database_id = "dd44c966-4b30-4c6c-a887-a03969fdaacd"

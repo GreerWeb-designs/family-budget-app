@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Optional: global polish */
+html, body, #root {
+  height: 100%;
+}
