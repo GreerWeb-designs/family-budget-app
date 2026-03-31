@@ -1,6 +1,857 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+// node_modules/unenv/dist/runtime/_internal/utils.mjs
+// @__NO_SIDE_EFFECTS__
+function createNotImplementedError(name) {
+  return new Error(`[unenv] ${name} is not implemented yet!`);
+}
+__name(createNotImplementedError, "createNotImplementedError");
+// @__NO_SIDE_EFFECTS__
+function notImplemented(name) {
+  const fn = /* @__PURE__ */ __name(() => {
+    throw /* @__PURE__ */ createNotImplementedError(name);
+  }, "fn");
+  return Object.assign(fn, { __unenv__: true });
+}
+__name(notImplemented, "notImplemented");
+
+// node_modules/unenv/dist/runtime/node/internal/perf_hooks/performance.mjs
+var _timeOrigin = globalThis.performance?.timeOrigin ?? Date.now();
+var _performanceNow = globalThis.performance?.now ? globalThis.performance.now.bind(globalThis.performance) : () => Date.now() - _timeOrigin;
+var nodeTiming = {
+  name: "node",
+  entryType: "node",
+  startTime: 0,
+  duration: 0,
+  nodeStart: 0,
+  v8Start: 0,
+  bootstrapComplete: 0,
+  environment: 0,
+  loopStart: 0,
+  loopExit: 0,
+  idleTime: 0,
+  uvMetricsInfo: {
+    loopCount: 0,
+    events: 0,
+    eventsWaiting: 0
+  },
+  detail: void 0,
+  toJSON() {
+    return this;
+  }
+};
+var PerformanceEntry = class {
+  static {
+    __name(this, "PerformanceEntry");
+  }
+  __unenv__ = true;
+  detail;
+  entryType = "event";
+  name;
+  startTime;
+  constructor(name, options) {
+    this.name = name;
+    this.startTime = options?.startTime || _performanceNow();
+    this.detail = options?.detail;
+  }
+  get duration() {
+    return _performanceNow() - this.startTime;
+  }
+  toJSON() {
+    return {
+      name: this.name,
+      entryType: this.entryType,
+      startTime: this.startTime,
+      duration: this.duration,
+      detail: this.detail
+    };
+  }
+};
+var PerformanceMark = class PerformanceMark2 extends PerformanceEntry {
+  static {
+    __name(this, "PerformanceMark");
+  }
+  entryType = "mark";
+  constructor() {
+    super(...arguments);
+  }
+  get duration() {
+    return 0;
+  }
+};
+var PerformanceMeasure = class extends PerformanceEntry {
+  static {
+    __name(this, "PerformanceMeasure");
+  }
+  entryType = "measure";
+};
+var PerformanceResourceTiming = class extends PerformanceEntry {
+  static {
+    __name(this, "PerformanceResourceTiming");
+  }
+  entryType = "resource";
+  serverTiming = [];
+  connectEnd = 0;
+  connectStart = 0;
+  decodedBodySize = 0;
+  domainLookupEnd = 0;
+  domainLookupStart = 0;
+  encodedBodySize = 0;
+  fetchStart = 0;
+  initiatorType = "";
+  name = "";
+  nextHopProtocol = "";
+  redirectEnd = 0;
+  redirectStart = 0;
+  requestStart = 0;
+  responseEnd = 0;
+  responseStart = 0;
+  secureConnectionStart = 0;
+  startTime = 0;
+  transferSize = 0;
+  workerStart = 0;
+  responseStatus = 0;
+};
+var PerformanceObserverEntryList = class {
+  static {
+    __name(this, "PerformanceObserverEntryList");
+  }
+  __unenv__ = true;
+  getEntries() {
+    return [];
+  }
+  getEntriesByName(_name, _type) {
+    return [];
+  }
+  getEntriesByType(type) {
+    return [];
+  }
+};
+var Performance = class {
+  static {
+    __name(this, "Performance");
+  }
+  __unenv__ = true;
+  timeOrigin = _timeOrigin;
+  eventCounts = /* @__PURE__ */ new Map();
+  _entries = [];
+  _resourceTimingBufferSize = 0;
+  navigation = void 0;
+  timing = void 0;
+  timerify(_fn, _options) {
+    throw createNotImplementedError("Performance.timerify");
+  }
+  get nodeTiming() {
+    return nodeTiming;
+  }
+  eventLoopUtilization() {
+    return {};
+  }
+  markResourceTiming() {
+    return new PerformanceResourceTiming("");
+  }
+  onresourcetimingbufferfull = null;
+  now() {
+    if (this.timeOrigin === _timeOrigin) {
+      return _performanceNow();
+    }
+    return Date.now() - this.timeOrigin;
+  }
+  clearMarks(markName) {
+    this._entries = markName ? this._entries.filter((e) => e.name !== markName) : this._entries.filter((e) => e.entryType !== "mark");
+  }
+  clearMeasures(measureName) {
+    this._entries = measureName ? this._entries.filter((e) => e.name !== measureName) : this._entries.filter((e) => e.entryType !== "measure");
+  }
+  clearResourceTimings() {
+    this._entries = this._entries.filter((e) => e.entryType !== "resource" || e.entryType !== "navigation");
+  }
+  getEntries() {
+    return this._entries;
+  }
+  getEntriesByName(name, type) {
+    return this._entries.filter((e) => e.name === name && (!type || e.entryType === type));
+  }
+  getEntriesByType(type) {
+    return this._entries.filter((e) => e.entryType === type);
+  }
+  mark(name, options) {
+    const entry = new PerformanceMark(name, options);
+    this._entries.push(entry);
+    return entry;
+  }
+  measure(measureName, startOrMeasureOptions, endMark) {
+    let start;
+    let end;
+    if (typeof startOrMeasureOptions === "string") {
+      start = this.getEntriesByName(startOrMeasureOptions, "mark")[0]?.startTime;
+      end = this.getEntriesByName(endMark, "mark")[0]?.startTime;
+    } else {
+      start = Number.parseFloat(startOrMeasureOptions?.start) || this.now();
+      end = Number.parseFloat(startOrMeasureOptions?.end) || this.now();
+    }
+    const entry = new PerformanceMeasure(measureName, {
+      startTime: start,
+      detail: {
+        start,
+        end
+      }
+    });
+    this._entries.push(entry);
+    return entry;
+  }
+  setResourceTimingBufferSize(maxSize) {
+    this._resourceTimingBufferSize = maxSize;
+  }
+  addEventListener(type, listener, options) {
+    throw createNotImplementedError("Performance.addEventListener");
+  }
+  removeEventListener(type, listener, options) {
+    throw createNotImplementedError("Performance.removeEventListener");
+  }
+  dispatchEvent(event) {
+    throw createNotImplementedError("Performance.dispatchEvent");
+  }
+  toJSON() {
+    return this;
+  }
+};
+var PerformanceObserver = class {
+  static {
+    __name(this, "PerformanceObserver");
+  }
+  __unenv__ = true;
+  static supportedEntryTypes = [];
+  _callback = null;
+  constructor(callback) {
+    this._callback = callback;
+  }
+  takeRecords() {
+    return [];
+  }
+  disconnect() {
+    throw createNotImplementedError("PerformanceObserver.disconnect");
+  }
+  observe(options) {
+    throw createNotImplementedError("PerformanceObserver.observe");
+  }
+  bind(fn) {
+    return fn;
+  }
+  runInAsyncScope(fn, thisArg, ...args) {
+    return fn.call(thisArg, ...args);
+  }
+  asyncId() {
+    return 0;
+  }
+  triggerAsyncId() {
+    return 0;
+  }
+  emitDestroy() {
+    return this;
+  }
+};
+var performance = globalThis.performance && "addEventListener" in globalThis.performance ? globalThis.performance : new Performance();
+
+// node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs
+globalThis.performance = performance;
+globalThis.Performance = Performance;
+globalThis.PerformanceEntry = PerformanceEntry;
+globalThis.PerformanceMark = PerformanceMark;
+globalThis.PerformanceMeasure = PerformanceMeasure;
+globalThis.PerformanceObserver = PerformanceObserver;
+globalThis.PerformanceObserverEntryList = PerformanceObserverEntryList;
+globalThis.PerformanceResourceTiming = PerformanceResourceTiming;
+
+// node_modules/unenv/dist/runtime/node/internal/process/hrtime.mjs
+var hrtime = /* @__PURE__ */ Object.assign(/* @__PURE__ */ __name(function hrtime2(startTime) {
+  const now = Date.now();
+  const seconds = Math.trunc(now / 1e3);
+  const nanos = now % 1e3 * 1e6;
+  if (startTime) {
+    let diffSeconds = seconds - startTime[0];
+    let diffNanos = nanos - startTime[0];
+    if (diffNanos < 0) {
+      diffSeconds = diffSeconds - 1;
+      diffNanos = 1e9 + diffNanos;
+    }
+    return [diffSeconds, diffNanos];
+  }
+  return [seconds, nanos];
+}, "hrtime"), { bigint: /* @__PURE__ */ __name(function bigint() {
+  return BigInt(Date.now() * 1e6);
+}, "bigint") });
+
+// node_modules/unenv/dist/runtime/node/internal/process/process.mjs
+import { EventEmitter } from "node:events";
+
+// node_modules/unenv/dist/runtime/node/internal/tty/read-stream.mjs
+var ReadStream = class {
+  static {
+    __name(this, "ReadStream");
+  }
+  fd;
+  isRaw = false;
+  isTTY = false;
+  constructor(fd) {
+    this.fd = fd;
+  }
+  setRawMode(mode) {
+    this.isRaw = mode;
+    return this;
+  }
+};
+
+// node_modules/unenv/dist/runtime/node/internal/tty/write-stream.mjs
+var WriteStream = class {
+  static {
+    __name(this, "WriteStream");
+  }
+  fd;
+  columns = 80;
+  rows = 24;
+  isTTY = false;
+  constructor(fd) {
+    this.fd = fd;
+  }
+  clearLine(dir, callback) {
+    callback && callback();
+    return false;
+  }
+  clearScreenDown(callback) {
+    callback && callback();
+    return false;
+  }
+  cursorTo(x, y, callback) {
+    callback && typeof callback === "function" && callback();
+    return false;
+  }
+  moveCursor(dx, dy, callback) {
+    callback && callback();
+    return false;
+  }
+  getColorDepth(env2) {
+    return 1;
+  }
+  hasColors(count, env2) {
+    return false;
+  }
+  getWindowSize() {
+    return [this.columns, this.rows];
+  }
+  write(str, encoding, cb) {
+    if (str instanceof Uint8Array) {
+      str = new TextDecoder().decode(str);
+    }
+    try {
+      console.log(str);
+    } catch {
+    }
+    cb && typeof cb === "function" && cb();
+    return false;
+  }
+};
+
+// node_modules/unenv/dist/runtime/node/internal/process/node-version.mjs
+var NODE_VERSION = "22.14.0";
+
+// node_modules/unenv/dist/runtime/node/internal/process/process.mjs
+var Process = class _Process extends EventEmitter {
+  static {
+    __name(this, "Process");
+  }
+  env;
+  hrtime;
+  nextTick;
+  constructor(impl) {
+    super();
+    this.env = impl.env;
+    this.hrtime = impl.hrtime;
+    this.nextTick = impl.nextTick;
+    for (const prop of [...Object.getOwnPropertyNames(_Process.prototype), ...Object.getOwnPropertyNames(EventEmitter.prototype)]) {
+      const value = this[prop];
+      if (typeof value === "function") {
+        this[prop] = value.bind(this);
+      }
+    }
+  }
+  // --- event emitter ---
+  emitWarning(warning, type, code) {
+    console.warn(`${code ? `[${code}] ` : ""}${type ? `${type}: ` : ""}${warning}`);
+  }
+  emit(...args) {
+    return super.emit(...args);
+  }
+  listeners(eventName) {
+    return super.listeners(eventName);
+  }
+  // --- stdio (lazy initializers) ---
+  #stdin;
+  #stdout;
+  #stderr;
+  get stdin() {
+    return this.#stdin ??= new ReadStream(0);
+  }
+  get stdout() {
+    return this.#stdout ??= new WriteStream(1);
+  }
+  get stderr() {
+    return this.#stderr ??= new WriteStream(2);
+  }
+  // --- cwd ---
+  #cwd = "/";
+  chdir(cwd2) {
+    this.#cwd = cwd2;
+  }
+  cwd() {
+    return this.#cwd;
+  }
+  // --- dummy props and getters ---
+  arch = "";
+  platform = "";
+  argv = [];
+  argv0 = "";
+  execArgv = [];
+  execPath = "";
+  title = "";
+  pid = 200;
+  ppid = 100;
+  get version() {
+    return `v${NODE_VERSION}`;
+  }
+  get versions() {
+    return { node: NODE_VERSION };
+  }
+  get allowedNodeEnvironmentFlags() {
+    return /* @__PURE__ */ new Set();
+  }
+  get sourceMapsEnabled() {
+    return false;
+  }
+  get debugPort() {
+    return 0;
+  }
+  get throwDeprecation() {
+    return false;
+  }
+  get traceDeprecation() {
+    return false;
+  }
+  get features() {
+    return {};
+  }
+  get release() {
+    return {};
+  }
+  get connected() {
+    return false;
+  }
+  get config() {
+    return {};
+  }
+  get moduleLoadList() {
+    return [];
+  }
+  constrainedMemory() {
+    return 0;
+  }
+  availableMemory() {
+    return 0;
+  }
+  uptime() {
+    return 0;
+  }
+  resourceUsage() {
+    return {};
+  }
+  // --- noop methods ---
+  ref() {
+  }
+  unref() {
+  }
+  // --- unimplemented methods ---
+  umask() {
+    throw createNotImplementedError("process.umask");
+  }
+  getBuiltinModule() {
+    return void 0;
+  }
+  getActiveResourcesInfo() {
+    throw createNotImplementedError("process.getActiveResourcesInfo");
+  }
+  exit() {
+    throw createNotImplementedError("process.exit");
+  }
+  reallyExit() {
+    throw createNotImplementedError("process.reallyExit");
+  }
+  kill() {
+    throw createNotImplementedError("process.kill");
+  }
+  abort() {
+    throw createNotImplementedError("process.abort");
+  }
+  dlopen() {
+    throw createNotImplementedError("process.dlopen");
+  }
+  setSourceMapsEnabled() {
+    throw createNotImplementedError("process.setSourceMapsEnabled");
+  }
+  loadEnvFile() {
+    throw createNotImplementedError("process.loadEnvFile");
+  }
+  disconnect() {
+    throw createNotImplementedError("process.disconnect");
+  }
+  cpuUsage() {
+    throw createNotImplementedError("process.cpuUsage");
+  }
+  setUncaughtExceptionCaptureCallback() {
+    throw createNotImplementedError("process.setUncaughtExceptionCaptureCallback");
+  }
+  hasUncaughtExceptionCaptureCallback() {
+    throw createNotImplementedError("process.hasUncaughtExceptionCaptureCallback");
+  }
+  initgroups() {
+    throw createNotImplementedError("process.initgroups");
+  }
+  openStdin() {
+    throw createNotImplementedError("process.openStdin");
+  }
+  assert() {
+    throw createNotImplementedError("process.assert");
+  }
+  binding() {
+    throw createNotImplementedError("process.binding");
+  }
+  // --- attached interfaces ---
+  permission = { has: /* @__PURE__ */ notImplemented("process.permission.has") };
+  report = {
+    directory: "",
+    filename: "",
+    signal: "SIGUSR2",
+    compact: false,
+    reportOnFatalError: false,
+    reportOnSignal: false,
+    reportOnUncaughtException: false,
+    getReport: /* @__PURE__ */ notImplemented("process.report.getReport"),
+    writeReport: /* @__PURE__ */ notImplemented("process.report.writeReport")
+  };
+  finalization = {
+    register: /* @__PURE__ */ notImplemented("process.finalization.register"),
+    unregister: /* @__PURE__ */ notImplemented("process.finalization.unregister"),
+    registerBeforeExit: /* @__PURE__ */ notImplemented("process.finalization.registerBeforeExit")
+  };
+  memoryUsage = Object.assign(() => ({
+    arrayBuffers: 0,
+    rss: 0,
+    external: 0,
+    heapTotal: 0,
+    heapUsed: 0
+  }), { rss: /* @__PURE__ */ __name(() => 0, "rss") });
+  // --- undefined props ---
+  mainModule = void 0;
+  domain = void 0;
+  // optional
+  send = void 0;
+  exitCode = void 0;
+  channel = void 0;
+  getegid = void 0;
+  geteuid = void 0;
+  getgid = void 0;
+  getgroups = void 0;
+  getuid = void 0;
+  setegid = void 0;
+  seteuid = void 0;
+  setgid = void 0;
+  setgroups = void 0;
+  setuid = void 0;
+  // internals
+  _events = void 0;
+  _eventsCount = void 0;
+  _exiting = void 0;
+  _maxListeners = void 0;
+  _debugEnd = void 0;
+  _debugProcess = void 0;
+  _fatalException = void 0;
+  _getActiveHandles = void 0;
+  _getActiveRequests = void 0;
+  _kill = void 0;
+  _preload_modules = void 0;
+  _rawDebug = void 0;
+  _startProfilerIdleNotifier = void 0;
+  _stopProfilerIdleNotifier = void 0;
+  _tickCallback = void 0;
+  _disconnect = void 0;
+  _handleQueue = void 0;
+  _pendingMessage = void 0;
+  _channel = void 0;
+  _send = void 0;
+  _linkedBinding = void 0;
+};
+
+// node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs
+var globalProcess = globalThis["process"];
+var getBuiltinModule = globalProcess.getBuiltinModule;
+var workerdProcess = getBuiltinModule("node:process");
+var isWorkerdProcessV2 = globalThis.Cloudflare.compatibilityFlags.enable_nodejs_process_v2;
+var unenvProcess = new Process({
+  env: globalProcess.env,
+  // `hrtime` is only available from workerd process v2
+  hrtime: isWorkerdProcessV2 ? workerdProcess.hrtime : hrtime,
+  // `nextTick` is available from workerd process v1
+  nextTick: workerdProcess.nextTick
+});
+var { exit, features, platform } = workerdProcess;
+var {
+  // Always implemented by workerd
+  env,
+  // Only implemented in workerd v2
+  hrtime: hrtime3,
+  // Always implemented by workerd
+  nextTick
+} = unenvProcess;
+var {
+  _channel,
+  _disconnect,
+  _events,
+  _eventsCount,
+  _handleQueue,
+  _maxListeners,
+  _pendingMessage,
+  _send,
+  assert,
+  disconnect,
+  mainModule
+} = unenvProcess;
+var {
+  // @ts-expect-error `_debugEnd` is missing typings
+  _debugEnd,
+  // @ts-expect-error `_debugProcess` is missing typings
+  _debugProcess,
+  // @ts-expect-error `_exiting` is missing typings
+  _exiting,
+  // @ts-expect-error `_fatalException` is missing typings
+  _fatalException,
+  // @ts-expect-error `_getActiveHandles` is missing typings
+  _getActiveHandles,
+  // @ts-expect-error `_getActiveRequests` is missing typings
+  _getActiveRequests,
+  // @ts-expect-error `_kill` is missing typings
+  _kill,
+  // @ts-expect-error `_linkedBinding` is missing typings
+  _linkedBinding,
+  // @ts-expect-error `_preload_modules` is missing typings
+  _preload_modules,
+  // @ts-expect-error `_rawDebug` is missing typings
+  _rawDebug,
+  // @ts-expect-error `_startProfilerIdleNotifier` is missing typings
+  _startProfilerIdleNotifier,
+  // @ts-expect-error `_stopProfilerIdleNotifier` is missing typings
+  _stopProfilerIdleNotifier,
+  // @ts-expect-error `_tickCallback` is missing typings
+  _tickCallback,
+  abort,
+  addListener,
+  allowedNodeEnvironmentFlags,
+  arch,
+  argv,
+  argv0,
+  availableMemory,
+  // @ts-expect-error `binding` is missing typings
+  binding,
+  channel,
+  chdir,
+  config,
+  connected,
+  constrainedMemory,
+  cpuUsage,
+  cwd,
+  debugPort,
+  dlopen,
+  // @ts-expect-error `domain` is missing typings
+  domain,
+  emit,
+  emitWarning,
+  eventNames,
+  execArgv,
+  execPath,
+  exitCode,
+  finalization,
+  getActiveResourcesInfo,
+  getegid,
+  geteuid,
+  getgid,
+  getgroups,
+  getMaxListeners,
+  getuid,
+  hasUncaughtExceptionCaptureCallback,
+  // @ts-expect-error `initgroups` is missing typings
+  initgroups,
+  kill,
+  listenerCount,
+  listeners,
+  loadEnvFile,
+  memoryUsage,
+  // @ts-expect-error `moduleLoadList` is missing typings
+  moduleLoadList,
+  off,
+  on,
+  once,
+  // @ts-expect-error `openStdin` is missing typings
+  openStdin,
+  permission,
+  pid,
+  ppid,
+  prependListener,
+  prependOnceListener,
+  rawListeners,
+  // @ts-expect-error `reallyExit` is missing typings
+  reallyExit,
+  ref,
+  release,
+  removeAllListeners,
+  removeListener,
+  report,
+  resourceUsage,
+  send,
+  setegid,
+  seteuid,
+  setgid,
+  setgroups,
+  setMaxListeners,
+  setSourceMapsEnabled,
+  setuid,
+  setUncaughtExceptionCaptureCallback,
+  sourceMapsEnabled,
+  stderr,
+  stdin,
+  stdout,
+  throwDeprecation,
+  title,
+  traceDeprecation,
+  umask,
+  unref,
+  uptime,
+  version,
+  versions
+} = isWorkerdProcessV2 ? workerdProcess : unenvProcess;
+var _process = {
+  abort,
+  addListener,
+  allowedNodeEnvironmentFlags,
+  hasUncaughtExceptionCaptureCallback,
+  setUncaughtExceptionCaptureCallback,
+  loadEnvFile,
+  sourceMapsEnabled,
+  arch,
+  argv,
+  argv0,
+  chdir,
+  config,
+  connected,
+  constrainedMemory,
+  availableMemory,
+  cpuUsage,
+  cwd,
+  debugPort,
+  dlopen,
+  disconnect,
+  emit,
+  emitWarning,
+  env,
+  eventNames,
+  execArgv,
+  execPath,
+  exit,
+  finalization,
+  features,
+  getBuiltinModule,
+  getActiveResourcesInfo,
+  getMaxListeners,
+  hrtime: hrtime3,
+  kill,
+  listeners,
+  listenerCount,
+  memoryUsage,
+  nextTick,
+  on,
+  off,
+  once,
+  pid,
+  platform,
+  ppid,
+  prependListener,
+  prependOnceListener,
+  rawListeners,
+  release,
+  removeAllListeners,
+  removeListener,
+  report,
+  resourceUsage,
+  setMaxListeners,
+  setSourceMapsEnabled,
+  stderr,
+  stdin,
+  stdout,
+  title,
+  throwDeprecation,
+  traceDeprecation,
+  umask,
+  uptime,
+  version,
+  versions,
+  // @ts-expect-error old API
+  domain,
+  initgroups,
+  moduleLoadList,
+  reallyExit,
+  openStdin,
+  assert,
+  binding,
+  send,
+  exitCode,
+  channel,
+  getegid,
+  geteuid,
+  getgid,
+  getgroups,
+  getuid,
+  setegid,
+  seteuid,
+  setgid,
+  setgroups,
+  setuid,
+  permission,
+  mainModule,
+  _events,
+  _eventsCount,
+  _exiting,
+  _maxListeners,
+  _debugEnd,
+  _debugProcess,
+  _fatalException,
+  _getActiveHandles,
+  _getActiveRequests,
+  _kill,
+  _preload_modules,
+  _rawDebug,
+  _startProfilerIdleNotifier,
+  _stopProfilerIdleNotifier,
+  _tickCallback,
+  _disconnect,
+  _handleQueue,
+  _pendingMessage,
+  _channel,
+  _send,
+  _linkedBinding
+};
+var process_default = _process;
+
+// node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process
+globalThis.process = process_default;
+
 // node_modules/hono/dist/compose.js
 var compose = /* @__PURE__ */ __name((middleware, onError, onNotFound) => {
   return (context, next) => {
@@ -1329,16 +2180,16 @@ var Hono = class _Hono {
     }
     throw err;
   }
-  #dispatch(request, executionCtx, env, method) {
+  #dispatch(request, executionCtx, env2, method) {
     if (method === "HEAD") {
-      return (async () => new Response(null, await this.#dispatch(request, executionCtx, env, "GET")))();
+      return (async () => new Response(null, await this.#dispatch(request, executionCtx, env2, "GET")))();
     }
-    const path = this.getPath(request, { env });
+    const path = this.getPath(request, { env: env2 });
     const matchResult = this.router.match(method, path);
     const c = new Context(request, {
       path,
       matchResult,
-      env,
+      env: env2,
       executionCtx,
       notFoundHandler: this.#notFoundHandler
     });
@@ -2081,16 +2932,49 @@ app.use("*", async (c, next) => {
   await next();
   c.header("X-FamilyBudget-Worker", "yes");
 });
+var APP_ORIGIN = "https://budget.yourdomain.com";
+app.use("*", async (c, next) => {
+  const origin = c.req.header("Origin");
+  if (origin === APP_ORIGIN) {
+    c.header("Access-Control-Allow-Origin", origin);
+    c.header("Access-Control-Allow-Credentials", "true");
+    c.header("Access-Control-Allow-Headers", "Content-Type");
+    c.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    c.header("Vary", "Origin");
+  }
+  if (c.req.method === "OPTIONS") {
+    return c.body(null, 204);
+  }
+  await next();
+  c.header("X-FamilyBudget-Worker", "yes");
+});
 var CATEGORIES = [
-  { id: "housing", name: "Housing" },
-  { id: "utilities", name: "Utilities" },
+  { id: "income", name: "Income" },
+  { id: "mortgage", name: "Mortgage" },
   { id: "groceries", name: "Groceries" },
+  { id: "insurance", name: "Health Insurance" },
+  { id: "toiletries_cleaning", name: "Toiletries/Cleaning" },
+  { id: "clothes", name: "Clothes" },
+  { id: "greer_cpw", name: "Greer CPW" },
+  { id: "phone", name: "Phone" },
+  { id: "car", name: "Car" },
+  { id: "prisma_bills", name: "Prisma Bills" },
   { id: "gas", name: "Gas" },
-  { id: "eating_out", name: "Eating Out" },
-  { id: "kids", name: "Kids" },
-  { id: "subscriptions", name: "Subscriptions" },
-  { id: "giving", name: "Giving" },
-  { id: "savings", name: "Savings" }
+  { id: "kirbys", name: "Kirbys" },
+  { id: "google_one", name: "Google One" },
+  { id: "canva", name: "Canva" },
+  { id: "vsp", name: "VSP" },
+  { id: "simplisafe", name: "SimpliSafe" },
+  { id: "charter", name: "Charter" },
+  { id: "burns_giving", name: "Burns Giving" },
+  { id: "midland_credit", name: "Midland Credit" },
+  { id: "travelers_insurance", name: "Traveler's Insurance" },
+  { id: "chickens", name: "Chickens" },
+  { id: "recurring", name: "Recurring" },
+  { id: "savings", name: "Savings" },
+  { id: "prime", name: "Prime" },
+  { id: "rosie_spending", name: "Rosie Spending" },
+  { id: "bobby_spending", name: "Bobby Spending" }
 ];
 var uid = /* @__PURE__ */ __name(() => crypto.randomUUID(), "uid");
 async function sha256(input) {
@@ -2109,11 +2993,11 @@ function getCookie(req, name) {
 }
 __name(getCookie, "getCookie");
 function setCookie(name, value, maxAgeSec = 60 * 60 * 24 * 14) {
-  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}`;
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${maxAgeSec}`;
 }
 __name(setCookie, "setCookie");
 function clearCookie(name) {
-  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
 }
 __name(clearCookie, "clearCookie");
 var requireUser = /* @__PURE__ */ __name(async (c, next) => {
@@ -2132,76 +3016,12 @@ var requireUser = /* @__PURE__ */ __name(async (c, next) => {
 }, "requireUser");
 app.get("/api/health", (c) => c.json({ ok: true }));
 app.get("/api/categories", (c) => c.json({ categories: CATEGORIES }));
-app.get("/api/bills", requireUser, async (c) => {
-  const userId = c.get("userId");
-  const rows = await c.env.DB.prepare(
-    `SELECT id, name, amount, mode, due_date
-     FROM bills
-     WHERE user_id = ?
-     ORDER BY due_date ASC`
-  ).bind(userId).all();
-  const payments = await c.env.DB.prepare(
-    `SELECT bill_id, paid_date FROM bill_payments`
-  ).all();
-  const paidSet = new Set(payments.results.map((p) => `${p.bill_id}:${p.paid_date}`));
-  return c.json({
-    bills: rows.results.map((b) => ({
-      ...b,
-      paidToday: paidSet.has(`${b.id}:${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}`)
-    }))
-  });
-});
-app.post("/api/bills", requireUser, async (c) => {
-  const userId = c.get("userId");
-  const body = await c.req.json();
-  const name = (body.name || "").trim();
-  const amount = body.amount;
-  const mode = body.mode;
-  const dueDate = body.dueDate;
-  if (!name || typeof amount !== "number" || Number.isNaN(amount) || mode !== "auto" && mode !== "manual" || !dueDate) {
-    return c.json({ error: "Bad payload" }, 400);
-  }
-  const id = crypto.randomUUID();
-  await c.env.DB.prepare(
-    `INSERT INTO bills (id, user_id, name, amount, mode, due_date, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).bind(id, userId, name, amount, mode, dueDate, (/* @__PURE__ */ new Date()).toISOString()).run();
-  return c.json({ ok: true, id });
-});
-app.post("/api/bills/:id/pay", requireUser, async (c) => {
-  const userId = c.get("userId");
-  const id = c.req.param("id");
-  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const bill = await c.env.DB.prepare(
-    `SELECT id FROM bills WHERE id = ? AND user_id = ? LIMIT 1`
-  ).bind(id, userId).first();
-  if (!bill) return c.json({ error: "Not found" }, 404);
-  await c.env.DB.prepare(
-    `INSERT INTO bill_payments (id, bill_id, paid_date, created_at)
-     VALUES (?, ?, ?, ?)`
-  ).bind(crypto.randomUUID(), id, today, (/* @__PURE__ */ new Date()).toISOString()).run();
-  return c.json({ ok: true });
-});
-app.delete("/api/bills/:id", requireUser, async (c) => {
-  const userId = c.get("userId");
-  const id = c.req.param("id");
-  await c.env.DB.prepare(
-    `DELETE FROM bill_payments
-     WHERE bill_id IN (SELECT id FROM bills WHERE id = ? AND user_id = ?)`
-  ).bind(id, userId).run();
-  await c.env.DB.prepare(
-    `DELETE FROM bills WHERE id = ? AND user_id = ?`
-  ).bind(id, userId).run();
-  return c.json({ ok: true });
-});
 app.post("/api/auth/login", async (c) => {
   const body = await c.req.json();
   const email = (body.email || "").toLowerCase().trim();
   const password = body.password || "";
   if (!email || !password) return c.json({ error: "Missing email/password" }, 400);
-  const user = await c.env.DB.prepare(
-    `SELECT id, password_hash FROM users WHERE email = ? LIMIT 1`
-  ).bind(email).first();
+  const user = await c.env.DB.prepare(`SELECT id, password_hash FROM users WHERE email = ? LIMIT 1`).bind(email).first();
   if (!user) return c.json({ error: "Invalid credentials" }, 401);
   const candidate = await sha256(password + c.env.SESSION_SECRET);
   if (candidate !== user.password_hash) return c.json({ error: "Invalid credentials" }, 401);
@@ -2224,13 +3044,137 @@ app.post("/api/auth/logout", async (c) => {
   c.header("Set-Cookie", clearCookie("session"));
   return c.json({ ok: true });
 });
-app.get("/api/auth/me", requireUser, (c) => {
-  return c.json({ ok: true, userId: c.get("userId") });
+app.get("/api/auth/me", requireUser, (c) => c.json({ ok: true, userId: c.get("userId") }));
+app.get("/api/account", requireUser, async (c) => {
+  const row = await c.env.DB.prepare(
+    `SELECT bank_balance, anchor_balance FROM account_state WHERE id='main' LIMIT 1`
+  ).first();
+  return c.json({
+    bankBalance: Number(row?.bank_balance ?? 0),
+    anchorBalance: Number(row?.anchor_balance ?? 0)
+  });
+});
+app.post("/api/account/set", requireUser, async (c) => {
+  const body = await c.req.json();
+  const bank = body.bankBalance;
+  const anchor = body.anchorBalance;
+  if (typeof bank !== "number" || Number.isNaN(bank)) {
+    return c.json({ error: "bankBalance must be a number" }, 400);
+  }
+  const anchorToUse = typeof anchor === "number" && !Number.isNaN(anchor) ? anchor : void 0;
+  if (anchorToUse === void 0) {
+    await c.env.DB.prepare(`UPDATE account_state SET bank_balance=?, updated_at=? WHERE id='main'`).bind(bank, (/* @__PURE__ */ new Date()).toISOString()).run();
+  } else {
+    await c.env.DB.prepare(
+      `UPDATE account_state SET bank_balance=?, anchor_balance=?, updated_at=? WHERE id='main'`
+    ).bind(bank, anchorToUse, (/* @__PURE__ */ new Date()).toISOString()).run();
+  }
+  return c.json({ ok: true });
+});
+app.post("/api/account/reconcile", requireUser, async (c) => {
+  const acct = await c.env.DB.prepare(
+    `SELECT bank_balance FROM account_state WHERE id='main' LIMIT 1`
+  ).first();
+  const bankBalance = Number(acct?.bank_balance ?? 0);
+  await c.env.DB.prepare(`UPDATE account_state SET anchor_balance=?, updated_at=? WHERE id='main'`).bind(bankBalance, (/* @__PURE__ */ new Date()).toISOString()).run();
+  return c.json({ ok: true });
+});
+app.get("/api/totals", requireUser, async (c) => {
+  const acct = await c.env.DB.prepare(
+    `SELECT bank_balance, anchor_balance
+     FROM account_state
+     WHERE id='main'
+     LIMIT 1`
+  ).first();
+  const bankBalance = Number(acct?.bank_balance ?? 0);
+  const anchorBalance = Number(acct?.anchor_balance ?? 0);
+  const budgetedRow = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(amount_budgeted), 0) AS total
+     FROM budget_lines`
+  ).first();
+  const flowRow = await c.env.DB.prepare(
+    `SELECT
+       COALESCE(SUM(CASE WHEN direction='out' THEN amount ELSE 0 END), 0) AS spent_out,
+       COALESCE(SUM(CASE WHEN direction='in'  THEN amount ELSE 0 END), 0) AS income_in
+     FROM manual_spends`
+  ).first();
+  const totalBudgeted = Number(budgetedRow?.total ?? 0);
+  const totalLoggedSpentOut = Number(flowRow?.spent_out ?? 0);
+  const totalLoggedIncomeIn = Number(flowRow?.income_in ?? 0);
+  const expectedBalance = anchorBalance - totalLoggedSpentOut + totalLoggedIncomeIn;
+  const toBeBudgeted = bankBalance + totalLoggedIncomeIn - totalBudgeted;
+  const unloggedDifference = expectedBalance - bankBalance;
+  return c.json({
+    bankBalance,
+    expectedBalance,
+    toBeBudgeted,
+    totalBudgeted,
+    totalLoggedSpentOut,
+    totalLoggedIncomeIn,
+    unloggedDifference
+  });
+});
+app.get("/api/bills", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const rows = await c.env.DB.prepare(
+    `SELECT id, name, amount, mode, due_date
+     FROM bills
+     WHERE user_id = ?
+     ORDER BY due_date ASC`
+  ).bind(userId).all();
+  const payments = await c.env.DB.prepare(`SELECT bill_id, paid_date FROM bill_payments`).all();
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const paidSet = new Set(payments.results.map((p) => `${p.bill_id}:${p.paid_date}`));
+  return c.json({
+    bills: rows.results.map((b) => ({
+      ...b,
+      paidToday: paidSet.has(`${b.id}:${today}`)
+    }))
+  });
+});
+app.post("/api/bills", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json();
+  const name = (body.name || "").trim();
+  const amount = body.amount;
+  const mode = body.mode;
+  const dueDate = body.dueDate;
+  if (!name || typeof amount !== "number" || Number.isNaN(amount) || mode !== "auto" && mode !== "manual" || !dueDate) {
+    return c.json({ error: "Bad payload" }, 400);
+  }
+  const id = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO bills (id, user_id, name, amount, mode, due_date, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, userId, name, amount, mode, dueDate, (/* @__PURE__ */ new Date()).toISOString()).run();
+  return c.json({ ok: true, id });
+});
+app.post("/api/bills/:id/pay", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const bill = await c.env.DB.prepare(
+    `SELECT id FROM bills WHERE id = ? AND user_id = ? LIMIT 1`
+  ).bind(id, userId).first();
+  if (!bill) return c.json({ error: "Not found" }, 404);
+  await c.env.DB.prepare(
+    `INSERT INTO bill_payments (id, bill_id, paid_date, created_at)
+     VALUES (?, ?, ?, ?)`
+  ).bind(uid(), id, today, (/* @__PURE__ */ new Date()).toISOString()).run();
+  return c.json({ ok: true });
+});
+app.delete("/api/bills/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  await c.env.DB.prepare(
+    `DELETE FROM bill_payments
+     WHERE bill_id IN (SELECT id FROM bills WHERE id = ? AND user_id = ?)`
+  ).bind(id, userId).run();
+  await c.env.DB.prepare(`DELETE FROM bills WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  return c.json({ ok: true });
 });
 app.get("/api/budget/current", requireUser, async (c) => {
-  const rows = await c.env.DB.prepare(
-    `SELECT category_id, amount_budgeted FROM budget_lines`
-  ).all();
+  const rows = await c.env.DB.prepare(`SELECT category_id, amount_budgeted FROM budget_lines`).all();
   const budget = {};
   for (const r of rows.results) budget[r.category_id] = Number(r.amount_budgeted || 0);
   return c.json({ budget });
@@ -2249,35 +3193,64 @@ app.post("/api/budget/set", requireUser, async (c) => {
   ).bind(uid(), categoryId, amount).run();
   return c.json({ ok: true });
 });
+app.post("/api/budget/adjust", requireUser, async (c) => {
+  const body = await c.req.json();
+  const categoryId = body.categoryId || "";
+  const delta = body.delta;
+  if (!categoryId || typeof delta !== "number" || Number.isNaN(delta)) {
+    return c.json({ error: "Bad payload" }, 400);
+  }
+  await c.env.DB.prepare(
+    `INSERT INTO budget_lines (id, category_id, amount_budgeted)
+     VALUES (?, ?, 0)
+     ON CONFLICT(category_id) DO NOTHING`
+  ).bind(uid(), categoryId).run();
+  await c.env.DB.prepare(
+    `UPDATE budget_lines
+     SET amount_budgeted = amount_budgeted + ?
+     WHERE category_id = ?`
+  ).bind(delta, categoryId).run();
+  return c.json({ ok: true });
+});
+app.get("/api/spend", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const rows = await c.env.DB.prepare(
+    `SELECT id, category_id, amount, date, note, created_at
+     FROM manual_spends
+     WHERE user_id = ?
+     ORDER BY date DESC, created_at DESC
+     LIMIT 200`
+  ).bind(userId).all();
+  return c.json({ spends: rows.results });
+});
 app.post("/api/spend", requireUser, async (c) => {
   const userId = c.get("userId");
   const body = await c.req.json();
-  const categoryId = body.categoryId || "";
+  const categoryId = (body.categoryId || "").trim();
   const amount = body.amount;
-  const date = body.date || "";
+  const date = (body.date || "").trim();
   const note = body.note ?? null;
+  const direction = body.direction === "in" ? "in" : "out";
   if (!categoryId || typeof amount !== "number" || Number.isNaN(amount) || !date) {
     return c.json({ error: "Bad payload" }, 400);
   }
   const spendId = uid();
   await c.env.DB.prepare(
-    `INSERT INTO manual_spends (id, user_id, category_id, amount, date, note, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).bind(spendId, userId, categoryId, amount, date, note, (/* @__PURE__ */ new Date()).toISOString()).run();
+    `INSERT INTO manual_spends (id, user_id, category_id, amount, date, note, direction, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(spendId, userId, categoryId, amount, date, note, direction, (/* @__PURE__ */ new Date()).toISOString()).run();
   return c.json({ ok: true, id: spendId });
 });
 app.delete("/api/spend/:id", requireUser, async (c) => {
   const userId = c.get("userId");
   const spendId = c.req.param("id");
-  await c.env.DB.prepare(
-    `DELETE FROM manual_spends
-     WHERE id = ? AND user_id = ?`
-  ).bind(spendId, userId).run();
+  await c.env.DB.prepare(`DELETE FROM manual_spends WHERE id = ? AND user_id = ?`).bind(spendId, userId).run();
   return c.json({ ok: true });
 });
 app.get("/api/spend/summary", requireUser, async (c) => {
   const spentRows = await c.env.DB.prepare(
-    `SELECT category_id, SUM(amount) AS spent
+    `SELECT category_id,
+            COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS spent
      FROM manual_spends
      GROUP BY category_id`
   ).all();
@@ -2297,12 +3270,308 @@ app.get("/api/spend/summary", requireUser, async (c) => {
   const totalRemaining = byCategory.reduce((sum, row) => sum + row.remaining, 0);
   return c.json({ byCategory, totalRemaining });
 });
-var src_default = app;
+app.get("/api/goals", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const rows = await c.env.DB.prepare(
+    `SELECT id, title, status, due_date, notes, created_at, updated_at
+     FROM goals
+     WHERE user_id = ?
+     ORDER BY
+       CASE WHEN status = 'active' THEN 0 ELSE 1 END,
+       COALESCE(due_date, '9999-12-31') ASC,
+       created_at DESC`
+  ).bind(userId).all();
+  return c.json({ goals: rows.results });
+});
+app.post("/api/goals", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json();
+  const title2 = (body.title || "").trim();
+  const dueDate = (body.dueDate || "").trim() || null;
+  const notes = (body.notes || "").trim() || null;
+  if (!title2) return c.json({ error: "Missing title" }, 400);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const id = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO goals (id, user_id, title, status, due_date, notes, created_at, updated_at)
+     VALUES (?, ?, ?, 'active', ?, ?, ?, ?)`
+  ).bind(id, userId, title2, dueDate, notes, now, now).run();
+  return c.json({ ok: true, id });
+});
+app.patch("/api/goals/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const existing = await c.env.DB.prepare(`SELECT id FROM goals WHERE id = ? AND user_id = ? LIMIT 1`).bind(id, userId).first();
+  if (!existing) return c.json({ error: "Not found" }, 404);
+  const title2 = body.title !== void 0 ? (body.title || "").trim() : void 0;
+  const dueDate = body.dueDate !== void 0 ? body.dueDate ? body.dueDate.trim() : null : void 0;
+  const notes = body.notes !== void 0 ? body.notes ? body.notes.trim() : null : void 0;
+  const status = body.status !== void 0 ? body.status : void 0;
+  const sets = [];
+  const binds = [];
+  if (title2 !== void 0) {
+    if (!title2) return c.json({ error: "Title cannot be empty" }, 400);
+    sets.push("title = ?");
+    binds.push(title2);
+  }
+  if (dueDate !== void 0) {
+    sets.push("due_date = ?");
+    binds.push(dueDate);
+  }
+  if (notes !== void 0) {
+    sets.push("notes = ?");
+    binds.push(notes);
+  }
+  if (status !== void 0) {
+    sets.push("status = ?");
+    binds.push(status);
+  }
+  sets.push("updated_at = ?");
+  binds.push(now);
+  await c.env.DB.prepare(`UPDATE goals SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`).bind(...binds, id, userId).run();
+  return c.json({ ok: true });
+});
+app.delete("/api/goals/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  await c.env.DB.prepare(`DELETE FROM goals WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  return c.json({ ok: true });
+});
+function monthKey(d = /* @__PURE__ */ new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+__name(monthKey, "monthKey");
+app.get("/api/debts", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const rows = await c.env.DB.prepare(
+    `SELECT id, name, balance, apr, payment, created_at, updated_at
+     FROM debts
+     WHERE user_id = ?
+     ORDER BY created_at DESC`
+  ).bind(userId).all();
+  return c.json({ debts: rows.results });
+});
+app.post("/api/debts", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json();
+  const name = (body.name || "").trim();
+  const balance = Number(body.balance);
+  const apr = Number(body.apr);
+  const payment = Number(body.payment);
+  if (!name || Number.isNaN(balance) || Number.isNaN(apr) || Number.isNaN(payment)) {
+    return c.json({ error: "Bad payload" }, 400);
+  }
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const id = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO debts (id, user_id, name, balance, apr, payment, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, userId, name, balance, apr, payment, now, now).run();
+  return c.json({ ok: true, id });
+});
+app.patch("/api/debts/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const existing = await c.env.DB.prepare(
+    `SELECT id FROM debts WHERE id = ? AND user_id = ? LIMIT 1`
+  ).bind(id, userId).first();
+  if (!existing) return c.json({ error: "Not found" }, 404);
+  const sets = [];
+  const binds = [];
+  if (body.name !== void 0) {
+    const name = (body.name || "").trim();
+    if (!name) return c.json({ error: "Name cannot be empty" }, 400);
+    sets.push("name = ?");
+    binds.push(name);
+  }
+  if (body.balance !== void 0) {
+    const n = Number(body.balance);
+    if (Number.isNaN(n)) return c.json({ error: "balance must be a number" }, 400);
+    sets.push("balance = ?");
+    binds.push(n);
+  }
+  if (body.apr !== void 0) {
+    const n = Number(body.apr);
+    if (Number.isNaN(n)) return c.json({ error: "apr must be a number" }, 400);
+    sets.push("apr = ?");
+    binds.push(n);
+  }
+  if (body.payment !== void 0) {
+    const n = Number(body.payment);
+    if (Number.isNaN(n)) return c.json({ error: "payment must be a number" }, 400);
+    sets.push("payment = ?");
+    binds.push(n);
+  }
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  sets.push("updated_at = ?");
+  binds.push(now);
+  await c.env.DB.prepare(
+    `UPDATE debts SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`
+  ).bind(...binds, id, userId).run();
+  return c.json({ ok: true });
+});
+app.delete("/api/debts/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  await c.env.DB.prepare(
+    `DELETE FROM debts WHERE id = ? AND user_id = ?`
+  ).bind(id, userId).run();
+  return c.json({ ok: true });
+});
+app.get("/api/debts/settings", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const row = await c.env.DB.prepare(
+    `SELECT extra_monthly FROM debt_settings WHERE user_id = ? LIMIT 1`
+  ).bind(userId).first();
+  return c.json({ extraMonthly: Number(row?.extra_monthly ?? 0) });
+});
+app.post("/api/debts/settings", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json();
+  const n = Number(body.extraMonthly);
+  if (Number.isNaN(n) || n < 0) return c.json({ error: "extraMonthly must be a number >= 0" }, 400);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO debt_settings (user_id, extra_monthly, strategy, created_at, updated_at)
+     VALUES (?, ?, 'snowball', ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
+       extra_monthly = excluded.extra_monthly,
+       updated_at = excluded.updated_at`
+  ).bind(userId, n, now, now).run();
+  return c.json({ ok: true });
+});
+app.post("/api/debts/:id/plan", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const debtId = c.req.param("id");
+  const body = await c.req.json();
+  const month = (body.month || monthKey()).trim();
+  const plannedPayment = body.plannedPayment;
+  if (!/^\d{4}-\d{2}$/.test(month)) return c.json({ error: "month must be YYYY-MM" }, 400);
+  if (typeof plannedPayment !== "number" || Number.isNaN(plannedPayment) || plannedPayment < 0) {
+    return c.json({ error: "plannedPayment must be a number" }, 400);
+  }
+  const exists = await c.env.DB.prepare(
+    `SELECT id FROM debts WHERE id = ? AND user_id = ? LIMIT 1`
+  ).bind(debtId, userId).first();
+  if (!exists) return c.json({ error: "Not found" }, 404);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO debt_payment_plans (id, user_id, debt_id, month, planned_payment, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, debt_id, month) DO UPDATE SET
+       planned_payment = excluded.planned_payment,
+       updated_at = excluded.updated_at`
+  ).bind(uid(), userId, debtId, month, plannedPayment, now, now).run();
+  return c.json({ ok: true });
+});
+app.get("/api/calendar/upcoming", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const days = Math.max(1, Math.min(30, Number(c.req.query("days") || "7")));
+  const now = /* @__PURE__ */ new Date();
+  const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1e3);
+  const nowIso = now.toISOString();
+  const endIso = end.toISOString();
+  const rows = await c.env.DB.prepare(
+    `SELECT id, title, start_at, end_at, location, notes
+     FROM calendar_events
+     WHERE user_id = ?
+       AND start_at >= ?
+       AND start_at < ?
+     ORDER BY start_at ASC`
+  ).bind(userId, nowIso, endIso).all();
+  return c.json({ events: rows.results });
+});
+app.post("/api/calendar", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json();
+  const title2 = (body.title || "").trim();
+  const startAt = (body.startAt || "").trim();
+  const endAt = body.endAt ? body.endAt.trim() : null;
+  const location = (body.location || "").trim() || null;
+  const notes = (body.notes || "").trim() || null;
+  if (!title2 || !startAt) return c.json({ error: "Missing title/startAt" }, 400);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const id = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO calendar_events (id, user_id, title, start_at, end_at, location, notes, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, userId, title2, startAt, endAt, location, notes, now, now).run();
+  return c.json({ ok: true, id });
+});
+app.delete("/api/calendar/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  await c.env.DB.prepare(`DELETE FROM calendar_events WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  return c.json({ ok: true });
+});
+app.get("/api/home/upcoming", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const billsDays = Math.max(1, Math.min(14, Number(c.req.query("billsDays") || "3")));
+  const calDays = Math.max(1, Math.min(30, Number(c.req.query("calDays") || "7")));
+  const today = /* @__PURE__ */ new Date();
+  today.setHours(0, 0, 0, 0);
+  const billsEnd = new Date(today.getTime() + billsDays * 24 * 60 * 60 * 1e3);
+  const billsEndStr = billsEnd.toISOString().slice(0, 10);
+  const billsRows = await c.env.DB.prepare(
+    `SELECT id, name, mode, due_date
+     FROM bills
+     WHERE user_id = ?
+       AND due_date >= ?
+       AND due_date <= ?
+     ORDER BY due_date ASC`
+  ).bind(userId, today.toISOString().slice(0, 10), billsEndStr).all();
+  const now = /* @__PURE__ */ new Date();
+  const calEnd = new Date(now.getTime() + calDays * 24 * 60 * 60 * 1e3);
+  const nowIso = now.toISOString();
+  const calEndIso = calEnd.toISOString();
+  const eventsRows = await c.env.DB.prepare(
+    `SELECT id, title, start_at, end_at, location
+     FROM calendar_events
+     WHERE user_id = ?
+       AND start_at >= ?
+       AND start_at < ?
+     ORDER BY start_at ASC`
+  ).bind(userId, nowIso, calEndIso).all();
+  return c.json({ bills: billsRows.results, events: eventsRows.results });
+});
+app.get("/api/calendar/range", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const start = (c.req.query("start") || "").trim();
+  const end = (c.req.query("end") || "").trim();
+  if (!start || !end) return c.json({ error: "Missing start/end" }, 400);
+  const billsRows = await c.env.DB.prepare(
+    `SELECT id, name, mode, due_date
+     FROM bills
+     WHERE user_id = ?
+       AND due_date >= ?
+       AND due_date < ?
+     ORDER BY due_date ASC`
+  ).bind(userId, start, end).all();
+  const startIso = `${start}T00:00:00.000Z`;
+  const endIso = `${end}T00:00:00.000Z`;
+  const eventsRows = await c.env.DB.prepare(
+    `SELECT id, title, start_at, end_at, location, notes
+     FROM calendar_events
+     WHERE user_id = ?
+       AND start_at >= ?
+       AND start_at < ?
+     ORDER BY start_at ASC`
+  ).bind(userId, startIso, endIso).all();
+  return c.json({ bills: billsRows.results, events: eventsRows.results });
+});
+var src_default = {
+  fetch: app.fetch
+};
 
 // node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
-var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+var drainBody = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx) => {
   try {
-    return await middlewareCtx.next(request, env);
+    return await middlewareCtx.next(request, env2);
   } finally {
     try {
       if (request.body !== null && !request.bodyUsed) {
@@ -2317,9 +3586,33 @@ var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "drainBody");
 var middleware_ensure_req_body_drained_default = drainBody;
 
-// .wrangler/tmp/bundle-HoTL1h/middleware-insertion-facade.js
+// node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
+function reduceError(e) {
+  return {
+    name: e?.name,
+    message: e?.message ?? String(e),
+    stack: e?.stack,
+    cause: e?.cause === void 0 ? void 0 : reduceError(e.cause)
+  };
+}
+__name(reduceError, "reduceError");
+var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env2);
+  } catch (e) {
+    const error = reduceError(e);
+    return Response.json(error, {
+      status: 500,
+      headers: { "MF-Experimental-Error-Stack": "true" }
+    });
+  }
+}, "jsonError");
+var middleware_miniflare3_json_error_default = jsonError;
+
+// .wrangler/tmp/bundle-tRBx3W/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
-  middleware_ensure_req_body_drained_default
+  middleware_ensure_req_body_drained_default,
+  middleware_miniflare3_json_error_default
 ];
 var middleware_insertion_facade_default = src_default;
 
@@ -2329,7 +3622,7 @@ function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
 }
 __name(__facade_register__, "__facade_register__");
-function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
+function __facade_invokeChain__(request, env2, ctx, dispatch, middlewareChain) {
   const [head, ...tail] = middlewareChain;
   const middlewareCtx = {
     dispatch,
@@ -2337,18 +3630,18 @@ function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
       return __facade_invokeChain__(newRequest, newEnv, ctx, dispatch, tail);
     }
   };
-  return head(request, env, ctx, middlewareCtx);
+  return head(request, env2, ctx, middlewareCtx);
 }
 __name(__facade_invokeChain__, "__facade_invokeChain__");
-function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
-  return __facade_invokeChain__(request, env, ctx, dispatch, [
+function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
+  return __facade_invokeChain__(request, env2, ctx, dispatch, [
     ...__facade_middleware__,
     finalMiddleware
   ]);
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-HoTL1h/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-tRBx3W/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
@@ -2373,15 +3666,15 @@ function wrapExportedHandler(worker) {
   for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
     __facade_register__(middleware);
   }
-  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env2, ctx) {
     if (worker.fetch === void 0) {
       throw new Error("Handler does not export a fetch() function.");
     }
-    return worker.fetch(request, env, ctx);
+    return worker.fetch(request, env2, ctx);
   }, "fetchDispatcher");
   return {
     ...worker,
-    fetch(request, env, ctx) {
+    fetch(request, env2, ctx) {
       const dispatcher = /* @__PURE__ */ __name(function(type, init) {
         if (type === "scheduled" && worker.scheduled !== void 0) {
           const controller = new __Facade_ScheduledController__(
@@ -2390,10 +3683,10 @@ function wrapExportedHandler(worker) {
             () => {
             }
           );
-          return worker.scheduled(controller, env, ctx);
+          return worker.scheduled(controller, env2, ctx);
         }
       }, "dispatcher");
-      return __facade_invoke__(request, env, ctx, dispatcher, fetchDispatcher);
+      return __facade_invoke__(request, env2, ctx, dispatcher, fetchDispatcher);
     }
   };
 }
@@ -2406,8 +3699,8 @@ function wrapWorkerEntrypoint(klass) {
     __facade_register__(middleware);
   }
   return class extends klass {
-    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
-      this.env = env;
+    #fetchDispatcher = /* @__PURE__ */ __name((request, env2, ctx) => {
+      this.env = env2;
       this.ctx = ctx;
       if (super.fetch === void 0) {
         throw new Error("Entrypoint class does not define a fetch() function.");

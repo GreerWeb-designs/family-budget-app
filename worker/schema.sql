@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS debts (
   name TEXT NOT NULL,
   apr REAL NOT NULL DEFAULT 0,          -- APR percent (e.g. 19.99)
   balance REAL NOT NULL DEFAULT 0,
-  min_payment REAL NOT NULL DEFAULT 0,  -- baseline monthly payment
+  payment REAL NOT NULL DEFAULT 0,      -- baseline monthly payment
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY(user_id) REFERENCES users(id)
@@ -110,6 +110,22 @@ CREATE TABLE IF NOT EXISTS debts (
 
 CREATE INDEX IF NOT EXISTS idx_debts_user_name
   ON debts(user_id, name);
+
+CREATE TABLE IF NOT EXISTS debt_payment_plans (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  debt_id TEXT NOT NULL,
+  month TEXT NOT NULL,
+  planned_payment REAL NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES users(id),
+  FOREIGN KEY(debt_id) REFERENCES debts(id),
+  UNIQUE(user_id, debt_id, month)
+);
+
+CREATE INDEX IF NOT EXISTS idx_debt_payment_plans_user_month
+  ON debt_payment_plans(user_id, month);
 
 -- Global settings for the debt snowball (one row per user)
 CREATE TABLE IF NOT EXISTS debt_settings (

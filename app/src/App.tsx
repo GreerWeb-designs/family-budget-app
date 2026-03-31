@@ -1,5 +1,6 @@
-import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { api } from "./lib/api";
 
 import Login from "./pages/Login";
@@ -10,20 +11,36 @@ import Calendar from "./pages/Calendar";
 import Goals from "./pages/Goals";
 import Debts from "./pages/Debts";
 
-
-import type { ReactElement } from "react";
+type Totals = {
+  bankBalance: number;
+  expectedBalance: number;
+  toBeBudgeted: number;
+  totalBudgeted: number;
+  totalLoggedSpentOut: number;
+  totalLoggedIncomeIn: number;
+  unloggedDifference: number;
+};
 
 function Protected({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
   const nav = useNavigate();
 
   useEffect(() => {
+    let alive = true;
+
     api<{ ok: boolean }>("/api/auth/me")
-      .then(() => setOk(true))
+      .then(() => {
+        if (alive) setOk(true);
+      })
       .catch(() => {
+        if (!alive) return;
         setOk(false);
-        nav("/login");
+        nav("/login", { replace: true });
       });
+
+    return () => {
+      alive = false;
+    };
   }, [nav]);
 
   if (ok === null) return <div className="p-6 text-sm text-zinc-600">Loading…</div>;
@@ -53,6 +70,7 @@ function TopTitle() {
     if (pathname.startsWith("/bills")) return "Bills";
     if (pathname.startsWith("/calendar")) return "Calendar";
     if (pathname.startsWith("/goals")) return "Goals";
+    if (pathname.startsWith("/debts")) return "Debts";
     if (pathname.startsWith("/home")) return "Dashboard";
     return "Dashboard";
   }, [pathname]);
@@ -65,18 +83,8 @@ function TopTitle() {
   );
 }
 
-function AppShell({ children }: { children: ReactElement }) {
+function AppShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
-
-  type Totals = {
-    bankBalance: number;          // Plaid later (placeholder now)
-    expectedBalance: number;      // Anchor - logged spends
-    toBeBudgeted: number;         // bankBalance - totalBudgeted
-    totalBudgeted: number;
-    totalLoggedSpent: number;
-    unloggedDifference: number;   // expectedBalance - bankBalance
-  };
-
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loadingTotals, setLoadingTotals] = useState(false);
 
@@ -86,7 +94,7 @@ function AppShell({ children }: { children: ReactElement }) {
       const t = await api<Totals>("/api/totals");
       setTotals(t);
     } catch {
-      // ignore
+      setTotals(null);
     } finally {
       setLoadingTotals(false);
     }
@@ -100,21 +108,19 @@ function AppShell({ children }: { children: ReactElement }) {
     try {
       await api("/api/auth/logout", { method: "POST" });
     } finally {
-      nav("/login");
+      nav("/login", { replace: true });
     }
   }
-const toBeBudgeted = totals?.toBeBudgeted ?? 0;
 
-const toBeBudgetedStyle =
-  toBeBudgeted < 0
-    ? "border-red-200 bg-red-50 text-red-700"
-    : "border-emerald-200 bg-emerald-50 text-emerald-700";
+  const toBeBudgeted = totals?.toBeBudgeted ?? 0;
+  const toBeBudgetedStyle =
+    toBeBudgeted < 0
+      ? "border-red-200 bg-red-50 text-red-700"
+      : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
- 
   return (
     <div className="min-h-screen bg-zinc-100">
-      <div className="mx-auto flex max-w-350 gap-4 p-4">
-        {/* Sidebar */}
+      <div className="mx-auto flex max-w-[1400px] gap-4 p-4">
         <aside className="w-64 shrink-0 rounded-2xl border border-zinc-200 bg-white shadow-sm">
           <div className="border-b border-zinc-200 p-4">
             <div className="flex items-center gap-3">
@@ -134,15 +140,16 @@ const toBeBudgetedStyle =
             </div>
           </div>
 
-          <div className="p-3 space-y-1">
+          <div className="space-y-1 p-3">
             <SideLink to="/home" label="Home" />
             <SideLink to="/budget" label="Budget" />
             <SideLink to="/bills" label="Bills" />
             <SideLink to="/goals" label="Goals" />
             <SideLink to="/calendar" label="Calendar" />
+            <SideLink to="/debts" label="Debts" />
           </div>
 
-          <div className="mt-auto border-t border-zinc-200 p-3">
+          <div className="border-t border-zinc-200 p-3">
             <button
               type="button"
               onClick={refreshTotals}
@@ -161,88 +168,45 @@ const toBeBudgetedStyle =
           </div>
         </aside>
 
-        {/* Main column */}
         <main className="flex min-w-0 flex-1 flex-col gap-4">
-          {/* Top bar */}
           <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <TopTitle />
-
-              <div className="flex items-center gap-2">
-                {/* Optional quick chips later */}
-                <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-                  Single account
-                </span>
-              </div>
+              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
+                Single account
+              </span>
             </div>
           </div>
 
-          {/* Page content panel */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            {children}
-          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">{children}</div>
         </main>
       </div>
     </div>
   );
 }
 
+function ProtectedLayout({ children }: { children: ReactElement }) {
+  return (
+    <Protected>
+      <AppShell>{children}</AppShell>
+    </Protected>
+  );
+}
+
 export default function App() {
   return (
     <div className="min-h-screen bg-[#FBF5E6] text-zinc-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-[#FBF5E6]/85 backdrop-blur">
-        <div className="mx-auto max-w-5xl px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-zinc-900" />
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">Ducharme Family Budget</div>
-              <div className="text-xs text-zinc-600">Simple • Mobile-first • Clean</div>
-            </div>
-          </div>
-
-          {/* Mobile nav (scrollable pills) */}
-          <nav className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            {[
-              { to: "/home", label: "Home" },
-              { to: "/budget", label: "Budget" },
-              { to: "/bills", label: "Bills" },
-              { to: "/goals", label: "Goals" },
-              { to: "/calendar", label: "Calendar" },
-              { to: "/debts", label: "Debts" },
-
-            ].map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                    isActive
-                      ? "bg-zinc-900 text-white"
-                      : "bg-white/70 text-zinc-800 border border-black/10 hover:bg-white"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-      </header>
-
-      {/* Main */}
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/home" element={<Protected><Home /></Protected>} />
-          <Route path="/budget" element={<Protected><Budget /></Protected>} />
-          <Route path="/bills" element={<Protected><Bills /></Protected>} />
-          <Route path="/goals" element={<Protected><Goals /></Protected>} />
-          <Route path="/calendar" element={<Protected><Calendar /></Protected>} />
-          <Route path="*" element={<Protected><Home /></Protected>} />
-          <Route path="/debts" element={<Protected><Debts /></Protected>} />
-        </Routes>
-      </main>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<ProtectedLayout><Home /></ProtectedLayout>} />
+        <Route path="/budget" element={<ProtectedLayout><Budget /></ProtectedLayout>} />
+        <Route path="/bills" element={<ProtectedLayout><Bills /></ProtectedLayout>} />
+        <Route path="/goals" element={<ProtectedLayout><Goals /></ProtectedLayout>} />
+        <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
+        <Route path="/debts" element={<ProtectedLayout><Debts /></ProtectedLayout>} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Routes>
     </div>
   );
 }

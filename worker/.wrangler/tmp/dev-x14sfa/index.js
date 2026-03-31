@@ -2932,6 +2932,22 @@ app.use("*", async (c, next) => {
   await next();
   c.header("X-FamilyBudget-Worker", "yes");
 });
+var APP_ORIGIN = "https://budget.yourdomain.com";
+app.use("*", async (c, next) => {
+  const origin = c.req.header("Origin");
+  if (origin === APP_ORIGIN) {
+    c.header("Access-Control-Allow-Origin", origin);
+    c.header("Access-Control-Allow-Credentials", "true");
+    c.header("Access-Control-Allow-Headers", "Content-Type");
+    c.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    c.header("Vary", "Origin");
+  }
+  if (c.req.method === "OPTIONS") {
+    return c.body(null, 204);
+  }
+  await next();
+  c.header("X-FamilyBudget-Worker", "yes");
+});
 var CATEGORIES = [
   { id: "income", name: "Income" },
   { id: "mortgage", name: "Mortgage" },
@@ -2977,11 +2993,11 @@ function getCookie(req, name) {
 }
 __name(getCookie, "getCookie");
 function setCookie(name, value, maxAgeSec = 60 * 60 * 24 * 14) {
-  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}`;
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${maxAgeSec}`;
 }
 __name(setCookie, "setCookie");
 function clearCookie(name) {
-  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
 }
 __name(clearCookie, "clearCookie");
 var requireUser = /* @__PURE__ */ __name(async (c, next) => {
@@ -3421,12 +3437,12 @@ app.post("/api/debts/settings", requireUser, async (c) => {
   if (Number.isNaN(n) || n < 0) return c.json({ error: "extraMonthly must be a number >= 0" }, 400);
   const now = (/* @__PURE__ */ new Date()).toISOString();
   await c.env.DB.prepare(
-    `INSERT INTO debt_settings (user_id, extra_monthly, updated_at)
-     VALUES (?, ?, ?)
+    `INSERT INTO debt_settings (user_id, extra_monthly, strategy, created_at, updated_at)
+     VALUES (?, ?, 'snowball', ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        extra_monthly = excluded.extra_monthly,
        updated_at = excluded.updated_at`
-  ).bind(userId, n, now).run();
+  ).bind(userId, n, now, now).run();
   return c.json({ ok: true });
 });
 app.post("/api/debts/:id/plan", requireUser, async (c) => {
@@ -3593,7 +3609,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-lRSBXy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-Bm98ac/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -3625,7 +3641,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-lRSBXy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-Bm98ac/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

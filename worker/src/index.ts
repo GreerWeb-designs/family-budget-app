@@ -18,7 +18,26 @@ app.use("*", async (c, next) => {
   await next();
   c.header("X-FamilyBudget-Worker", "yes");
 });
+const APP_ORIGIN = "https://budget.yourdomain.com";
 
+app.use("*", async (c, next) => {
+  const origin = c.req.header("Origin");
+
+  if (origin === APP_ORIGIN) {
+    c.header("Access-Control-Allow-Origin", origin);
+    c.header("Access-Control-Allow-Credentials", "true");
+    c.header("Access-Control-Allow-Headers", "Content-Type");
+    c.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    c.header("Vary", "Origin");
+  }
+
+  if (c.req.method === "OPTIONS") {
+    return c.body(null, 204);
+  }
+
+  await next();
+  c.header("X-FamilyBudget-Worker", "yes");
+});
 // ---- HARD-CODED CATEGORIES ----
 const CATEGORIES = [
   { id: "income", name: "Income"},
@@ -67,13 +86,12 @@ function getCookie(req: Request, name: string): string | null {
 }
 
 function setCookie(name: string, value: string, maxAgeSec = 60 * 60 * 24 * 14) {
-  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}`;
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${maxAgeSec}`;
 }
 
 function clearCookie(name: string) {
-  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
 }
-
 // ---- AUTH MIDDLEWARE ----
 const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const token = getCookie(c.req.raw, "session");
@@ -788,13 +806,13 @@ app.post("/api/debts/settings", requireUser, async (c) => {
   const now = new Date().toISOString();
 
   await c.env.DB.prepare(
-    `INSERT INTO debt_settings (user_id, extra_monthly, updated_at)
-     VALUES (?, ?, ?)
+    `INSERT INTO debt_settings (user_id, extra_monthly, strategy, created_at, updated_at)
+     VALUES (?, ?, 'snowball', ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        extra_monthly = excluded.extra_monthly,
        updated_at = excluded.updated_at`
   )
-    .bind(userId, n, now)
+    .bind(userId, n, now, now)
     .run();
 
   return c.json({ ok: true });

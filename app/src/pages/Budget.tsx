@@ -29,7 +29,6 @@ function barPct(budgeted: number, remaining: number) {
 
 export default function Budget() {
   const [cats, setCats] = useState<Category[]>([]);
-  const [budgetMap, setBudgetMap] = useState<Record<string, number>>({});
   const [summary, setSummary] = useState<SummaryRes | null>(null);
 
   const [categoryId, setCategoryId] = useState("");
@@ -40,11 +39,10 @@ export default function Budget() {
   const [msg, setMsg] = useState<string | null>(null);
 
   async function refresh() {
-    const [b, s] = await Promise.all([
+    const [, s] = await Promise.all([
       api<BudgetCurrentRes>("/api/budget/current"),
       api<SummaryRes>("/api/spend/summary"),
     ]);
-    setBudgetMap(b.budget || {});
     setSummary(s);
   }
 
