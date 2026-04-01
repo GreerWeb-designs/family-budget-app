@@ -3,87 +3,65 @@ import { api } from "../lib/api";
 
 type Category = { id: string; name: string };
 
-type BudgetCurrentRes = { budget: Record<string, number> };
-
 type SummaryRow = Category & {
   budgeted: number;
-  spent: number;
-  remaining: number;
+  activity: number;
+  available: number;
 };
 
 type SummaryRes = {
   byCategory: SummaryRow[];
-  totalRemaining: number;
 };
 
 type TotalsRes = {
-  totalSpent: number;
   totalIncome: number;
   totalBudgeted: number;
-  totalRemaining: number;
+};
+
+type AccountRes = {
+  bankBalance: number;
 };
 
 function money(n: number) {
   const sign = n < 0 ? "-" : "";
-  const v = Math.abs(n);
-  return `${sign}$${v.toFixed(2)}`;
+  return `${sign}$${Math.abs(n).toFixed(2)}`;
 }
 
-function pillClasses(n: number) {
-  return n < 0
-    ? "border-red-200 bg-red-50 text-red-700"
-    : "border-emerald-200 bg-emerald-50 text-emerald-700";
-}
-
-function barPct(budgeted: number, remaining: number) {
-  const spent = budgeted - remaining;
-  if (budgeted <= 0) return 0;
-  const pct = (spent / budgeted) * 100;
-  return Math.max(0, Math.min(100, pct));
+function availableColor(n: number) {
+  return n < 0 ? "text-red-700" : "text-emerald-700";
 }
 
 function tbbClasses(n: number) {
-  if (n < 0) return "border-red-200 bg-red-50 text-red-700";
-  if (n === 0) return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  return "border-zinc-300 bg-white text-zinc-900";
+  if (n < 0) return "text-red-700";
+  if (n === 0) return "text-emerald-700";
+  return "text-zinc-900";
 }
-
-const WORKING_BALANCE_KEY = "budget-working-balance";
 
 export default function Budget() {
   const [cats, setCats] = useState<Category[]>([]);
   const [summary, setSummary] = useState<SummaryRes | null>(null);
   const [totals, setTotals] = useState<TotalsRes | null>(null);
+  const [account, setAccount] = useState<AccountRes | null>(null);
 
   const [categoryId, setCategoryId] = useState("");
   const [setAmount, setSetAmount] = useState("");
-  const [deltaAmount, setDeltaAmount] = useState("");
 
-  const [workingBalance, setWorkingBalance] = useState(0);
-  const [workingBalanceInput, setWorkingBalanceInput] = useState("");
-
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [bankInput, setBankInput] = useState("");
 
   async function refresh() {
-    const [, s, t] = await Promise.all([
-      api<BudgetCurrentRes>("/api/budget/current"),
+    const [s, t, a] = await Promise.all([
       api<SummaryRes>("/api/spend/summary"),
       api<TotalsRes>("/api/totals"),
+      api<AccountRes>("/api/account"),
     ]);
 
     setSummary(s);
     setTotals(t);
+    setAccount(a);
+    setBankInput(String(a.bankBalance));
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem(WORKING_BALANCE_KEY);
-    if (saved !== null && !Number.isNaN(Number(saved))) {
-      const n = Number(saved);
-      setWorkingBalance(n);
-      setWorkingBalanceInput(String(n));
-    }
-
     (async () => {
       const c = await api<{ categories: Category[] }>("/api/categories");
       setCats(c.categories);
@@ -92,327 +70,125 @@ export default function Budget() {
     })();
   }, []);
 
-  const rows = useMemo(() => {
-    if (!summary) return [];
-    return [...summary.byCategory].sort((a, b) => a.name.localeCompare(b.name));
-  }, [summary]);
-
-  const selectedRow = useMemo(() => {
-    if (!summary) return null;
-    return summary.byCategory.find((r) => r.id === categoryId) || null;
-  }, [summary, categoryId]);
-
-  const selectedName = useMemo(
-    () => cats.find((c) => c.id === categoryId)?.name || "Select a category",
-    [cats, categoryId]
-  );
-
+  const bankBalance = account?.bankBalance ?? 0;
   const totalIncome = totals?.totalIncome ?? 0;
-  const totalSpent = totals?.totalSpent ?? 0;
   const totalBudgeted = totals?.totalBudgeted ?? 0;
 
+  // 🔥 CORRECT MODEL
   const toBeBudgeted = useMemo(() => {
-    return workingBalance + totalIncome - totalSpent - totalBudgeted;
-  }, [workingBalance, totalIncome, totalSpent, totalBudgeted]);
+    return bankBalance + totalIncome - totalBudgeted;
+  }, [bankBalance, totalIncome, totalBudgeted]);
 
-  async function doSet(e: React.FormEvent) {
+  async function setBudget(e: React.FormEvent) {
     e.preventDefault();
-    setMsg(null);
 
     const n = Number(setAmount);
-    if (!categoryId || !setAmount || Number.isNaN(n)) {
-      setMsg("Enter a set amount.");
-      return;
-    }
+    if (!categoryId || Number.isNaN(n)) return;
 
-    setBusy(true);
-    try {
-      await api("/api/budget/set", {
-        method: "POST",
-        body: JSON.stringify({ categoryId, amount: n }),
-      });
-      setSetAmount("");
-      setMsg("Set ✅");
-      await refresh();
-    } catch (err: any) {
-      setMsg(err?.message || "Error setting budget.");
-    } finally {
-      setBusy(false);
-    }
+    await api("/api/budget/set", {
+      method: "POST",
+      body: JSON.stringify({ categoryId, amount: n }),
+    });
+
+    setSetAmount("");
+    await refresh();
   }
 
-  async function doAdjust(sign: 1 | -1) {
-    setMsg(null);
-
-    const n = Number(deltaAmount);
-    if (!categoryId || !deltaAmount || Number.isNaN(n)) {
-      setMsg("Enter a modify amount.");
-      return;
-    }
-
-    const delta = sign * n;
-
-    setBusy(true);
-    try {
-      await api("/api/budget/adjust", {
-        method: "POST",
-        body: JSON.stringify({ categoryId, delta }),
-      });
-      setDeltaAmount("");
-      setMsg(sign === 1 ? "Added ✅" : "Subtracted ✅");
-      await refresh();
-    } catch (err: any) {
-      setMsg(err?.message || "Error modifying budget.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function handleResetWorkingBalance(e: React.FormEvent) {
+  async function resetBank(e: React.FormEvent) {
     e.preventDefault();
-    setMsg(null);
 
-    const n = Number(workingBalanceInput);
-    if (!workingBalanceInput || Number.isNaN(n)) {
-      setMsg("Enter a valid balance.");
-      return;
-    }
+    const n = Number(bankInput);
+    if (Number.isNaN(n)) return;
 
-    const ok = window.confirm("Are you sure you want to reset your balance?");
-    if (!ok) return;
+    if (!window.confirm("Are you sure you want to reset your bank balance?")) return;
 
-    setWorkingBalance(n);
-    localStorage.setItem(WORKING_BALANCE_KEY, String(n));
-    setMsg("Working balance reset ✅");
+    await api("/api/account/set", {
+      method: "POST",
+      body: JSON.stringify({ bankBalance: n }),
+    });
+
+    await refresh();
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-sm font-semibold text-zinc-900">Budget</div>
-            <div className="mt-1 text-xs text-zinc-500">
-              Inflows increase To Be Budgeted. Outflows and assigned budget reduce it.
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-3">
-            <div
-              className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold ${tbbClasses(
-                toBeBudgeted
-              )}`}
-            >
-              <span className="text-xs font-bold uppercase tracking-wide opacity-80">
-                To Be Budgeted
-              </span>
-              <span>{money(toBeBudgeted)}</span>
-            </div>
-
-            <form
-              onSubmit={handleResetWorkingBalance}
-              className="flex flex-wrap items-center justify-end gap-2"
-            >
-              <input
-                className="h-10 w-40 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
-                value={workingBalanceInput}
-                onChange={(e) => setWorkingBalanceInput(e.target.value)}
-                placeholder="Bank balance"
-                inputMode="decimal"
-              />
-              <button
-                type="submit"
-                className="h-10 rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-              >
-                Reset Balance
-              </button>
-            </form>
-          </div>
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <div>
+          <div className="text-sm font-semibold">Budget</div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Working Balance
-            </div>
-            <div className="mt-1 text-lg font-semibold text-zinc-900">{money(workingBalance)}</div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Inflows
-            </div>
-            <div className="mt-1 text-lg font-semibold text-emerald-700">{money(totalIncome)}</div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Outflows
-            </div>
-            <div className="mt-1 text-lg font-semibold text-red-700">{money(totalSpent)}</div>
-          </div>
+        <div className={`text-lg font-bold ${tbbClasses(toBeBudgeted)}`}>
+          TO BE BUDGETED {money(toBeBudgeted)}
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <div className="grid grid-cols-[1fr_120px_120px_140px] gap-3 border-b border-zinc-200 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            <div>Category</div>
-            <div className="text-right">Budgeted</div>
-            <div className="text-right">Activity</div>
-            <div className="text-right">Available</div>
-          </div>
-
-          {!summary && <div className="px-5 py-10 text-sm text-zinc-500">Loading…</div>}
-
-          {summary && (
-            <div className="divide-y divide-zinc-200">
-              {rows.map((r) => {
-                const isSelected = r.id === categoryId;
-                const pct = barPct(r.budgeted, r.remaining);
-
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setCategoryId(r.id)}
-                    className={`w-full text-left transition ${
-                      isSelected ? "bg-zinc-50" : "bg-white hover:bg-zinc-50"
-                    }`}
-                  >
-                    <div className="grid grid-cols-[1fr_120px_120px_140px] gap-3 px-5 py-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-zinc-900">{r.name}</div>
-                        <div className="mt-2 h-2 w-full rounded-full bg-zinc-100">
-                          <div
-                            className="h-2 rounded-full bg-emerald-400"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="text-right text-sm font-semibold text-zinc-900">
-                        {money(r.budgeted)}
-                      </div>
-                      <div className="text-right text-sm text-zinc-700">{money(r.spent)}</div>
-
-                      <div className="flex items-center justify-end gap-2">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${pillClasses(
-                            r.remaining
-                          )}`}
-                        >
-                          {r.remaining < 0 ? `Over ${money(r.remaining)}` : `Avail ${money(r.remaining)}`}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+      {/* BANK BALANCE */}
+      <div className="rounded-xl border p-4 flex justify-between items-center">
+        <div>
+          <div className="text-xs text-zinc-500">Bank Balance</div>
+          <div className="text-lg font-semibold">{money(bankBalance)}</div>
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <div>
-            <div className="text-sm font-semibold text-zinc-900">{selectedName}</div>
-            <div className="mt-1 text-sm text-zinc-500">Adjust the budget for the selected category.</div>
-          </div>
+        <form onSubmit={resetBank} className="flex gap-2">
+          <input
+            value={bankInput}
+            onChange={(e) => setBankInput(e.target.value)}
+            className="border rounded px-2 py-1"
+          />
+          <button className="border px-3 py-1 rounded">Reset</button>
+        </form>
+      </div>
 
-          <div className="mt-4 grid gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-600">Budgeted</span>
-              <span className="font-semibold text-zinc-900">{money(selectedRow?.budgeted ?? 0)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-600">Activity</span>
-              <span className="font-semibold text-zinc-900">{money(selectedRow?.spent ?? 0)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-600">Available</span>
-              <span
-                className={`font-semibold ${
-                  selectedRow && selectedRow.remaining < 0 ? "text-red-700" : "text-emerald-700"
-                }`}
-              >
-                {money(selectedRow?.remaining ?? 0)}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="grid gap-1">
-              <span className="text-sm font-medium text-zinc-700">Category</span>
-              <select
-                className="h-11 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-              >
-                {cats.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <form onSubmit={doSet} className="mt-4 grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-900">Set budget (overwrite)</div>
-            <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-              <input
-                className="h-11 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
-                value={setAmount}
-                onChange={(e) => setSetAmount(e.target.value)}
-                placeholder="1000"
-                inputMode="decimal"
-              />
-              <button
-                type="submit"
-                disabled={busy}
-                className="h-11 rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-              >
-                Set
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-4 grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-900">Modify budget</div>
-
-            <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-              <input
-                className="h-11 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
-                value={deltaAmount}
-                onChange={(e) => setDeltaAmount(e.target.value)}
-                placeholder="100"
-                inputMode="decimal"
-              />
-
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => doAdjust(1)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-300 bg-white text-xl font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
-                title="Add"
-              >
-                +
-              </button>
-
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => doAdjust(-1)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-300 bg-white text-xl font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
-                title="Subtract"
-              >
-                −
-              </button>
-            </div>
-
-            {msg && <div className="text-sm text-zinc-600">{msg}</div>}
-          </div>
+      {/* CATEGORY TABLE */}
+      <div className="rounded-xl border bg-white">
+        <div className="grid grid-cols-[1fr_120px_120px_140px] p-3 text-xs font-semibold text-zinc-500">
+          <div>Category</div>
+          <div className="text-right">Budgeted</div>
+          <div className="text-right">Activity</div>
+          <div className="text-right">Available</div>
         </div>
+
+        {summary?.byCategory.map((r) => (
+          <div
+            key={r.id}
+            className="grid grid-cols-[1fr_120px_120px_140px] p-3 border-t"
+          >
+            <div>{r.name}</div>
+            <div className="text-right">{money(r.budgeted)}</div>
+            <div className="text-right">{money(r.activity)}</div>
+            <div className={`text-right font-semibold ${availableColor(r.available)}`}>
+              {money(r.available)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* SET BUDGET */}
+      <div className="rounded-xl border p-4">
+        <div className="text-sm font-semibold mb-2">Set Budget</div>
+
+        <select
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className="border p-2 w-full mb-2"
+        >
+          {cats.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        <form onSubmit={setBudget} className="flex gap-2">
+          <input
+            value={setAmount}
+            onChange={(e) => setSetAmount(e.target.value)}
+            placeholder="100"
+            className="border p-2 flex-1"
+          />
+          <button className="bg-black text-white px-4 rounded">Set</button>
+        </form>
       </div>
     </div>
   );
