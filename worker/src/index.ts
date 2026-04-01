@@ -252,27 +252,35 @@ app.post("/api/account/reconcile", requireUser, async (c) => {
 
 // ---- TOTALS (SHARED HOUSEHOLD) ----
 app.get("/api/totals", requireUser, async (c) => {
-  const spendRow = await c.env.DB.prepare(
-    `SELECT
-        COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS totalSpent,
-        COALESCE(SUM(CASE WHEN direction = 'in' THEN amount ELSE 0 END), 0) AS totalIncome
-     FROM manual_spends`
-  ).first<{ totalSpent: number; totalIncome: number }>();
+  const incomeRow = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(amount), 0) AS totalIncome
+     FROM manual_spends
+     WHERE direction = 'in'`
+  ).first<{ totalIncome: number }>();
 
   const budgetRow = await c.env.DB.prepare(
     `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted
      FROM budget_lines`
   ).first<{ totalBudgeted: number }>();
 
-  const totalSpent = Number(spendRow?.totalSpent || 0);
-  const totalIncome = Number(spendRow?.totalIncome || 0);
+  const accountRow = await c.env.DB.prepare(
+    `SELECT COALESCE(bank_balance, 0) AS bankBalance
+     FROM account_state
+     WHERE id = 'main'
+     LIMIT 1`
+  ).first<{ bankBalance: number }>();
+
+  const totalIncome = Number(incomeRow?.totalIncome || 0);
   const totalBudgeted = Number(budgetRow?.totalBudgeted || 0);
+  const bankBalance = Number(accountRow?.bankBalance || 0);
+
+  const toBeBudgeted = bankBalance + totalIncome - totalBudgeted;
 
   return c.json({
-    totalSpent,
+    bankBalance,
     totalIncome,
     totalBudgeted,
-    totalRemaining: totalBudgeted - totalSpent,
+    toBeBudgeted,
   });
 });
 
@@ -514,45 +522,48 @@ app.delete("/api/spend/:id", requireUser, async (c) => {
 });
 
 app.get("/api/spend/summary", requireUser, async (c) => {
-  const spentRows = await c.env.DB.prepare(
-    `SELECT category_id,
-            COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS spent
+  const activityRows = await c.env.DB.prepare(
+    `SELECT
+        category_id,
+        COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS activity
      FROM manual_spends
+     WHERE category_id != 'income'
      GROUP BY category_id`
-  ).all<{ category_id: string; spent: number }>();
+  ).all<{ category_id: string; activity: number }>();
 
   const budgetRows = await c.env.DB.prepare(
     `SELECT category_id, amount_budgeted
      FROM budget_lines`
   ).all<{ category_id: string; amount_budgeted: number }>();
 
-  const spent: Record<string, number> = {};
-  const budget: Record<string, number> = {};
+  const activityByCategory: Record<string, number> = {};
+  const budgetByCategory: Record<string, number> = {};
 
-  for (const r of spentRows.results ?? []) {
-    spent[r.category_id] = Number(r.spent || 0);
+  for (const r of activityRows.results ?? []) {
+    activityByCategory[r.category_id] = Number(r.activity || 0);
   }
 
   for (const r of budgetRows.results ?? []) {
-    budget[r.category_id] = Number(r.amount_budgeted || 0);
+    budgetByCategory[r.category_id] = Number(r.amount_budgeted || 0);
   }
 
-  const byCategory = CATEGORIES.map((cat) => {
-    const b = budget[cat.id] || 0;
-    const s = spent[cat.id] || 0;
-    return {
-      ...cat,
-      budgeted: b,
-      spent: s,
-      remaining: b - s,
-    };
-  });
+  const byCategory = CATEGORIES
+    .filter((cat) => cat.id !== "income")
+    .map((cat) => {
+      const budgeted = budgetByCategory[cat.id] || 0;
+      const activity = activityByCategory[cat.id] || 0;
+      const available = budgeted - activity;
 
-  const totalRemaining = byCategory.reduce((sum, row) => sum + row.remaining, 0);
+      return {
+        ...cat,
+        budgeted,
+        activity,
+        available,
+      };
+    });
 
-  return c.json({ byCategory, totalRemaining });
+  return c.json({ byCategory });
 });
-
 // ---- GOALS (PERSONAL) ----
 app.get("/api/goals", requireUser, async (c) => {
   const userId = c.get("userId");
