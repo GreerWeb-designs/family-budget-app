@@ -22,9 +22,10 @@ type AccountRes = {
   bankBalance: number;
 };
 
-function money(n: number) {
-  const sign = n < 0 ? "-" : "";
-  return `${sign}$${Math.abs(n).toFixed(2)}`;
+function money(n: number | null | undefined) {
+  const value = Number(n ?? 0);
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${Math.abs(value).toFixed(2)}`;
 }
 
 function availableColor(n: number) {
