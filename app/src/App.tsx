@@ -12,14 +12,17 @@ import Goals from "./pages/Goals";
 import Debts from "./pages/Debts";
 
 type Totals = {
-  bankBalance: number;
-  expectedBalance: number;
-  toBeBudgeted: number;
-  totalBudgeted: number;
-  totalLoggedSpentOut: number;
-  totalLoggedIncomeIn: number;
-  unloggedDifference: number;
+  bankBalance?: number;
+  totalIncome?: number;
+  totalBudgeted?: number;
+  toBeBudgeted?: number;
 };
+
+function money(n: number | null | undefined) {
+  const value = Number(n ?? 0);
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${Math.abs(value).toFixed(2)}`;
+}
 
 function Protected({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
@@ -43,7 +46,10 @@ function Protected({ children }: { children: ReactElement }) {
     };
   }, [nav]);
 
-  if (ok === null) return <div className="p-6 text-sm text-zinc-600">Loading…</div>;
+  if (ok === null) {
+    return <div className="p-6 text-sm text-zinc-600">Loading…</div>;
+  }
+
   return children;
 }
 
@@ -112,11 +118,14 @@ function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  const toBeBudgeted = totals?.toBeBudgeted ?? 0;
+  const toBeBudgeted = Number(totals?.toBeBudgeted ?? 0);
+
   const toBeBudgetedStyle =
     toBeBudgeted < 0
       ? "border-red-200 bg-red-50 text-red-700"
-      : "border-emerald-200 bg-emerald-50 text-emerald-700";
+      : toBeBudgeted === 0
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-zinc-300 bg-white text-zinc-900";
 
   return (
     <div className="min-h-screen bg-zinc-100">
@@ -132,11 +141,13 @@ function AppShell({ children }: { children: ReactNode }) {
             </div>
 
             <div className={`mt-4 rounded-2xl border px-3 py-2 ${toBeBudgetedStyle}`}>
-              <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">To Be Budgeted</div>
-              <div className="mt-1 text-lg font-semibold">
-                {loadingTotals ? "—" : `$${toBeBudgeted.toFixed(2)}`}
+              <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">
+                To Be Budgeted
               </div>
-              <div className="mt-1 text-xs opacity-80">Placeholder until Plaid cash is wired</div>
+              <div className="mt-1 text-lg font-semibold">
+                {loadingTotals ? "—" : money(toBeBudgeted)}
+              </div>
+              <div className="mt-1 text-xs opacity-80">Shared household total</div>
             </div>
           </div>
 
@@ -173,12 +184,14 @@ function AppShell({ children }: { children: ReactNode }) {
             <div className="flex items-center justify-between gap-3">
               <TopTitle />
               <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-                Single account
+                Shared household
               </span>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">{children}</div>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            {children}
+          </div>
         </main>
       </div>
     </div>
@@ -199,12 +212,54 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="/home" element={<ProtectedLayout><Home /></ProtectedLayout>} />
-        <Route path="/budget" element={<ProtectedLayout><Budget /></ProtectedLayout>} />
-        <Route path="/bills" element={<ProtectedLayout><Bills /></ProtectedLayout>} />
-        <Route path="/goals" element={<ProtectedLayout><Goals /></ProtectedLayout>} />
-        <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
-        <Route path="/debts" element={<ProtectedLayout><Debts /></ProtectedLayout>} />
+        <Route
+          path="/home"
+          element={
+            <ProtectedLayout>
+              <Home />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/budget"
+          element={
+            <ProtectedLayout>
+              <Budget />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/bills"
+          element={
+            <ProtectedLayout>
+              <Bills />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/goals"
+          element={
+            <ProtectedLayout>
+              <Goals />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedLayout>
+              <Calendar />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/debts"
+          element={
+            <ProtectedLayout>
+              <Debts />
+            </ProtectedLayout>
+          }
+        />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </div>
