@@ -104,10 +104,12 @@ export default function Home() {
       copy.sort((a, b) => {
         const aName = (catNameById[a.category_id] || a.category_id).toLowerCase();
         const bName = (catNameById[b.category_id] || b.category_id).toLowerCase();
+
         if (aName !== bName) return aName.localeCompare(bName);
         if (a.date !== b.date) return b.date.localeCompare(a.date);
         return b.created_at.localeCompare(a.created_at);
       });
+
       return copy;
     }
 
@@ -143,13 +145,13 @@ export default function Home() {
       setLoading(true);
       try {
         const c = await api<{ categories: Category[] }>("/api/categories");
-        setCats(c.categories ?? []);
+        const allCategories = c.categories ?? [];
+        const nonIncomeCategories = allCategories.filter((x) => x.id !== INCOME_CATEGORY_ID);
 
-        const firstNonIncome =
-          c.categories?.find((x) => x.id !== INCOME_CATEGORY_ID) || c.categories?.[0];
+        setCats(allCategories);
 
-        if (firstNonIncome) {
-          setCategoryId(firstNonIncome.id);
+        if (nonIncomeCategories.length) {
+          setCategoryId(nonIncomeCategories[0].id);
         }
 
         await refresh();
@@ -255,7 +257,7 @@ export default function Home() {
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Transactions</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Log income and spending. Income feeds To Be Budgeted. Spending updates category activity.
+          Log income and spending. Income increases Bank Balance. Spending updates category activity.
         </p>
       </div>
 
