@@ -14,7 +14,7 @@ type Variables = {
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-const APP_ORIGIN = "https://family-budget-app-2v5.pages.dev";
+const APP_ORIGIN = "https://app.ducharmefamilybudget.com";
 
 app.use("*", async (c, next) => {
   const origin = c.req.header("Origin");
