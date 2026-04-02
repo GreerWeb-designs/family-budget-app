@@ -104,12 +104,10 @@ export default function Home() {
       copy.sort((a, b) => {
         const aName = (catNameById[a.category_id] || a.category_id).toLowerCase();
         const bName = (catNameById[b.category_id] || b.category_id).toLowerCase();
-
         if (aName !== bName) return aName.localeCompare(bName);
         if (a.date !== b.date) return b.date.localeCompare(a.date);
         return b.created_at.localeCompare(a.created_at);
       });
-
       return copy;
     }
 
@@ -145,13 +143,12 @@ export default function Home() {
       setLoading(true);
       try {
         const c = await api<{ categories: Category[] }>("/api/categories");
-        const allCategories = c.categories ?? [];
-        const nonIncomeCategories = allCategories.filter((x) => x.id !== INCOME_CATEGORY_ID);
+        const categories = c.categories ?? [];
+        setCats(categories);
 
-        setCats(allCategories);
-
-        if (nonIncomeCategories.length) {
-          setCategoryId(nonIncomeCategories[0].id);
+        const firstNonIncome = categories.find((x) => x.id !== INCOME_CATEGORY_ID) || categories[0];
+        if (firstNonIncome) {
+          setCategoryId(firstNonIncome.id);
         }
 
         await refresh();
@@ -257,17 +254,17 @@ export default function Home() {
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Transactions</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Log income and spending. Income increases Bank Balance. Spending updates category activity.
+          Income increases Bank Balance and To Be Budgeted. Spending affects Bank Balance, Activity, and Available.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-zinc-900">Upcoming</h3>
           <div className="text-xs text-zinc-500">Bills (3 days) • Calendar (7 days)</div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 flex flex-col gap-3 md:grid md:grid-cols-2">
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-sm font-semibold text-zinc-900">Bills</div>
             <div className="mt-2 space-y-2">
@@ -342,10 +339,10 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <form onSubmit={submitSpend} className="grid max-w-xl gap-4">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
+        <form onSubmit={submitSpend} className="grid gap-4">
           <div className="grid gap-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-sm font-semibold text-zinc-900">Entry Type</div>
                 <div className="text-xs text-zinc-500">
@@ -438,11 +435,11 @@ export default function Home() {
             />
           </label>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-300 bg-white text-xl font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-zinc-300 bg-white text-xl font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60 sm:w-11"
               title={direction === "in" ? "Add income" : "Add transaction"}
             >
               +
@@ -462,8 +459,8 @@ export default function Home() {
         </form>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-2">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-zinc-900">Category Snapshot</h3>
@@ -513,7 +510,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
           <h3 className="text-sm font-semibold text-zinc-900">Total Available</h3>
           <p className="mt-1 text-sm text-zinc-500">Across all budget categories</p>
 
@@ -531,7 +528,7 @@ export default function Home() {
       </div>
 
       <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-3">
+        <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-5">
           <div>
             <div className="text-sm font-semibold text-zinc-900">Transaction History</div>
             <div className="text-xs text-zinc-500">Most recent entries (up to 200)</div>
@@ -573,9 +570,9 @@ export default function Home() {
             const isIncome = row.category_id === INCOME_CATEGORY_ID || row.direction === "in";
 
             return (
-              <div key={row.id} className="flex flex-col md:flex-row md:items-center gap-2 px-4 py-4">
-                <div className="min-w-[260px]">
-                  <div className="flex items-center gap-2">
+              <div key={row.id} className="flex flex-col gap-2 px-4 py-4 md:flex-row md:items-center md:px-5">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className={`font-medium ${isIncome ? "text-emerald-700" : "text-zinc-900"}`}>
                       {isIncome ? "+" : ""}
                       {money(row.amount)}
@@ -600,12 +597,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="ml-auto flex items-center gap-2">
+                <div className="md:ml-auto">
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => deleteSpend(row.id)}
-                    className="rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                    className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 md:w-auto"
                     title="Remove this entry"
                   >
                     Undo
