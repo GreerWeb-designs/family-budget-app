@@ -573,7 +573,7 @@ export default function Home() {
             const isIncome = row.category_id === INCOME_CATEGORY_ID || row.direction === "in";
 
             return (
-              <div key={row.id} className="flex flex-wrap items-center gap-3 px-5 py-4">
+              <div key={row.id} className="flex flex-col md:flex-row md:items-center gap-2 px-4 py-4">
                 <div className="min-w-[260px]">
                   <div className="flex items-center gap-2">
                     <div className={`font-medium ${isIncome ? "text-emerald-700" : "text-zinc-900"}`}>
