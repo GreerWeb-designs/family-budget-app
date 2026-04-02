@@ -17,10 +17,10 @@ type SummaryRes = {
 };
 
 type TotalsRes = {
-  bankBalance?: number;
+  bankBalance: number;
   totalIncome: number;
   totalBudgeted: number;
-  toBeBudgeted?: number;
+  toBeBudgeted: number;
 };
 
 type AccountRes = {
@@ -65,13 +65,15 @@ export default function Budget() {
       api<AccountRes>("/api/account"),
     ]);
 
-    setCats(categoriesRes.categories ?? []);
+    const nonIncomeCategories = (categoriesRes.categories ?? []).filter((cat) => cat.id !== "income");
+
+    setCats(nonIncomeCategories);
     setSummary(summaryRes);
     setTotals(totalsRes);
     setAccount(accountRes);
 
-    if (!categoryId && categoriesRes.categories?.length) {
-      setCategoryId(categoriesRes.categories[0].id);
+    if (!categoryId && nonIncomeCategories.length) {
+      setCategoryId(nonIncomeCategories[0].id);
     }
 
     setBankInput(String(accountRes.bankBalance ?? 0));
@@ -103,16 +105,9 @@ export default function Budget() {
     return cats.find((c) => c.id === categoryId)?.name ?? "Select a category";
   }, [cats, categoryId]);
 
-  const bankBalance = account?.bankBalance ?? totals?.bankBalance ?? 0;
-  const totalIncome = totals?.totalIncome ?? 0;
-  const totalBudgeted = totals?.totalBudgeted ?? 0;
-
-  const toBeBudgeted = useMemo(() => {
-    if (typeof totals?.toBeBudgeted === "number") {
-      return totals.toBeBudgeted;
-    }
-    return bankBalance + totalIncome - totalBudgeted;
-  }, [totals, bankBalance, totalIncome, totalBudgeted]);
+  const bankBalance = Number(account?.bankBalance ?? totals?.bankBalance ?? 0);
+  const totalBudgeted = Number(totals?.totalBudgeted ?? 0);
+  const toBeBudgeted = Number(totals?.toBeBudgeted ?? bankBalance - totalBudgeted);
 
   async function handleSetBudget(e: React.FormEvent) {
     e.preventDefault();
@@ -184,7 +179,7 @@ export default function Budget() {
           <div>
             <div className="text-sm font-semibold text-zinc-900">Budget</div>
             <div className="mt-1 text-sm text-zinc-500">
-              Income increases To Be Budgeted. Budgeted categories reduce To Be Budgeted.
+              Bank Balance drives To Be Budgeted. Budgeted categories reduce To Be Budgeted.
               Activity affects Available.
             </div>
           </div>
@@ -287,15 +282,11 @@ export default function Budget() {
           <div className="mt-4 grid gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-zinc-600">Budgeted</span>
-              <span className="font-semibold text-zinc-900">
-                {money(selectedRow?.budgeted)}
-              </span>
+              <span className="font-semibold text-zinc-900">{money(selectedRow?.budgeted)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-zinc-600">Activity</span>
-              <span className="font-semibold text-zinc-900">
-                {money(selectedRow?.activity)}
-              </span>
+              <span className="font-semibold text-zinc-900">{money(selectedRow?.activity)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-zinc-600">Available</span>
