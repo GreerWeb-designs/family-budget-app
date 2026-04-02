@@ -520,7 +520,7 @@ app.post("/api/spend", requireUser, async (c) => {
   const note = body.note ?? null;
   const direction: "in" | "out" = body.direction === "in" ? "in" : "out";
 
-  if (!categoryId || typeof amount !== "number" || Number.isNaN(amount) || !date) {
+  if (!categoryId || typeof amount !== "number" || Number.isNaN(amount) || amount < 0 || !date) {
     return c.json({ error: "Bad payload" }, 400);
   }
 
@@ -546,6 +546,14 @@ app.post("/api/spend", requireUser, async (c) => {
     await c.env.DB.prepare(
       `UPDATE account_state
        SET bank_balance = bank_balance + ?, updated_at = ?
+       WHERE id = 'main'`
+    )
+      .bind(amount, now)
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      `UPDATE account_state
+       SET bank_balance = bank_balance - ?, updated_at = ?
        WHERE id = 'main'`
     )
       .bind(amount, now)
@@ -581,6 +589,14 @@ app.delete("/api/spend/:id", requireUser, async (c) => {
     await c.env.DB.prepare(
       `UPDATE account_state
        SET bank_balance = bank_balance - ?, updated_at = ?
+       WHERE id = 'main'`
+    )
+      .bind(Number(existing.amount || 0), new Date().toISOString())
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      `UPDATE account_state
+       SET bank_balance = bank_balance + ?, updated_at = ?
        WHERE id = 'main'`
     )
       .bind(Number(existing.amount || 0), new Date().toISOString())
