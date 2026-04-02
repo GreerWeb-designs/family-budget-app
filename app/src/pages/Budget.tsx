@@ -25,6 +25,7 @@ type TotalsRes = {
 
 type AccountRes = {
   bankBalance: number;
+  toBeBudgeted: number;
 };
 
 function money(n: number | null | undefined) {
@@ -106,8 +107,7 @@ export default function Budget() {
   }, [cats, categoryId]);
 
   const bankBalance = Number(account?.bankBalance ?? totals?.bankBalance ?? 0);
-  const totalBudgeted = Number(totals?.totalBudgeted ?? 0);
-  const toBeBudgeted = Number(totals?.toBeBudgeted ?? bankBalance - totalBudgeted);
+  const toBeBudgeted = Number(account?.toBeBudgeted ?? totals?.toBeBudgeted ?? 0);
 
   async function handleSetBudget(e: React.FormEvent) {
     e.preventDefault();
@@ -174,17 +174,17 @@ export default function Budget() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="text-sm font-semibold text-zinc-900">Budget</div>
             <div className="mt-1 text-sm text-zinc-500">
-              Bank Balance drives To Be Budgeted. Budgeted categories reduce To Be Budgeted.
-              Activity affects Available.
+              Income increases To Be Budgeted. Budgeted categories reduce To Be Budgeted.
+              Spending affects Activity and Available.
             </div>
           </div>
 
-          <div className="text-right">
+          <div className="text-left md:text-right">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               To Be Budgeted
             </div>
@@ -194,7 +194,7 @@ export default function Budget() {
           </div>
         </div>
 
-        <div className="mt-5 flex flex-col md:grid md:grid-cols-[1fr_auto] gap-4"
+        <div className="mt-5 flex flex-col gap-4 md:grid md:grid-cols-[1fr_auto] md:items-end">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Bank Balance
@@ -202,13 +202,13 @@ export default function Budget() {
             <div className="mt-1 text-xl font-semibold text-zinc-900">{money(bankBalance)}</div>
           </div>
 
-          <form onSubmit={handleResetBankBalance} className="flex flex-wrap items-center gap-2">
+          <form onSubmit={handleResetBankBalance} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <input
               value={bankInput}
               onChange={(e) => setBankInput(e.target.value)}
               placeholder="Enter bank balance"
               inputMode="decimal"
-              className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
+              className="h-11 min-w-0 rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
             />
             <button
               type="submit"
@@ -227,9 +227,9 @@ export default function Budget() {
         </div>
       )}
 
-      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_360px] gap-5">
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px]">
         <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          className="block md:grid md:grid-cols-[1fr_120px_120px_140px] gap-3 border-b border-zinc-200 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="hidden grid-cols-[1fr_120px_120px_140px] gap-3 border-b border-zinc-200 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 md:grid">
             <div>Category</div>
             <div className="text-right">Budgeted</div>
             <div className="text-right">Activity</div>
@@ -252,26 +252,38 @@ export default function Budget() {
                     key={row.id}
                     type="button"
                     onClick={() => setCategoryId(row.id)}
-                    className={`grid w-full grid-cols-[1fr_120px_120px_140px] gap-3 px-5 py-3 text-left transition ${
+                    className={`block w-full px-4 py-4 text-left transition md:grid md:grid-cols-[1fr_120px_120px_140px] md:gap-3 md:px-5 md:py-3 ${
                       isSelected ? "bg-zinc-50" : "bg-white hover:bg-zinc-50"
                     }`}
                   >
-                    <div className="text-sm font-medium">{row.name}</div>
+                    <div className="mb-2 truncate text-sm font-medium text-zinc-900 md:mb-0">
+                      {row.name}
+                    </div>
 
-<div className="md:text-right text-sm">
-  <span className="md:hidden text-zinc-500 mr-2">Budget:</span>
-  {money(row.budgeted)}
-</div>
+                    <div className="space-y-1 md:hidden">
+                      <div className="text-sm text-zinc-700">
+                        <span className="mr-2 text-zinc-500">Budgeted:</span>
+                        <span className="font-semibold text-zinc-900">{money(row.budgeted)}</span>
+                      </div>
+                      <div className="text-sm text-zinc-700">
+                        <span className="mr-2 text-zinc-500">Activity:</span>
+                        {money(row.activity)}
+                      </div>
+                      <div className={`text-sm font-semibold ${availableColor(row.available)}`}>
+                        <span className="mr-2 text-zinc-500 font-normal">Available:</span>
+                        {money(row.available)}
+                      </div>
+                    </div>
 
-<div className="md:text-right text-sm">
-  <span className="md:hidden text-zinc-500 mr-2">Activity:</span>
-  {money(row.activity)}
-</div>
-
-<div className="md:text-right text-sm font-semibold">
-  <span className="md:hidden text-zinc-500 mr-2">Available:</span>
-  {money(row.available)}
-</div>
+                    <div className="hidden text-right text-sm font-semibold text-zinc-900 md:block">
+                      {money(row.budgeted)}
+                    </div>
+                    <div className="hidden text-right text-sm text-zinc-700 md:block">
+                      {money(row.activity)}
+                    </div>
+                    <div className={`hidden text-right text-sm font-semibold md:block ${availableColor(row.available)}`}>
+                      {money(row.available)}
+                    </div>
                   </button>
                 );
               })}
@@ -279,7 +291,7 @@ export default function Budget() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
           <div>
             <div className="text-sm font-semibold text-zinc-900">{selectedCategoryName}</div>
             <div className="mt-1 text-sm text-zinc-500">
@@ -320,13 +332,13 @@ export default function Budget() {
               </select>
             </label>
 
-            <form onSubmit={handleSetBudget} className="mt-4 flex gap-2">
+            <form onSubmit={handleSetBudget} className="mt-4 flex flex-col gap-2 sm:flex-row">
               <input
                 value={setAmount}
                 onChange={(e) => setSetAmount(e.target.value)}
                 placeholder="Enter budget amount"
                 inputMode="decimal"
-                className="h-11 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
               />
               <button
                 type="submit"
