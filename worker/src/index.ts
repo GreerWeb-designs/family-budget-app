@@ -35,7 +35,6 @@ app.use("*", async (c, next) => {
   c.header("X-FamilyBudget-Worker", "yes");
 });
 
-// ---- HARD-CODED CATEGORIES ----
 const CATEGORIES = [
   { id: "income", name: "Income" },
   { id: "mortgage", name: "Mortgage" },
@@ -94,7 +93,15 @@ function clearCookie(name: string) {
   return `${name}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0`;
 }
 
-// ---- AUTH MIDDLEWARE ----
+async function ensureAccountState(db: D1Database) {
+  await db.prepare(
+    `INSERT OR IGNORE INTO account_state (id, bank_balance, anchor_balance, updated_at)
+     VALUES ('main', 0, 0, ?)`
+  )
+    .bind(new Date().toISOString())
+    .run();
+}
+
 const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const token = getCookie(c.req.raw, "session");
   if (!token) return c.json({ error: "Unauthorized" }, 401);
@@ -117,7 +124,7 @@ const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables 
   await next();
 };
 
-// ---- ROUTES ----
+// ---- BASIC ----
 app.get("/api/health", (c) => c.json({ ok: true }));
 app.get("/api/categories", (c) => c.json({ categories: CATEGORIES }));
 
@@ -181,8 +188,10 @@ app.get("/api/auth/me", requireUser, (c) => {
   return c.json({ ok: true, userId: c.get("userId") });
 });
 
-// ---- ACCOUNT BALANCES (SHARED HOUSEHOLD) ----
+// ---- ACCOUNT (SHARED HOUSEHOLD) ----
 app.get("/api/account", requireUser, async (c) => {
+  await ensureAccountState(c.env.DB);
+
   const row = await c.env.DB.prepare(
     `SELECT bank_balance, anchor_balance
      FROM account_state
@@ -197,8 +206,9 @@ app.get("/api/account", requireUser, async (c) => {
 });
 
 app.post("/api/account/set", requireUser, async (c) => {
-  const body = await c.req.json<{ bankBalance?: number; anchorBalance?: number }>();
+  await ensureAccountState(c.env.DB);
 
+  const body = await c.req.json<{ bankBalance?: number; anchorBalance?: number }>();
   const bank = body.bankBalance;
   const anchor = body.anchorBalance;
 
@@ -230,6 +240,8 @@ app.post("/api/account/set", requireUser, async (c) => {
 });
 
 app.post("/api/account/reconcile", requireUser, async (c) => {
+  await ensureAccountState(c.env.DB);
+
   const acct = await c.env.DB.prepare(
     `SELECT bank_balance
      FROM account_state
@@ -251,12 +263,11 @@ app.post("/api/account/reconcile", requireUser, async (c) => {
 });
 
 // ---- TOTALS (SHARED HOUSEHOLD) ----
+// Starting state is zero across the board.
+// TBB is driven by actual bank balance only.
+// Income entries increase bank_balance when posted, so we do not add income again here.
 app.get("/api/totals", requireUser, async (c) => {
-  const incomeRow = await c.env.DB.prepare(
-    `SELECT COALESCE(SUM(amount), 0) AS totalIncome
-     FROM manual_spends
-     WHERE direction = 'in'`
-  ).first<{ totalIncome: number }>();
+  await ensureAccountState(c.env.DB);
 
   const budgetRow = await c.env.DB.prepare(
     `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted
@@ -270,11 +281,17 @@ app.get("/api/totals", requireUser, async (c) => {
      LIMIT 1`
   ).first<{ bankBalance: number }>();
 
-  const totalIncome = Number(incomeRow?.totalIncome || 0);
-  const totalBudgeted = Number(budgetRow?.totalBudgeted || 0);
-  const bankBalance = Number(accountRow?.bankBalance || 0);
+  const incomeRow = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(amount), 0) AS totalIncome
+     FROM manual_spends
+     WHERE direction = 'in'`
+  ).first<{ totalIncome: number }>();
 
-  const toBeBudgeted = bankBalance + totalIncome - totalBudgeted;
+  const bankBalance = Number(accountRow?.bankBalance ?? 0);
+  const totalBudgeted = Number(budgetRow?.totalBudgeted ?? 0);
+  const totalIncome = Number(incomeRow?.totalIncome ?? 0);
+
+  const toBeBudgeted = bankBalance - totalBudgeted;
 
   return c.json({
     bankBalance,
@@ -448,7 +465,9 @@ app.post("/api/budget/adjust", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- SPEND (SHARED HOUSEHOLD, user_id kept as audit) ----
+// ---- SPEND / INCOME (SHARED HOUSEHOLD, user_id kept as audit) ----
+// Income entries increase bank balance.
+// Outflow entries affect category activity but do not change TBB directly.
 app.get("/api/spend", requireUser, async (c) => {
   const rows = await c.env.DB.prepare(
     `SELECT id, user_id, category_id, amount, date, note, direction, created_at
@@ -470,6 +489,8 @@ app.get("/api/spend", requireUser, async (c) => {
 });
 
 app.post("/api/spend", requireUser, async (c) => {
+  await ensureAccountState(c.env.DB);
+
   const userId = c.get("userId");
 
   const body = await c.req.json<{
@@ -490,33 +511,68 @@ app.post("/api/spend", requireUser, async (c) => {
     return c.json({ error: "Bad payload" }, 400);
   }
 
+  if (direction === "in" && categoryId !== "income") {
+    return c.json({ error: "Income entries must use the income category" }, 400);
+  }
+
+  if (direction === "out" && categoryId === "income") {
+    return c.json({ error: "Outflow entries cannot use the income category" }, 400);
+  }
+
+  const now = new Date().toISOString();
   const spendId = uid();
 
   await c.env.DB.prepare(
     `INSERT INTO manual_spends (id, user_id, category_id, amount, date, note, direction, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(
-      spendId,
-      userId,
-      categoryId,
-      amount,
-      date,
-      note,
-      direction,
-      new Date().toISOString()
-    )
+    .bind(spendId, userId, categoryId, amount, date, note, direction, now)
     .run();
+
+  if (direction === "in") {
+    await c.env.DB.prepare(
+      `UPDATE account_state
+       SET bank_balance = bank_balance + ?, updated_at = ?
+       WHERE id = 'main'`
+    )
+      .bind(amount, now)
+      .run();
+  }
 
   return c.json({ ok: true, id: spendId });
 });
 
 app.delete("/api/spend/:id", requireUser, async (c) => {
+  await ensureAccountState(c.env.DB);
+
   const spendId = c.req.param("id");
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id, amount, direction
+     FROM manual_spends
+     WHERE id = ?
+     LIMIT 1`
+  )
+    .bind(spendId)
+    .first<{ id: string; amount: number; direction: "in" | "out" }>();
+
+  if (!existing) {
+    return c.json({ error: "Not found" }, 404);
+  }
 
   await c.env.DB.prepare(`DELETE FROM manual_spends WHERE id = ?`)
     .bind(spendId)
     .run();
+
+  if (existing.direction === "in") {
+    await c.env.DB.prepare(
+      `UPDATE account_state
+       SET bank_balance = bank_balance - ?, updated_at = ?
+       WHERE id = 'main'`
+    )
+      .bind(Number(existing.amount || 0), new Date().toISOString())
+      .run();
+  }
 
   return c.json({ ok: true });
 });
@@ -564,6 +620,7 @@ app.get("/api/spend/summary", requireUser, async (c) => {
 
   return c.json({ byCategory });
 });
+
 // ---- GOALS (PERSONAL) ----
 app.get("/api/goals", requireUser, async (c) => {
   const userId = c.get("userId");
@@ -1089,7 +1146,6 @@ app.get("/api/calendar/range", requireUser, async (c) => {
   });
 });
 
-// ---- MODULE EXPORT ----
 export default {
   fetch: app.fetch,
 };
