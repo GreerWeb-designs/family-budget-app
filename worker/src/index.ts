@@ -18,8 +18,9 @@ const APP_ORIGIN = "https://app.ducharmefamilybudget.com";
 
 app.use("*", async (c, next) => {
   const origin = c.req.header("Origin");
+  const isAllowedOrigin = origin === APP_ORIGIN;
 
-  if (origin === APP_ORIGIN) {
+  if (isAllowedOrigin) {
     c.header("Access-Control-Allow-Origin", origin);
     c.header("Access-Control-Allow-Credentials", "true");
     c.header("Access-Control-Allow-Headers", "Content-Type");
@@ -31,8 +32,18 @@ app.use("*", async (c, next) => {
     return c.body(null, 204);
   }
 
-  await next();
-  c.header("X-FamilyBudget-Worker", "yes");
+  try {
+    await next();
+  } finally {
+    if (isAllowedOrigin) {
+      c.header("Access-Control-Allow-Origin", origin);
+      c.header("Access-Control-Allow-Credentials", "true");
+      c.header("Access-Control-Allow-Headers", "Content-Type");
+      c.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+      c.header("Vary", "Origin");
+    }
+    c.header("X-FamilyBudget-Worker", "yes");
+  }
 });
 
 const CATEGORIES = [
@@ -147,7 +158,9 @@ app.post("/api/auth/login", async (c) => {
     .bind(email)
     .first<{ id: string; password_hash: string }>();
 
-  if (!user) return c.json({ error: "Invalid credentials" }, 401);
+  if (!user) {
+    return c.json({ error: "Invalid credentials" }, 401);
+  }
 
   const candidate = await sha256(password + c.env.SESSION_SECRET);
   if (candidate !== user.password_hash) {
