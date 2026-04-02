@@ -12,10 +12,10 @@ import Goals from "./pages/Goals";
 import Debts from "./pages/Debts";
 
 type Totals = {
-  bankBalance?: number;
-  totalIncome?: number;
-  totalBudgeted?: number;
-  toBeBudgeted?: number;
+  bankBalance: number;
+  totalIncome: number;
+  totalBudgeted: number;
+  toBeBudgeted: number;
 };
 
 function money(n: number | null | undefined) {
