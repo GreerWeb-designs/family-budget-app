@@ -194,7 +194,7 @@ export default function Budget() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+        <div className="mt-5 flex flex-col md:grid md:grid-cols-[1fr_auto] gap-4"
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Bank Balance
@@ -227,9 +227,9 @@ export default function Budget() {
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_360px] gap-5">
         <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <div className="grid grid-cols-[1fr_120px_120px_140px] gap-3 border-b border-zinc-200 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          className="block md:grid md:grid-cols-[1fr_120px_120px_140px] gap-3 border-b border-zinc-200 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             <div>Category</div>
             <div className="text-right">Budgeted</div>
             <div className="text-right">Activity</div>
@@ -256,14 +256,22 @@ export default function Budget() {
                       isSelected ? "bg-zinc-50" : "bg-white hover:bg-zinc-50"
                     }`}
                   >
-                    <div className="truncate text-sm font-medium text-zinc-900">{row.name}</div>
-                    <div className="text-right text-sm font-semibold text-zinc-900">
-                      {money(row.budgeted)}
-                    </div>
-                    <div className="text-right text-sm text-zinc-700">{money(row.activity)}</div>
-                    <div className={`text-right text-sm font-semibold ${availableColor(row.available)}`}>
-                      {money(row.available)}
-                    </div>
+                    <div className="text-sm font-medium">{row.name}</div>
+
+<div className="md:text-right text-sm">
+  <span className="md:hidden text-zinc-500 mr-2">Budget:</span>
+  {money(row.budgeted)}
+</div>
+
+<div className="md:text-right text-sm">
+  <span className="md:hidden text-zinc-500 mr-2">Activity:</span>
+  {money(row.activity)}
+</div>
+
+<div className="md:text-right text-sm font-semibold">
+  <span className="md:hidden text-zinc-500 mr-2">Available:</span>
+  {money(row.available)}
+</div>
                   </button>
                 );
               })}
