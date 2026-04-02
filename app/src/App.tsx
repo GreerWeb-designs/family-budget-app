@@ -129,8 +129,8 @@ function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-zinc-100">
-      <div className="mx-auto flex max-w-[1400px] gap-4 p-4">
-        <aside className="w-64 shrink-0 rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <div className="mx-auto flex max-w-[1400px] flex-col md:flex-row gap-4 p-3 md:p-4">
+        <aside className="hidden md:block w-64 shrink-0 rounded-2xl border border-zinc-200 bg-white shadow-sm">
           <div className="border-b border-zinc-200 p-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-2xl bg-zinc-900" />
@@ -178,8 +178,26 @@ function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         </aside>
+        {/* Mobile Header */}
+<div className="md:hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+  <div className="flex items-center justify-between">
+    <div>
+      <div className="text-sm font-semibold">Ducharme</div>
+      <div className="text-xs text-zinc-500">Family Budget</div>
+    </div>
+    <div className={`rounded-xl border px-3 py-1 text-sm font-semibold ${toBeBudgetedStyle}`}>
+      {money(toBeBudgeted)}
+    </div>
+  </div>
 
-        <main className="flex min-w-0 flex-1 flex-col gap-4">
+  <div className="mt-3 flex justify-between text-xs">
+    <NavLink to="/home">Home</NavLink>
+    <NavLink to="/budget">Budget</NavLink>
+    <NavLink to="/bills">Bills</NavLink>
+    <NavLink to="/calendar">Calendar</NavLink>
+  </div>
+</div>
+        <main className="flex min-w-0 flex-1 flex-col gap-3 md:gap-4">
           <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <TopTitle />
