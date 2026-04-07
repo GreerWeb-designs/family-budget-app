@@ -250,13 +250,7 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-900">Transactions</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Income increases Bank Balance and To Be Budgeted. Spending affects Bank Balance, Activity, and Available.
-        </p>
-      </div>
+    
 
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex items-center justify-between">
@@ -339,6 +333,14 @@ export default function Home() {
         </div>
       </div>
 
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-zinc-900">Transactions</h1>
+        <p className="mt-1 text-sm text-zinc-500">
+          Income increases Bank Balance and To Be Budgeted. Spending affects Bank Balance, Activity, and Available.
+        </p>
+      </div>
+    
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
         <form onSubmit={submitSpend} className="grid gap-4">
           <div className="grid gap-4">
