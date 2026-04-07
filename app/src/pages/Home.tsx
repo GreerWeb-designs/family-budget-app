@@ -252,6 +252,7 @@ export default function Home() {
   return (
     
 
+    <div className="space-y-6">
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-zinc-900">Upcoming</h3>
@@ -332,8 +333,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-    <div className="space-y-6">
+    
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Transactions</h1>
         <p className="mt-1 text-sm text-zinc-500">
