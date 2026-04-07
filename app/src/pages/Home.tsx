@@ -337,7 +337,7 @@ export default function Home() {
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Transactions</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Income increases Bank Balance and To Be Budgeted. Spending affects Bank Balance, Activity, and Available.
+          Log Income and Outflow here.
         </p>
       </div>
     
