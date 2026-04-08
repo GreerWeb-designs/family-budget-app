@@ -124,7 +124,6 @@ async function getCategories(db: D1Database) {
   return rows.results ?? [];
 }
 
-// ---- AUTH MIDDLEWARE ----
 const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const token = getCookie(c.req.raw, "session");
   if (!token) return c.json({ error: "Unauthorized" }, 401);
@@ -378,25 +377,25 @@ app.get("/api/totals", requireUser, async (c) => {
   ).first<{ totalIncome: number }>();
 
   const categories = await getCategories(c.env.DB);
-const validBudgetCategoryIds = categories
-  .filter((c) => c.direction !== "inflow")
-  .map((c) => c.id);
+  const validBudgetCategoryIds = categories
+    .filter((c) => c.direction !== "inflow")
+    .map((c) => c.id);
 
-let totalBudgeted = 0;
+  let totalBudgeted = 0;
 
-if (validBudgetCategoryIds.length > 0) {
-  const placeholders = validBudgetCategoryIds.map(() => "?").join(",");
+  if (validBudgetCategoryIds.length > 0) {
+    const placeholders = validBudgetCategoryIds.map(() => "?").join(",");
 
-  const budgetRow = await c.env.DB.prepare(
-    `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted
-     FROM budget_lines
-     WHERE category_id IN (${placeholders})`
-  )
-    .bind(...validBudgetCategoryIds)
-    .first<{ totalBudgeted: number }>();
+    const budgetRow = await c.env.DB.prepare(
+      `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted
+       FROM budget_lines
+       WHERE category_id IN (${placeholders})`
+    )
+      .bind(...validBudgetCategoryIds)
+      .first<{ totalBudgeted: number }>();
 
-  totalBudgeted;
-}
+    totalBudgeted = Number(budgetRow?.totalBudgeted ?? 0);
+  }
 
   const accountRow = await c.env.DB.prepare(
     `SELECT COALESCE(bank_balance, 0) AS bankBalance,
@@ -409,7 +408,7 @@ if (validBudgetCategoryIds.length > 0) {
   return c.json({
     bankBalance: Number(accountRow?.bankBalance ?? 0),
     totalIncome: Number(incomeRow?.totalIncome ?? 0),
-    totalBudgeted: Number(budgetRow?.totalBudgeted ?? 0),
+    totalBudgeted,
     toBeBudgeted: Number(accountRow?.toBeBudgeted ?? 0),
   });
 });

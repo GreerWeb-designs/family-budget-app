@@ -4,9 +4,12 @@ import { api } from "../lib/api";
 type Category = {
   id: string;
   name: string;
+  direction?: string;
 };
 
-type SummaryRow = Category & {
+type SummaryRow = {
+  id: string;
+  name: string;
   budgeted: number;
   activity: number;
   available: number;
@@ -54,6 +57,10 @@ export default function Budget() {
   const [setAmount, setSetAmount] = useState("");
   const [bankInput, setBankInput] = useState("");
 
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -66,7 +73,9 @@ export default function Budget() {
       api<AccountRes>("/api/account"),
     ]);
 
-    const nonIncomeCategories = (categoriesRes.categories ?? []).filter((cat) => cat.id !== "income");
+    const nonIncomeCategories = (categoriesRes.categories ?? []).filter(
+      (cat) => cat.id !== "income" && cat.direction !== "inflow"
+    );
 
     setCats(nonIncomeCategories);
     setSummary(summaryRes);
@@ -75,6 +84,11 @@ export default function Budget() {
 
     if (!categoryId && nonIncomeCategories.length) {
       setCategoryId(nonIncomeCategories[0].id);
+    } else if (
+      categoryId &&
+      !nonIncomeCategories.some((cat) => cat.id === categoryId)
+    ) {
+      setCategoryId(nonIncomeCategories[0]?.id ?? "");
     }
 
     setBankInput(String(accountRes.bankBalance ?? 0));
@@ -172,6 +186,62 @@ export default function Budget() {
     }
   }
 
+  async function handleCreateCategory(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+
+    const name = newCategoryName.trim();
+
+    if (!name) {
+      setMsg("Enter a category name.");
+      return;
+    }
+
+    setCreatingCategory(true);
+    try {
+      await api("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          direction: "outflow",
+        }),
+      });
+
+      setNewCategoryName("");
+      setMsg("Category created.");
+      await refresh();
+    } catch (err: any) {
+      setMsg(err?.message || "Failed to create category.");
+    } finally {
+      setCreatingCategory(false);
+    }
+  }
+
+  async function handleDeleteCategory(id: string, name: string) {
+    setMsg(null);
+
+    const confirmed = window.confirm(`Delete category "${name}"?`);
+    if (!confirmed) return;
+
+    setDeletingCategoryId(id);
+    try {
+      await api(`/api/categories/${id}`, {
+        method: "DELETE",
+      });
+
+      if (categoryId === id) {
+        setCategoryId("");
+      }
+
+      setMsg("Category deleted.");
+      await refresh();
+    } catch (err: any) {
+      setMsg(err?.message || "Failed to delete category.");
+    } finally {
+      setDeletingCategoryId(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
@@ -202,7 +272,10 @@ export default function Budget() {
             <div className="mt-1 text-xl font-semibold text-zinc-900">{money(bankBalance)}</div>
           </div>
 
-          <form onSubmit={handleResetBankBalance} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <form
+            onSubmit={handleResetBankBalance}
+            className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+          >
             <input
               value={bankInput}
               onChange={(e) => setBankInput(e.target.value)}
@@ -256,23 +329,54 @@ export default function Budget() {
                       isSelected ? "bg-zinc-50" : "bg-white hover:bg-zinc-50"
                     }`}
                   >
-                    <div className="mb-2 truncate text-sm font-medium text-zinc-900 md:mb-0">
-                      {row.name}
+                    <div className="md:hidden">
+                      <div className="mb-2 truncate text-sm font-medium text-zinc-900">
+                        {row.name}
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="text-sm text-zinc-700">
+                          <span className="mr-2 text-zinc-500">Budgeted:</span>
+                          <span className="font-semibold text-zinc-900">{money(row.budgeted)}</span>
+                        </div>
+                        <div className="text-sm text-zinc-700">
+                          <span className="mr-2 text-zinc-500">Activity:</span>
+                          {money(row.activity)}
+                        </div>
+                        <div className={`text-sm font-semibold ${availableColor(row.available)}`}>
+                          <span className="mr-2 font-normal text-zinc-500">Available:</span>
+                          {money(row.available)}
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCategory(row.id, row.name);
+                          }}
+                          disabled={deletingCategoryId === row.id}
+                          className="rounded-lg border border-zinc-200 px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="space-y-1 md:hidden">
-                      <div className="text-sm text-zinc-700">
-                        <span className="mr-2 text-zinc-500">Budgeted:</span>
-                        <span className="font-semibold text-zinc-900">{money(row.budgeted)}</span>
-                      </div>
-                      <div className="text-sm text-zinc-700">
-                        <span className="mr-2 text-zinc-500">Activity:</span>
-                        {money(row.activity)}
-                      </div>
-                      <div className={`text-sm font-semibold ${availableColor(row.available)}`}>
-                        <span className="mr-2 text-zinc-500 font-normal">Available:</span>
-                        {money(row.available)}
-                      </div>
+                    <div className="hidden md:flex md:items-center md:justify-between">
+                      <div className="truncate text-sm font-medium text-zinc-900">{row.name}</div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCategory(row.id, row.name);
+                        }}
+                        disabled={deletingCategoryId === row.id}
+                        className="ml-3 rounded-lg border border-zinc-200 px-2 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
                     </div>
 
                     <div className="hidden text-right text-sm font-semibold text-zinc-900 md:block">
@@ -281,7 +385,11 @@ export default function Budget() {
                     <div className="hidden text-right text-sm text-zinc-700 md:block">
                       {money(row.activity)}
                     </div>
-                    <div className={`hidden text-right text-sm font-semibold md:block ${availableColor(row.available)}`}>
+                    <div
+                      className={`hidden text-right text-sm font-semibold md:block ${availableColor(
+                        row.available
+                      )}`}
+                    >
                       {money(row.available)}
                     </div>
                   </button>
@@ -297,6 +405,29 @@ export default function Budget() {
             <div className="mt-1 text-sm text-zinc-500">
               Set the budget for the selected category.
             </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm font-semibold text-zinc-900">Add Category</div>
+            <div className="mt-1 text-sm text-zinc-500">
+              Create a custom budget category for this household.
+            </div>
+
+            <form onSubmit={handleCreateCategory} className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="New category name"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none ring-zinc-900/10 focus:ring-4"
+              />
+              <button
+                type="submit"
+                disabled={creatingCategory}
+                className="h-11 rounded-xl border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+              >
+                Add
+              </button>
+            </form>
           </div>
 
           <div className="mt-4 grid gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
