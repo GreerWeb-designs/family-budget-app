@@ -165,7 +165,7 @@ export default function Budget() {
       return;
     }
 
-    const confirmed = window.confirm("Are you sure you want to reset your bank balance?");
+    const confirmed = window.confirm("Are you sure you want to set your bank balance?");
     if (!confirmed) return;
 
     setBusy(true);
@@ -288,7 +288,7 @@ export default function Budget() {
               disabled={busy}
               className="h-11 rounded-xl border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
             >
-              Reset Bank Balance
+              Set Bank Balance
             </button>
           </form>
         </div>

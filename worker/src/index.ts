@@ -311,34 +311,46 @@ app.get("/api/account", requireUser, async (c) => {
 app.post("/api/account/set", requireUser, async (c) => {
   await ensureAccountState(c.env.DB);
 
-  const body = await c.req.json<{ bankBalance?: number; anchorBalance?: number }>();
-
+  const body = await c.req.json<{ bankBalance?: number }>();
   const bank = body.bankBalance;
-  const anchor = body.anchorBalance;
 
   if (typeof bank !== "number" || Number.isNaN(bank)) {
     return c.json({ error: "bankBalance must be a number" }, 400);
   }
 
+  const categories = await getCategories(c.env.DB);
+  const validBudgetCategoryIds = categories
+    .filter((c) => c.direction !== "inflow")
+    .map((c) => c.id);
+
+  let totalBudgeted = 0;
+
+  if (validBudgetCategoryIds.length > 0) {
+    const placeholders = validBudgetCategoryIds.map(() => "?").join(",");
+
+    const budgetRow = await c.env.DB.prepare(
+      `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted
+       FROM budget_lines
+       WHERE category_id IN (${placeholders})`
+    )
+      .bind(...validBudgetCategoryIds)
+      .first<{ totalBudgeted: number }>();
+
+    totalBudgeted = Number(budgetRow?.totalBudgeted ?? 0);
+  }
+
+  const nextToBeBudgeted = bank - totalBudgeted;
   const now = new Date().toISOString();
 
-  if (typeof anchor === "number" && !Number.isNaN(anchor)) {
-    await c.env.DB.prepare(
-      `UPDATE account_state
-       SET bank_balance = ?, anchor_balance = ?, updated_at = ?
-       WHERE id = 'main'`
-    )
-      .bind(bank, anchor, now)
-      .run();
-  } else {
-    await c.env.DB.prepare(
-      `UPDATE account_state
-       SET bank_balance = ?, updated_at = ?
-       WHERE id = 'main'`
-    )
-      .bind(bank, now)
-      .run();
-  }
+  await c.env.DB.prepare(
+    `UPDATE account_state
+     SET bank_balance = ?,
+         to_be_budgeted = ?,
+         updated_at = ?
+     WHERE id = 'main'`
+  )
+    .bind(bank, nextToBeBudgeted, now)
+    .run();
 
   return c.json({ ok: true });
 });
