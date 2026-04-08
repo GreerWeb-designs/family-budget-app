@@ -154,6 +154,83 @@ app.get("/api/categories", async (c) => {
   return c.json({ categories });
 });
 
+app.post("/api/categories", requireUser, async (c) => {
+  const body = await c.req.json<{ name?: string; direction?: "inflow" | "outflow" }>();
+
+  const name = (body.name || "").trim();
+  const direction = body.direction === "inflow" ? "inflow" : "outflow";
+
+  if (!name) {
+    return c.json({ error: "Category name is required" }, 400);
+  }
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id
+     FROM categories
+     WHERE LOWER(name) = LOWER(?)
+     LIMIT 1`
+  )
+    .bind(name)
+    .first<{ id: string }>();
+
+  if (existing) {
+    return c.json({ error: "A category with that name already exists" }, 400);
+  }
+
+  const id = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (!id) {
+    return c.json({ error: "Invalid category name" }, 400);
+  }
+
+  await c.env.DB.prepare(
+    `INSERT INTO categories (id, name, direction)
+     VALUES (?, ?, ?)`
+  )
+    .bind(id, name, direction)
+    .run();
+
+  return c.json({ ok: true, id });
+});
+
+app.delete("/api/categories/:id", requireUser, async (c) => {
+  const id = c.req.param("id");
+
+  const inBudget = await c.env.DB.prepare(
+    `SELECT category_id
+     FROM budget_lines
+     WHERE category_id = ?
+     LIMIT 1`
+  )
+    .bind(id)
+    .first<{ category_id: string }>();
+
+  const inSpends = await c.env.DB.prepare(
+    `SELECT category_id
+     FROM manual_spends
+     WHERE category_id = ?
+     LIMIT 1`
+  )
+    .bind(id)
+    .first<{ category_id: string }>();
+
+  if (inBudget || inSpends) {
+    return c.json({ error: "Cannot delete a category that has budget or transaction history" }, 400);
+  }
+
+  await c.env.DB.prepare(
+    `DELETE FROM categories
+     WHERE id = ?`
+  )
+    .bind(id)
+    .run();
+
+  return c.json({ ok: true });
+});
+
 // ---- AUTH ----
 app.post("/api/auth/login", async (c) => {
   const body = await c.req.json<{ email?: string; password?: string }>();
