@@ -120,14 +120,14 @@ function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  const toBeBudgeted = Number(totals?.toBeBudgeted ?? 0);
+const toBeBudgeted = Number(totals?.toBeBudgeted ?? 0);
 
-  const toBeBudgetedStyle =
-    toBeBudgeted < 0
-      ? "border-red-200 bg-red-50 text-red-700"
-      : toBeBudgeted === 0
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border-zinc-300 bg-white text-zinc-900";
+const toBeBudgetedStyle =
+  toBeBudgeted < 0
+    ? "border-red-200 bg-red-50 text-red-700"
+    : toBeBudgeted === 0
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border-zinc-300 bg-white text-zinc-900";
 
   return (
     <div className="min-h-screen bg-zinc-100">
@@ -142,7 +142,7 @@ function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div className={`mt-4 rounded-2xl border px-3 py-2 ${toBeBudgetedStyle}`}>
+           <div className={`mt-4 rounded-2xl border px-3 py-2 ${toBeBudgetedStyle}`}>
               <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">
                 To Be Budgeted
               </div>
