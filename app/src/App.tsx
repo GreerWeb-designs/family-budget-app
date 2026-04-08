@@ -13,13 +13,16 @@ import Debts from "./pages/Debts";
 
 type Totals = {
   bankBalance: number;
-  expectedBalance: number;
-  toBeBudgeted: number;
+  totalIncome: number;
   totalBudgeted: number;
-  totalLoggedSpentOut: number;
-  totalLoggedIncomeIn: number;
-  unloggedDifference: number;
+  toBeBudgeted: number;
 };
+
+function money(n: number | null | undefined) {
+  const value = Number(n ?? 0);
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${Math.abs(value).toFixed(2)}`;
+}
 
 function Protected({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
@@ -43,11 +46,22 @@ function Protected({ children }: { children: ReactElement }) {
     };
   }, [nav]);
 
-  if (ok === null) return <div className="p-6 text-sm text-zinc-600">Loading…</div>;
+  if (ok === null) {
+    return <div className="p-6 text-sm text-zinc-600">Loading…</div>;
+  }
+
   return children;
 }
 
-function SideLink({ to, label, onClick }: { to: string; label: string; onClick?: () => void }) {
+function SideLink({
+  to,
+  label,
+  onClick,
+}: {
+  to: string;
+  label: string;
+  onClick?: () => void;
+}) {
   return (
     <NavLink
       to={to}
@@ -114,32 +128,19 @@ function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-<<<<<<< HEAD
-const toBeBudgeted = Number(totals?.toBeBudgeted ?? 0);
+  const toBeBudgeted = Number(totals?.toBeBudgeted ?? 0);
 
-const toBeBudgetedStyle =
-  toBeBudgeted < 0
-    ? "border-red-200 bg-red-50 text-red-700"
-    : toBeBudgeted === 0
-    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-    : "border-zinc-300 bg-white text-zinc-900";
+  const toBeBudgetedStyle =
+    toBeBudgeted < 0
+      ? "border-red-200 bg-red-50 text-red-700"
+      : toBeBudgeted === 0
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-zinc-300 bg-white text-zinc-900";
 
   return (
     <div className="min-h-screen bg-zinc-100">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-3 p-3 md:flex-row md:gap-4 md:p-4">
         <aside className="hidden w-64 shrink-0 rounded-2xl border border-zinc-200 bg-white shadow-sm md:block">
-=======
-  const toBeBudgeted = totals?.toBeBudgeted ?? 0;
-  const toBeBudgetedStyle =
-    toBeBudgeted < 0
-      ? "border-red-200 bg-red-50 text-red-700"
-      : "border-emerald-200 bg-emerald-50 text-emerald-700";
-
-  return (
-    <div className="min-h-screen bg-zinc-100">
-      <div className="mx-auto flex max-w-[1400px] gap-4 p-4">
-        <aside className="w-64 shrink-0 rounded-2xl border border-zinc-200 bg-white shadow-sm">
->>>>>>> f445150 (Align frontend with to-be-budgeted backend model)
           <div className="border-b border-zinc-200 p-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-2xl bg-zinc-900" />
@@ -149,19 +150,14 @@ const toBeBudgetedStyle =
               </div>
             </div>
 
-<<<<<<< HEAD
-           <div className={`mt-4 rounded-2xl border px-3 py-2 ${toBeBudgetedStyle}`}>
+            <div className={`mt-4 rounded-2xl border px-3 py-2 ${toBeBudgetedStyle}`}>
               <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">
                 To Be Budgeted
               </div>
-=======
-            <div className={`mt-4 rounded-2xl border px-3 py-2 ${toBeBudgetedStyle}`}>
-              <div className="text-[11px] font-bold uppercase tracking-wide opacity-80">To Be Budgeted</div>
->>>>>>> f445150 (Align frontend with to-be-budgeted backend model)
               <div className="mt-1 text-lg font-semibold">
-                {loadingTotals ? "—" : `$${toBeBudgeted.toFixed(2)}`}
+                {loadingTotals ? "—" : money(toBeBudgeted)}
               </div>
-              <div className="mt-1 text-xs opacity-80">Placeholder until Plaid cash is wired</div>
+              <div className="mt-1 text-xs opacity-80">Shared household total</div>
             </div>
           </div>
 
@@ -193,7 +189,6 @@ const toBeBudgetedStyle =
           </div>
         </aside>
 
-<<<<<<< HEAD
         <div className="md:hidden">
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
@@ -226,7 +221,11 @@ const toBeBudgetedStyle =
                 <SideLink to="/budget" label="Budget" onClick={() => setMobileMenuOpen(false)} />
                 <SideLink to="/bills" label="Bills" onClick={() => setMobileMenuOpen(false)} />
                 <SideLink to="/goals" label="Goals" onClick={() => setMobileMenuOpen(false)} />
-                <SideLink to="/calendar" label="Calendar" onClick={() => setMobileMenuOpen(false)} />
+                <SideLink
+                  to="/calendar"
+                  label="Calendar"
+                  onClick={() => setMobileMenuOpen(false)}
+                />
                 <SideLink to="/debts" label="Debts" onClick={() => setMobileMenuOpen(false)} />
 
                 <button
@@ -254,25 +253,17 @@ const toBeBudgetedStyle =
 
         <main className="flex min-w-0 flex-1 flex-col gap-3 md:gap-4">
           <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 shadow-sm md:px-5">
-=======
-        <main className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
->>>>>>> f445150 (Align frontend with to-be-budgeted backend model)
             <div className="flex items-center justify-between gap-3">
               <TopTitle />
               <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700">
-                Single account
+                Shared household
               </span>
             </div>
           </div>
 
-<<<<<<< HEAD
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm md:p-5">
             {children}
           </div>
-=======
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">{children}</div>
->>>>>>> f445150 (Align frontend with to-be-budgeted backend model)
         </main>
       </div>
     </div>
@@ -293,12 +284,54 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="/home" element={<ProtectedLayout><Home /></ProtectedLayout>} />
-        <Route path="/budget" element={<ProtectedLayout><Budget /></ProtectedLayout>} />
-        <Route path="/bills" element={<ProtectedLayout><Bills /></ProtectedLayout>} />
-        <Route path="/goals" element={<ProtectedLayout><Goals /></ProtectedLayout>} />
-        <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
-        <Route path="/debts" element={<ProtectedLayout><Debts /></ProtectedLayout>} />
+        <Route
+          path="/home"
+          element={
+            <ProtectedLayout>
+              <Home />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/budget"
+          element={
+            <ProtectedLayout>
+              <Budget />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/bills"
+          element={
+            <ProtectedLayout>
+              <Bills />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/goals"
+          element={
+            <ProtectedLayout>
+              <Goals />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedLayout>
+              <Calendar />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/debts"
+          element={
+            <ProtectedLayout>
+              <Debts />
+            </ProtectedLayout>
+          }
+        />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </div>
