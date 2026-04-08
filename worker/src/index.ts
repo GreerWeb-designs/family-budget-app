@@ -300,7 +300,14 @@ app.get("/api/totals", requireUser, async (c) => {
      WHERE direction = 'in'`
   ).first<{ totalIncome: number }>();
 
-  const validBudgetCategoryIds = CATEGORIES.filter((c) => c.id !== "income").map((c) => c.id);
+  const categories = await getCategories(c.env.DB);
+const validBudgetCategoryIds = categories
+  .filter((c) => c.direction !== "inflow")
+  .map((c) => c.id);
+
+let totalBudgeted = 0;
+
+if (validBudgetCategoryIds.length > 0) {
   const placeholders = validBudgetCategoryIds.map(() => "?").join(",");
 
   const budgetRow = await c.env.DB.prepare(
@@ -310,6 +317,9 @@ app.get("/api/totals", requireUser, async (c) => {
   )
     .bind(...validBudgetCategoryIds)
     .first<{ totalBudgeted: number }>();
+
+  totalBudgeted;
+}
 
   const accountRow = await c.env.DB.prepare(
     `SELECT COALESCE(bank_balance, 0) AS bankBalance,
@@ -661,12 +671,13 @@ app.delete("/api/spend/:id", requireUser, async (c) => {
 });
 
 app.get("/api/spend/summary", requireUser, async (c) => {
+  const categories = await getCategories(c.env.DB);
+
   const activityRows = await c.env.DB.prepare(
     `SELECT
         category_id,
         COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS activity
      FROM manual_spends
-     WHERE category_id != 'income'
      GROUP BY category_id`
   ).all<{ category_id: string; activity: number }>();
 
@@ -686,15 +697,16 @@ app.get("/api/spend/summary", requireUser, async (c) => {
     budgetByCategory[r.category_id] = Number(r.amount_budgeted || 0);
   }
 
-  const byCategory = CATEGORIES
-    .filter((cat) => cat.id !== "income")
+  const byCategory = categories
+    .filter((cat) => cat.direction !== "inflow")
     .map((cat) => {
       const budgeted = budgetByCategory[cat.id] || 0;
       const activity = activityByCategory[cat.id] || 0;
       const available = budgeted - activity;
 
       return {
-        ...cat,
+        id: cat.id,
+        name: cat.name,
         budgeted,
         activity,
         available,
