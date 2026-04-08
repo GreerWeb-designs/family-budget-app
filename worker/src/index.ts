@@ -114,6 +114,16 @@ async function ensureAccountState(db: D1Database) {
     .run();
 }
 
+async function getCategories(db: D1Database) {
+  const rows = await db.prepare(
+    `SELECT id, name, direction
+     FROM categories
+     ORDER BY name ASC`
+  ).all<{ id: string; name: string; direction: string }>();
+
+  return rows.results ?? [];
+}
+
 // ---- AUTH MIDDLEWARE ----
 const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
   const token = getCookie(c.req.raw, "session");
@@ -139,7 +149,10 @@ const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables 
 
 // ---- ROUTES ----
 app.get("/api/health", (c) => c.json({ ok: true }));
-app.get("/api/categories", (c) => c.json({ categories: CATEGORIES }));
+app.get("/api/categories", async (c) => {
+  const categories = await getCategories(c.env.DB);
+  return c.json({ categories });
+});
 
 // ---- AUTH ----
 app.post("/api/auth/login", async (c) => {
