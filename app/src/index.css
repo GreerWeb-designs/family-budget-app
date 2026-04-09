@@ -1,6 +1,28 @@
 @import "tailwindcss";
 
-/* Optional: global polish */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 html, body, #root {
   height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #F8FAFC;
+}
+
+/* Smooth scrolling */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Better number rendering */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
