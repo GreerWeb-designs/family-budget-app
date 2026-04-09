@@ -196,16 +196,9 @@ app.post("/api/categories", requireUser, async (c) => {
 });
 
 app.delete("/api/categories/:id", requireUser, async (c) => {
-  const id = c.req.param("id");
+  await ensureAccountState(c.env.DB);
 
-  const inBudget = await c.env.DB.prepare(
-    `SELECT category_id
-     FROM budget_lines
-     WHERE category_id = ?
-     LIMIT 1`
-  )
-    .bind(id)
-    .first<{ category_id: string }>();
+  const id = c.req.param("id");
 
   const inSpends = await c.env.DB.prepare(
     `SELECT category_id
@@ -216,9 +209,38 @@ app.delete("/api/categories/:id", requireUser, async (c) => {
     .bind(id)
     .first<{ category_id: string }>();
 
-  if (inBudget || inSpends) {
-    return c.json({ error: "Cannot delete a category that has budget or transaction history" }, 400);
+  if (inSpends) {
+    return c.json({ error: "Cannot delete a category that has transaction history" }, 400);
   }
+
+  const budgetRow = await c.env.DB.prepare(
+    `SELECT COALESCE(amount_budgeted, 0) AS amount_budgeted
+     FROM budget_lines
+     WHERE category_id = ?
+     LIMIT 1`
+  )
+    .bind(id)
+    .first<{ amount_budgeted: number }>();
+
+  const amountBudgeted = Number(budgetRow?.amount_budgeted ?? 0);
+
+  if (amountBudgeted !== 0) {
+    await c.env.DB.prepare(
+      `UPDATE account_state
+       SET to_be_budgeted = to_be_budgeted + ?,
+           updated_at = ?
+       WHERE id = 'main'`
+    )
+      .bind(amountBudgeted, new Date().toISOString())
+      .run();
+  }
+
+  await c.env.DB.prepare(
+    `DELETE FROM budget_lines
+     WHERE category_id = ?`
+  )
+    .bind(id)
+    .run();
 
   await c.env.DB.prepare(
     `DELETE FROM categories
@@ -526,60 +548,57 @@ app.delete("/api/bills/:id", requireUser, async (c) => {
 });
 
 // ---- BUDGET (SHARED HOUSEHOLD) ----
+// NEW - replace with:
 app.get("/api/budget/current", requireUser, async (c) => {
+  const month = (c.req.query("month") || "").trim() || monthKey();
+
   const rows = await c.env.DB.prepare(
     `SELECT category_id, amount_budgeted
-     FROM budget_lines`
-  ).all<{ category_id: string; amount_budgeted: number }>();
+     FROM budget_lines
+     WHERE month = ?`
+  ).bind(month).all<{ category_id: string; amount_budgeted: number }>();
 
   const budget: Record<string, number> = {};
   for (const r of rows.results ?? []) {
     budget[r.category_id] = Number(r.amount_budgeted || 0);
   }
 
-  return c.json({ budget });
+  return c.json({ budget, month });
 });
 
+// NEW - replace with:
 app.post("/api/budget/set", requireUser, async (c) => {
   await ensureAccountState(c.env.DB);
 
-  const body = await c.req.json<{ categoryId?: string; amount?: number }>();
+  const body = await c.req.json<{ categoryId?: string; amount?: number; month?: string }>();
   const categoryId = (body.categoryId || "").trim();
   const amount = body.amount;
+  const month = (body.month || "").trim() || monthKey();
 
   if (!categoryId || typeof amount !== "number" || Number.isNaN(amount)) {
     return c.json({ error: "Bad payload" }, 400);
   }
 
   const existing = await c.env.DB.prepare(
-    `SELECT amount_budgeted
-     FROM budget_lines
-     WHERE category_id = ?
-     LIMIT 1`
-  )
-    .bind(categoryId)
-    .first<{ amount_budgeted: number }>();
+    `SELECT amount_budgeted FROM budget_lines
+     WHERE category_id = ? AND month = ? LIMIT 1`
+  ).bind(categoryId, month).first<{ amount_budgeted: number }>();
 
   const oldAmount = Number(existing?.amount_budgeted ?? 0);
   const delta = Number(amount) - oldAmount;
 
   await c.env.DB.prepare(
-    `INSERT INTO budget_lines (id, category_id, amount_budgeted)
-     VALUES (?, ?, ?)
-     ON CONFLICT(category_id) DO UPDATE SET
+    `INSERT INTO budget_lines (id, category_id, amount_budgeted, month)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(category_id, month) DO UPDATE SET
        amount_budgeted = excluded.amount_budgeted`
-  )
-    .bind(uid(), categoryId, amount)
-    .run();
+  ).bind(uid(), categoryId, amount, month).run();
 
   await c.env.DB.prepare(
     `UPDATE account_state
-     SET to_be_budgeted = to_be_budgeted - ?,
-         updated_at = ?
+     SET to_be_budgeted = to_be_budgeted - ?, updated_at = ?
      WHERE id = 'main'`
-  )
-    .bind(delta, new Date().toISOString())
-    .run();
+  ).bind(delta, new Date().toISOString()).run();
 
   return c.json({ ok: true });
 });
@@ -758,50 +777,30 @@ app.delete("/api/spend/:id", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
+// NEW
 app.get("/api/spend/summary", requireUser, async (c) => {
+  const month = (c.req.query("month") || "").trim() || monthKey();
   const categories = await getCategories(c.env.DB);
+
+  // Activity filtered to current month's transactions only
+  const [year, mon] = month.split("-");
+  const startDate = `${year}-${mon}-01`;
+  const endDate = new Date(Number(year), Number(mon), 1).toISOString().slice(0, 10);
 
   const activityRows = await c.env.DB.prepare(
     `SELECT
         category_id,
         COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS activity
      FROM manual_spends
+     WHERE date >= ? AND date < ?
      GROUP BY category_id`
-  ).all<{ category_id: string; activity: number }>();
+  ).bind(startDate, endDate).all<{ category_id: string; activity: number }>();
 
   const budgetRows = await c.env.DB.prepare(
     `SELECT category_id, amount_budgeted
-     FROM budget_lines`
-  ).all<{ category_id: string; amount_budgeted: number }>();
-
-  const activityByCategory: Record<string, number> = {};
-  const budgetByCategory: Record<string, number> = {};
-
-  for (const r of activityRows.results ?? []) {
-    activityByCategory[r.category_id] = Number(r.activity || 0);
-  }
-
-  for (const r of budgetRows.results ?? []) {
-    budgetByCategory[r.category_id] = Number(r.amount_budgeted || 0);
-  }
-
-  const byCategory = categories
-    .filter((cat) => cat.direction !== "inflow")
-    .map((cat) => {
-      const budgeted = budgetByCategory[cat.id] || 0;
-      const activity = activityByCategory[cat.id] || 0;
-      const available = budgeted - activity;
-
-      return {
-        id: cat.id,
-        name: cat.name,
-        budgeted,
-        activity,
-        available,
-      };
-    });
-
-  return c.json({ byCategory });
+     FROM budget_lines
+     WHERE month = ?`
+  ).bind(month).all<{ category_id: string; amount_budgeted: number }>();
 });
 
 // ---- GOALS (PERSONAL) ----
@@ -1327,6 +1326,63 @@ app.get("/api/calendar/range", requireUser, async (c) => {
     bills: billsRows.results ?? [],
     events: eventsRows.results ?? [],
   });
+});
+
+// ---- MONTHLY BUDGET ----
+
+app.get("/api/budget/months", requireUser, async (c) => {
+  const rows = await c.env.DB.prepare(
+    `SELECT month, closed_at FROM budget_months ORDER BY month DESC`
+  ).all<{ month: string; closed_at: string | null }>();
+
+  return c.json({ months: rows.results ?? [] });
+});
+
+app.post("/api/budget/month/close", requireUser, async (c) => {
+  await ensureAccountState(c.env.DB);
+
+  const body = await c.req.json<{ currentMonth?: string; nextMonth?: string }>();
+  const currentMonth = (body.currentMonth || "").trim();
+  const nextMonth = (body.nextMonth || "").trim();
+
+  if (!/^\d{4}-\d{2}$/.test(currentMonth) || !/^\d{4}-\d{2}$/.test(nextMonth)) {
+    return c.json({ error: "currentMonth and nextMonth must be YYYY-MM" }, 400);
+  }
+
+  const now = new Date().toISOString();
+
+  // Mark current month closed
+  await c.env.DB.prepare(
+    `UPDATE budget_months SET closed_at = ? WHERE month = ?`
+  ).bind(now, currentMonth).run();
+
+  // Create next month
+  await c.env.DB.prepare(
+    `INSERT OR IGNORE INTO budget_months (month, created_at) VALUES (?, ?)`
+  ).bind(nextMonth, now).run();
+
+  // Seed next month with all categories at $0 (YNAB style)
+  const categories = await c.env.DB.prepare(
+    `SELECT id FROM categories WHERE direction != 'inflow'`
+  ).all<{ id: string }>();
+
+  for (const cat of categories.results ?? []) {
+    await c.env.DB.prepare(
+      `INSERT OR IGNORE INTO budget_lines (id, category_id, amount_budgeted, month)
+       VALUES (?, ?, 0, ?)`
+    ).bind(uid(), cat.id, nextMonth).run();
+  }
+
+  // TBB resets to full bank balance (all budgets are $0)
+  const acct = await c.env.DB.prepare(
+    `SELECT bank_balance FROM account_state WHERE id = 'main' LIMIT 1`
+  ).first<{ bank_balance: number }>();
+
+  await c.env.DB.prepare(
+    `UPDATE account_state SET to_be_budgeted = ?, updated_at = ? WHERE id = 'main'`
+  ).bind(Number(acct?.bank_balance ?? 0), now).run();
+
+  return c.json({ ok: true, nextMonth });
 });
 
 export default {
