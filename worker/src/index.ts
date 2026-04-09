@@ -783,9 +783,14 @@ app.get("/api/spend/summary", requireUser, async (c) => {
   const categories = await getCategories(c.env.DB);
 
   // Activity filtered to current month's transactions only
-  const [year, mon] = month.split("-");
-  const startDate = `${year}-${mon}-01`;
-  const endDate = new Date(Number(year), Number(mon), 1).toISOString().slice(0, 10);
+  // NEW
+const [year, mon] = month.split("-");
+const startDate = `${year}-${mon}-01`;
+const y = Number(year);
+const m = Number(mon);
+const nextY = m === 12 ? y + 1 : y;
+const nextM = m === 12 ? 1 : m + 1;
+const endDate = `${nextY}-${String(nextM).padStart(2, "0")}-01`;
 
   const activityRows = await c.env.DB.prepare(
     `SELECT
