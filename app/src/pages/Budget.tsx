@@ -35,13 +35,13 @@ function monthLabel(m: string) {
   return date.toLocaleString("default", { month: "long", year: "numeric" });
 }
 
-function nextMonth(m: string) {
+function getNextMonth(m: string) {
   const [year, month] = m.split("-").map(Number);
   const d = new Date(year, month, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function prevMonth(m: string) {
+function getPrevMonth(m: string) {
   const [year, month] = m.split("-").map(Number);
   const d = new Date(year, month - 2, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -63,7 +63,6 @@ export default function Budget() {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [closingMonth, setClosingMonth] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -72,7 +71,7 @@ export default function Budget() {
   const activeMonthData = months.find((m) => m.month === activeMonth);
   const isReadOnly = !!activeMonthData?.closed_at;
 
-  async function refresh(month = activeMonth) {
+  async function refresh(month: string) {
     const [categoriesRes, summaryRes, totalsRes, accountRes, monthsRes] = await Promise.all([
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>(`/api/spend/summary?month=${month}`),
@@ -99,25 +98,27 @@ export default function Budget() {
   }
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setMsg(null);
-      try {
-        await refresh(activeMonth);
-      } catch (err: any) {
-        setMsg(err?.message || "Failed to load budget.");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    setLoading(true);
+    setMsg(null);
+    refresh(activeMonth)
+      .catch((err: any) => setMsg(err?.message || "Failed to load budget."))
+      .finally(() => setLoading(false));
   }, [activeMonth]);
 
-  const rows = useMemo(() => {
-    return [...(summary?.byCategory ?? [])].sort((a, b) => a.name.localeCompare(b.name));
-  }, [summary]);
+  const rows = useMemo(
+    () => [...(summary?.byCategory ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [summary]
+  );
 
-  const selectedRow = useMemo(() => rows.find((r) => r.id === categoryId) ?? null, [rows, categoryId]);
-  const selectedCategoryName = useMemo(() => cats.find((c) => c.id === categoryId)?.name ?? "Select a category", [cats, categoryId]);
+  const selectedRow = useMemo(
+    () => rows.find((r) => r.id === categoryId) ?? null,
+    [rows, categoryId]
+  );
+
+  const selectedCategoryName = useMemo(
+    () => cats.find((c) => c.id === categoryId)?.name ?? "Select a category",
+    [cats, categoryId]
+  );
 
   const bankBalance = Number(account?.bankBalance ?? totals?.bankBalance ?? 0);
   const toBeBudgeted = Number(account?.toBeBudgeted ?? totals?.toBeBudgeted ?? 0);
@@ -169,7 +170,10 @@ export default function Budget() {
     if (!name) { setMsg("Enter a category name."); return; }
     setCreatingCategory(true);
     try {
-      await api("/api/categories", { method: "POST", body: JSON.stringify({ name, direction: "outflow" }) });
+      await api("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({ name, direction: "outflow" }),
+      });
       setNewCategoryName("");
       setMsg("Category created.");
       await refresh(activeMonth);
@@ -198,11 +202,10 @@ export default function Budget() {
 
   async function handleCloseMonth() {
     setMsg(null);
-    const next = nextMonth(activeMonth);
+    const next = getNextMonth(activeMonth);
     if (!window.confirm(
       `Close ${monthLabel(activeMonth)} and start ${monthLabel(next)}?\n\nAll budgets will reset to $0. Your bank balance carries over.`
     )) return;
-
     setClosingMonth(true);
     try {
       await api("/api/budget/month/close", {
@@ -211,7 +214,6 @@ export default function Budget() {
       });
       setMsg(`${monthLabel(next)} started!`);
       setActiveMonth(next);
-      await refresh(next);
     } catch (err: any) {
       setMsg(err?.message || "Failed to close month.");
     } finally {
@@ -226,7 +228,7 @@ export default function Budget() {
       <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
         <button
           type="button"
-          onClick={() => setActiveMonth(prevMonth(activeMonth))}
+          onClick={() => setActiveMonth(getPrevMonth(activeMonth))}
           className="rounded-xl border border-zinc-200 px-3 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
         >
           ←
@@ -234,17 +236,13 @@ export default function Budget() {
 
         <div className="text-center">
           <div className="text-sm font-semibold text-zinc-900">{monthLabel(activeMonth)}</div>
-          {isReadOnly && (
-            <div className="mt-0.5 text-xs text-zinc-400">Read-only • Closed</div>
-          )}
-          {isCurrentMonth && !isReadOnly && (
-            <div className="mt-0.5 text-xs text-emerald-600">Current month</div>
-          )}
+          {isReadOnly && <div className="mt-0.5 text-xs text-zinc-400">Read-only • Closed</div>}
+          {isCurrentMonth && !isReadOnly && <div className="mt-0.5 text-xs text-emerald-600">Current month</div>}
         </div>
 
         <button
           type="button"
-          onClick={() => setActiveMonth(nextMonth(activeMonth))}
+          onClick={() => setActiveMonth(getNextMonth(activeMonth))}
           disabled={isCurrentMonth}
           className="rounded-xl border border-zinc-200 px-3 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-30"
         >
@@ -294,7 +292,6 @@ export default function Budget() {
                 </button>
               </form>
             )}
-
             {isCurrentMonth && !isReadOnly && (
               <button
                 type="button"
@@ -316,6 +313,7 @@ export default function Budget() {
       )}
 
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px]">
+
         {/* Category table */}
         <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
           <div className="hidden grid-cols-[1fr_120px_120px_140px] gap-3 border-b border-zinc-200 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 md:grid">
@@ -326,7 +324,9 @@ export default function Budget() {
           </div>
 
           {loading && <div className="px-5 py-10 text-sm text-zinc-500">Loading…</div>}
-          {!loading && rows.length === 0 && <div className="px-5 py-10 text-sm text-zinc-500">No categories found.</div>}
+          {!loading && rows.length === 0 && (
+            <div className="px-5 py-10 text-sm text-zinc-500">No categories found.</div>
+          )}
 
           {!loading && rows.length > 0 && (
             <div className="divide-y divide-zinc-200">
@@ -345,9 +345,18 @@ export default function Budget() {
                     <div className="md:hidden">
                       <div className="mb-2 truncate text-sm font-medium text-zinc-900">{row.name}</div>
                       <div className="space-y-1">
-                        <div className="text-sm text-zinc-700"><span className="mr-2 text-zinc-500">Budgeted:</span><span className="font-semibold text-zinc-900">{money(row.budgeted)}</span></div>
-                        <div className="text-sm text-zinc-700"><span className="mr-2 text-zinc-500">Activity:</span>{money(row.activity)}</div>
-                        <div className={`text-sm font-semibold ${availableColor(row.available)}`}><span className="mr-2 font-normal text-zinc-500">Available:</span>{money(row.available)}</div>
+                        <div className="text-sm text-zinc-700">
+                          <span className="mr-2 text-zinc-500">Budgeted:</span>
+                          <span className="font-semibold text-zinc-900">{money(row.budgeted)}</span>
+                        </div>
+                        <div className="text-sm text-zinc-700">
+                          <span className="mr-2 text-zinc-500">Activity:</span>
+                          {money(row.activity)}
+                        </div>
+                        <div className={`text-sm font-semibold ${availableColor(row.available)}`}>
+                          <span className="mr-2 font-normal text-zinc-500">Available:</span>
+                          {money(row.available)}
+                        </div>
                       </div>
                       {!isReadOnly && (
                         <div className="mt-3">
@@ -443,7 +452,6 @@ export default function Budget() {
                   ))}
                 </select>
               </label>
-
               <form onSubmit={handleSetBudget} className="mt-4 flex flex-col gap-2 sm:flex-row">
                 <input
                   value={setAmount}
@@ -476,11 +484,7 @@ export default function Budget() {
                     }`}
                   >
                     <span>{monthLabel(m.month)}</span>
-                    {m.closed_at ? (
-                      <span className="text-xs opacity-60">Closed</span>
-                    ) : (
-                      <span className="text-xs opacity-60">Active</span>
-                    )}
+                    <span className="text-xs opacity-60">{m.closed_at ? "Closed" : "Active"}</span>
                   </button>
                 ))}
               </div>
