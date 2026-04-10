@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 
 export default function JoinHousehold() {
@@ -11,10 +12,8 @@ export default function JoinHousehold() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    // Check if logged in, then auto-join
     api<{ userId: string }>("/api/auth/me")
       .then(() => {
-        // Logged in — attempt join
         setStatus("joining");
         return api<{ ok: boolean; householdName: string }>("/api/household/join", {
           method: "POST",
@@ -35,7 +34,7 @@ export default function JoinHousehold() {
           setErrorMsg(
             isExpired
               ? "This invite code has already been used or has expired. Ask your household admin to generate a new one."
-              : msg || "Something went wrong."
+              : msg || "Something went wrong. Please try again."
           );
           setStatus("error");
         }
@@ -43,69 +42,62 @@ export default function JoinHousehold() {
   }, [code, nav]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--sidebar-bg)" }}>
       <div className="w-full max-w-sm">
 
+        {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white font-bold text-xl shadow-lg shadow-emerald-500/30 mb-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white mb-3"
+            style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
             DB
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Ducharme Budget</h1>
-          <p className="mt-1 text-sm text-slate-400">Family household invite</p>
+          <div className="font-display text-xl font-semibold text-white">Ducharme Budget</div>
+          <div className="text-sm text-stone-500 mt-0.5">Family household invite</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="rounded-2xl bg-white p-6 shadow-xl" style={{ border: "1px solid var(--sidebar-border)" }}>
 
           {(status === "checking" || status === "joining") && (
-            <div className="text-center py-4 space-y-3">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-                <span className="text-emerald-400 text-lg animate-spin">↻</span>
-              </div>
-              <p className="text-sm text-slate-300">
+            <div className="text-center py-6 space-y-4">
+              <Loader2 size={32} className="mx-auto text-teal-500 animate-spin" />
+              <p className="text-sm text-stone-600">
                 {status === "checking" ? "Checking your account…" : "Joining household…"}
               </p>
             </div>
           )}
 
           {status === "success" && (
-            <div className="text-center py-4 space-y-3">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
-                ✓
-              </div>
+            <div className="text-center py-6 space-y-4">
+              <CheckCircle2 size={40} className="mx-auto text-teal-500" />
               <div>
-                <p className="text-base font-semibold text-white">
-                  You've joined "{householdName}"!
-                </p>
-                <p className="text-sm text-slate-400 mt-1">Redirecting to your dashboard…</p>
+                <p className="text-base font-semibold text-stone-900">You've joined "{householdName}"!</p>
+                <p className="text-sm text-stone-400 mt-1">Redirecting to your dashboard…</p>
               </div>
             </div>
           )}
 
           {status === "unauthenticated" && (
             <div className="space-y-4">
-              <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-3 text-sm text-amber-400">
+              <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                 You need an account to join this household.
               </div>
-              <p className="text-xs text-slate-400 text-center">
-                The invite code is: <span className="font-mono font-bold text-slate-200">{code}</span>
+              <p className="text-xs text-stone-500 text-center">
+                Invite code: <span className="font-display font-semibold text-stone-800 tracking-wider">{code}</span>
               </p>
               <div className="flex flex-col gap-2">
-                <Link
-                  to={`/signup`}
-                  className="block w-full h-11 rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-400 transition-all text-center leading-11"
-                >
+                <Link to="/signup"
+                  className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition-all"
+                  style={{ background: "var(--color-primary)" }}>
                   Create an account
                 </Link>
-                <Link
-                  to={`/login`}
-                  className="block w-full h-11 rounded-xl border border-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-800 transition-all text-center leading-11"
-                >
+                <Link to="/login"
+                  className="flex h-11 w-full items-center justify-center rounded-xl border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-all">
                   Sign in
                 </Link>
               </div>
-              <p className="text-xs text-slate-500 text-center">
-                After signing in, visit{" "}
-                <Link to="/settings" className="text-emerald-400 hover:text-emerald-300">
+              <p className="text-xs text-stone-400 text-center">
+                After signing in, go to{" "}
+                <Link to="/settings" className="font-semibold text-teal-600 hover:text-teal-700">
                   Settings → Household
                 </Link>{" "}
                 and enter the code.
@@ -115,18 +107,16 @@ export default function JoinHousehold() {
 
           {status === "error" && (
             <div className="space-y-4">
-              <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-800">
-                {errorMsg}
+              <div className="flex gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{errorMsg}</p>
               </div>
-              <Link
-                to="/settings"
-                className="block text-center text-sm text-slate-400 hover:text-slate-200 transition-colors"
-              >
+              <Link to="/settings"
+                className="block text-center text-sm text-stone-500 hover:text-stone-700 transition-colors">
                 ← Back to Settings
               </Link>
             </div>
           )}
-
         </div>
       </div>
     </div>

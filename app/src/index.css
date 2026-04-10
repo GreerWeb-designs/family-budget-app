@@ -1,39 +1,117 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/600.css";
+@import "@fontsource/fraunces/700.css";
 
+/* ── Design tokens ─────────────────────────────────── */
+:root {
+  --color-primary:        #0F766E;
+  --color-primary-light:  #14B8A6;
+  --color-primary-dark:   #0D5C57;
+  --color-accent:         #F59E0B;
+  --color-success:        #10B981;
+  --color-warning:        #F59E0B;
+  --color-danger:         #EF4444;
+
+  --color-bg:             #FAFAF9;
+  --color-surface:        #FFFFFF;
+  --color-border:         #E7E5E4;
+  --color-border-subtle:  #F5F5F4;
+
+  --color-text:           #1C1917;
+  --color-text-muted:     #78716C;
+  --color-text-subtle:    #A8A29E;
+
+  --sidebar-bg:           #0C1410;
+  --sidebar-border:       #1a2e24;
+  --sidebar-text:         #D6D3D1;
+  --sidebar-text-muted:   #6B7280;
+  --sidebar-active-bg:    rgba(20, 184, 166, 0.12);
+  --sidebar-active-text:  #5EEAD4;
+
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-card-hover: 0 4px 16px 0 rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04);
+}
+
+/* ── Base reset ────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; padding: 0; }
 
 body {
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background: #F8FAFC;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
-.font-mono, .tabular-nums {
-  font-family: 'DM Mono', 'Fira Code', monospace;
+/* ── Typography ────────────────────────────────────── */
+.font-display {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+}
+
+.tabular-nums {
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
-/* Landscape mobile — full width content, no wasted space */
+/* ── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D6D3D1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #A8A29E; }
+
+/* ── Focus rings ───────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Reduced motion ────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Mobile landscape ──────────────────────────────── */
 @media (max-height: 500px) and (orientation: landscape) {
-  /* Hide bottom tab bar in landscape — use side nav instead */
   nav.mobile-bottom-nav { display: none !important; }
-  /* Remove bottom padding added for tab bar */
-  .mobile-tab-spacer { display: none !important; }
+  .mobile-tab-spacer    { display: none !important; }
 }
 
-/* FullCalendar mobile overrides */
+/* ── FullCalendar overrides ────────────────────────── */
+.fc { font-family: inherit; }
+.fc .fc-button {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  font-size: 0.8rem !important;
+  padding: 0.35rem 0.8rem !important;
+  border-radius: 0.5rem !important;
+}
+.fc .fc-button:hover { background: var(--color-primary-dark) !important; }
+.fc .fc-toolbar-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem !important;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.fc .fc-daygrid-event { border-radius: 4px; font-size: 0.72rem; }
+.fc .fc-day-today { background: rgba(20, 184, 166, 0.06) !important; }
+.fc .fc-day-today .fc-daygrid-day-number { color: var(--color-primary) !important; font-weight: 700; }
+
 @media (max-width: 640px) {
   .fc .fc-toolbar { flex-direction: column; gap: 8px; }
-  .fc .fc-toolbar-title { font-size: 1rem; }
+  .fc .fc-toolbar-title { font-size: 0.95rem !important; }
   .fc .fc-daygrid-day-number { font-size: 0.7rem; padding: 2px 4px; }
   .fc .fc-event-title { font-size: 0.6rem; }
   .fc .fc-col-header-cell-cushion { font-size: 0.7rem; }
   .fc .fc-daygrid-day { min-height: 40px; }
 }
 
-/* Landscape mobile — FullCalendar gets more room */
 @media (max-height: 500px) and (orientation: landscape) {
   .fc .fc-daygrid-day { min-height: 32px; }
   .fc .fc-toolbar { margin-bottom: 4px !important; }

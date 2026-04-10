@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
+import { inputCls, labelCls, AuthError, PrimaryBtn } from "./Login";
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
+  const [email, setEmail]       = useState("");
+  const [busy, setBusy]         = useState(false);
+  const [done, setDone]         = useState(false);
   const [devToken, setDevToken] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr]           = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,84 +22,58 @@ export default function ForgotPassword() {
       setDevToken(res.devToken ?? null);
       setDone(true);
     } catch (e: any) {
-      setErr(e?.message || "Something went wrong.");
-    } finally {
-      setBusy(false);
-    }
+      setErr(e?.message || "Something went wrong — please try again.");
+    } finally { setBusy(false); }
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--color-bg)" }}>
+      <div className="w-full max-w-100">
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white font-bold text-xl shadow-lg shadow-emerald-500/30 mb-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white mb-3"
+            style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
             DB
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Ducharme Budget</h1>
-          <p className="mt-1 text-sm text-slate-400">Password reset</p>
+          <div className="font-display text-xl font-semibold text-stone-900">Reset your password</div>
+          <div className="text-sm text-stone-400 mt-0.5">We'll send you a link to get back in</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="rounded-2xl bg-white border p-8 shadow-sm" style={{ borderColor: "var(--color-border)" }}>
           {done ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-3 text-sm text-emerald-400">
-                If an account with that email exists, you'll receive reset instructions.
+              <div className="rounded-xl bg-teal-50 border border-teal-200 px-4 py-3 text-sm text-teal-800">
+                If an account with that email exists, you'll receive reset instructions shortly.
               </div>
               {devToken && (
-                <div className="rounded-xl bg-slate-800 border border-slate-700 px-3 py-3 text-xs text-slate-400 space-y-2">
-                  <div className="font-semibold text-amber-400">Dev mode — reset link:</div>
-                  <Link
-                    to={`/reset-password?token=${devToken}`}
-                    className="text-emerald-400 hover:text-emerald-300 break-all block"
-                  >
+                <div className="rounded-xl bg-stone-50 border border-stone-200 px-4 py-3 text-xs text-stone-600 space-y-2">
+                  <div className="font-semibold text-amber-600">Dev mode — reset link:</div>
+                  <Link to={`/reset-password?token=${devToken}`}
+                    className="text-teal-600 hover:text-teal-700 break-all block transition-colors">
                     /reset-password?token={devToken.slice(0, 16)}…
                   </Link>
                 </div>
               )}
-              <Link
-                to="/login"
-                className="block text-center text-sm text-slate-400 hover:text-slate-200 transition-colors"
-              >
+              <Link to="/login"
+                className="block text-center text-sm text-stone-500 hover:text-stone-700 transition-colors">
                 ← Back to sign in
               </Link>
             </div>
           ) : (
             <>
-              <h2 className="text-base font-semibold text-white mb-2">Forgot your password?</h2>
-              <p className="text-xs text-slate-400 mb-5">Enter your email and we'll send reset instructions.</p>
-
+              <p className="text-sm text-stone-500 mb-6">
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
               <form onSubmit={onSubmit} className="space-y-4">
                 <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 block">Email</span>
-                  <input
-                    className="w-full h-11 rounded-xl bg-slate-800 border border-slate-700 px-3 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    type="email"
-                    autoComplete="email"
-                    required
-                  />
+                  <span className={labelCls}>Email address</span>
+                  <input className={inputCls} type="email" placeholder="you@example.com"
+                    value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
                 </label>
-
-                {err && (
-                  <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2.5 text-sm text-rose-400">
-                    {err}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full h-11 rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-60 transition-all shadow-lg shadow-emerald-500/20"
-                >
-                  {busy ? "Sending…" : "Send reset link"}
-                </button>
+                <AuthError msg={err} />
+                <PrimaryBtn busy={busy} label="Send reset link" loadingLabel="Sending…" />
               </form>
-
-              <p className="mt-4 text-center">
-                <Link to="/login" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              <p className="mt-5 text-center">
+                <Link to="/login" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
                   ← Back to sign in
                 </Link>
               </p>

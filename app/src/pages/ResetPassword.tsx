@@ -1,118 +1,82 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { inputCls, labelCls, AuthError, PrimaryBtn } from "./Login";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [confirm, setConfirm]   = useState("");
+  const [busy, setBusy]         = useState(false);
+  const [done, setDone]         = useState(false);
+  const [err, setErr]           = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (password !== confirm) { setErr("Passwords do not match."); return; }
-    if (password.length < 8) { setErr("Password must be at least 8 characters."); return; }
+    if (password !== confirm)  { setErr("Passwords don't match."); return; }
+    if (password.length < 8)   { setErr("Password must be at least 8 characters."); return; }
     setBusy(true);
     try {
-      await api("/api/auth/reset-password", {
-        method: "POST",
-        body: JSON.stringify({ token, password }),
-      });
+      await api("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });
       setDone(true);
     } catch (e: any) {
-      setErr(e?.message || "Reset failed.");
-    } finally {
-      setBusy(false);
-    }
+      setErr(e?.message || "Reset failed — the link may have expired.");
+    } finally { setBusy(false); }
   }
 
-  const inputCls = "w-full h-11 rounded-xl bg-slate-800 border border-slate-700 px-3 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all";
-
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--color-bg)" }}>
+      <div className="w-full max-w-100">
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white font-bold text-xl shadow-lg shadow-emerald-500/30 mb-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white mb-3"
+            style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
             DB
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Ducharme Budget</h1>
-          <p className="mt-1 text-sm text-slate-400">Set a new password</p>
+          <div className="font-display text-xl font-semibold text-stone-900">Choose a new password</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div className="rounded-2xl bg-white border p-8 shadow-sm" style={{ borderColor: "var(--color-border)" }}>
           {!token ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2.5 text-sm text-rose-400">
-                Invalid reset link. Please request a new one.
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                This reset link isn't valid. Please request a new one.
               </div>
-              <Link to="/forgot-password" className="block text-center text-sm text-emerald-400 hover:text-emerald-300">
-                Request new link
+              <Link to="/forgot-password"
+                className="block text-center text-sm font-semibold text-teal-600 hover:text-teal-700 transition-colors">
+                Request a new link
               </Link>
             </div>
           ) : done ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-3 text-sm text-emerald-400">
-                Password updated successfully!
+              <div className="rounded-xl bg-teal-50 border border-teal-200 px-4 py-3 text-sm text-teal-800">
+                Password updated successfully! You can now sign in with your new password.
               </div>
-              <Link
-                to="/login"
-                className="block w-full h-11 rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-400 transition-all text-center leading-[2.75rem]"
-              >
+              <Link to="/login"
+                className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: "var(--color-primary)" }}>
                 Sign in now
               </Link>
             </div>
           ) : (
-            <>
-              <h2 className="text-base font-semibold text-white mb-5">Choose a new password</h2>
-
-              <form onSubmit={onSubmit} className="space-y-4">
-                <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 block">New Password</span>
-                  <input
-                    className={inputCls}
-                    placeholder="••••••••"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 block">Confirm Password</span>
-                  <input
-                    className={`${inputCls} ${confirm && confirm !== password ? "border-rose-500/50" : ""}`}
-                    placeholder="••••••••"
-                    type="password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                  />
-                </label>
-
-                {err && (
-                  <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-2.5 text-sm text-rose-400">
-                    {err}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full h-11 rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-60 transition-all shadow-lg shadow-emerald-500/20"
-                >
-                  {busy ? "Updating…" : "Update password"}
-                </button>
-              </form>
-            </>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <label className="block">
+                <span className={labelCls}>New password</span>
+                <input className={inputCls} type="password" placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
+              </label>
+              <label className="block">
+                <span className={labelCls}>Confirm password</span>
+                <input
+                  className={inputCls + (confirm && confirm !== password ? " border-red-300 focus:border-red-400 focus:ring-red-100" : "")}
+                  type="password" placeholder="••••••••"
+                  value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+              </label>
+              <AuthError msg={err} />
+              <PrimaryBtn busy={busy} label="Update password" loadingLabel="Updating…" />
+            </form>
           )}
         </div>
       </div>

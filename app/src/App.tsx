@@ -1,7 +1,13 @@
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
+import {
+  LayoutDashboard, PieChart, Receipt, Target, CalendarDays,
+  CreditCard, Settings, LogOut, RefreshCw, ChevronDown,
+  Home as HomeIcon,
+} from "lucide-react";
 import { api } from "./lib/api";
+import { cn, money } from "./lib/utils";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -13,7 +19,7 @@ import Bills from "./pages/Bills";
 import Calendar from "./pages/Calendar";
 import Goals from "./pages/Goals";
 import Debts from "./pages/Debts";
-import Settings from "./pages/Settings";
+import SettingsPage from "./pages/Settings";
 import JoinHousehold from "./pages/JoinHousehold";
 
 type Totals = {
@@ -22,12 +28,6 @@ type Totals = {
   totalBudgeted: number;
   toBeBudgeted: number;
 };
-
-function money(n: number | null | undefined) {
-  const value = Number(n ?? 0);
-  const sign = value < 0 ? "-" : "";
-  return `${sign}$${Math.abs(value).toFixed(2)}`;
-}
 
 function Protected({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
@@ -43,8 +43,11 @@ function Protected({ children }: { children: ReactElement }) {
 
   if (ok === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <div className="text-sm text-slate-400">Loading…</div>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--sidebar-bg)" }}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-teal-400/30 border-t-teal-400 animate-spin" />
+          <div className="text-sm text-stone-500">Loading…</div>
+        </div>
       </div>
     );
   }
@@ -53,74 +56,105 @@ function Protected({ children }: { children: ReactElement }) {
 }
 
 const NAV_ITEMS = [
-  { to: "/home",     label: "Home",     icon: "🏠" },
-  { to: "/budget",   label: "Budget",   icon: "📊" },
-  { to: "/bills",    label: "Bills",    icon: "📄" },
-  { to: "/goals",    label: "Goals",    icon: "🎯" },
-  { to: "/calendar", label: "Calendar", icon: "📅" },
-  { to: "/debts",    label: "Debts",    icon: "💳" },
-  { to: "/settings", label: "Settings", icon: "⚙️" },
+  { to: "/home",     label: "Overview",  Icon: LayoutDashboard },
+  { to: "/budget",   label: "Budget",    Icon: PieChart },
+  { to: "/bills",    label: "Bills",     Icon: Receipt },
+  { to: "/goals",    label: "Goals",     Icon: Target },
+  { to: "/calendar", label: "Calendar",  Icon: CalendarDays },
+  { to: "/debts",    label: "Debts",     Icon: CreditCard },
+  { to: "/settings", label: "Settings",  Icon: Settings },
 ];
 
-function SideLink({ to, label, icon, onClick }: { to: string; label: string; icon: string; onClick?: () => void }) {
+const MOBILE_NAV = [
+  { to: "/home",     label: "Home",     Icon: HomeIcon },
+  { to: "/budget",   label: "Budget",   Icon: PieChart },
+  { to: "/bills",    label: "Bills",    Icon: Receipt },
+  { to: "/goals",    label: "Goals",    Icon: Target },
+  { to: "/calendar", label: "Cal",      Icon: CalendarDays },
+  { to: "/debts",    label: "Debts",    Icon: CreditCard },
+  { to: "/settings", label: "Settings", Icon: Settings },
+];
+
+function SideLink({ to, label, Icon }: { to: string; label: string; Icon: React.FC<{ size?: number; className?: string }> }) {
   return (
     <NavLink
       to={to}
-      onClick={onClick}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+        cn(
+          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
           isActive
-            ? "bg-white/10 text-white"
-            : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-        }`
+            ? "text-teal-300 font-semibold"
+            : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
+        )
       }
+      style={({ isActive }) => isActive ? { background: "var(--sidebar-active-bg)" } : {}}
     >
-      <span className="text-base leading-none">{icon}</span>
-      <span>{label}</span>
+      {({ isActive }) => (
+        <>
+          <Icon size={16} className={isActive ? "text-teal-400" : "text-stone-500"} />
+          <span>{label}</span>
+          {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-400" />}
+        </>
+      )}
     </NavLink>
   );
 }
 
 function PageTitle() {
   const { pathname } = useLocation();
-
-  const { title, icon } = useMemo(() => {
-    if (pathname.startsWith("/budget"))   return { title: "Budget",   icon: "📊" };
-    if (pathname.startsWith("/bills"))    return { title: "Bills",    icon: "📄" };
-    if (pathname.startsWith("/calendar")) return { title: "Calendar", icon: "📅" };
-    if (pathname.startsWith("/goals"))    return { title: "Goals",    icon: "🎯" };
-    if (pathname.startsWith("/debts"))    return { title: "Debts",    icon: "💳" };
-    if (pathname.startsWith("/settings")) return { title: "Settings", icon: "⚙️" };
-    return { title: "Home", icon: "🏠" };
+  const { title } = useMemo(() => {
+    if (pathname.startsWith("/budget"))   return { title: "Budget" };
+    if (pathname.startsWith("/bills"))    return { title: "Bills" };
+    if (pathname.startsWith("/calendar")) return { title: "Calendar" };
+    if (pathname.startsWith("/goals"))    return { title: "Goals" };
+    if (pathname.startsWith("/debts"))    return { title: "Debts" };
+    if (pathname.startsWith("/settings")) return { title: "Settings" };
+    return { title: "Overview" };
   }, [pathname]);
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-lg">{icon}</span>
-      <h1 className="text-base font-semibold text-slate-900">{title}</h1>
+    <h1 className="font-display text-lg font-semibold text-stone-900">{title}</h1>
+  );
+}
+
+function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
+  const initials = name.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const sz = size === "sm" ? "h-7 w-7 text-[10px]" : "h-8 w-8 text-xs";
+  return (
+    <div className={cn("flex shrink-0 items-center justify-center rounded-full font-bold", sz)}
+      style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)", color: "#fff" }}>
+      {initials}
+    </div>
+  );
+}
+
+function TbbPill({ tbb, loading }: { tbb: number; loading: boolean }) {
+  const positive = tbb >= 0;
+  return (
+    <div className={cn(
+      "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tabular-nums",
+      positive ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200" : "bg-red-50 text-red-700 ring-1 ring-red-200"
+    )}>
+      <span className="text-[10px] uppercase tracking-wider opacity-60">TBB</span>
+      <span>{loading ? "—" : money(tbb)}</span>
     </div>
   );
 }
 
 function AppShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
-  const [totals, setTotals] = useState<Totals | null>(null);
+  const [totals, setTotals]           = useState<Totals | null>(null);
   const [loadingTotals, setLoadingTotals] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName]       = useState("");
+  const [userEmail, setUserEmail]     = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   async function refreshTotals() {
     setLoadingTotals(true);
-    try {
-      const t = await api<Totals>("/api/totals");
-      setTotals(t);
-    } catch {
-      setTotals(null);
-    } finally {
-      setLoadingTotals(false);
-    }
+    try { const t = await api<Totals>("/api/totals"); setTotals(t); }
+    catch { setTotals(null); }
+    finally { setLoadingTotals(false); }
   }
 
   useEffect(() => {
@@ -133,9 +167,8 @@ function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!dropdownOpen) return;
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
         setDropdownOpen(false);
-      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -147,38 +180,44 @@ function AppShell({ children }: { children: ReactNode }) {
   }
 
   const tbb = Number(totals?.toBeBudgeted ?? 0);
-  const tbbColor = tbb < 0 ? "text-red-400" : tbb === 0 ? "text-emerald-400" : "text-emerald-300";
-  const tbbBg   = tbb < 0 ? "bg-red-500/10 border-red-500/20" : "bg-emerald-500/10 border-emerald-500/20";
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen" style={{ background: "var(--color-bg)" }}>
 
-      {/* ── Desktop Sidebar ── */}
-      <aside className="hidden md:flex md:w-60 md:flex-col md:shrink-0 bg-slate-950 min-h-screen fixed left-0 top-0 z-30">
-
-        {/* Logo */}
-        <div className="px-5 pt-6 pb-4">
+      {/* ── Desktop Sidebar ───────────────────────────── */}
+      <aside
+        className="hidden md:flex md:w-60 md:flex-col md:shrink-0 fixed left-0 top-0 bottom-0 z-30 overflow-y-auto"
+        style={{ background: "var(--sidebar-bg)", borderRight: "1px solid var(--sidebar-border)" }}
+      >
+        {/* Brand */}
+        <div className="px-5 pt-6 pb-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white font-bold text-sm shadow-lg">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm text-white shadow-lg"
+              style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
               DB
             </div>
             <div>
               <div className="text-sm font-bold text-white leading-tight">Ducharme</div>
-              <div className="text-xs text-slate-400 leading-tight">Family Budget</div>
+              <div className="text-xs leading-tight" style={{ color: "var(--sidebar-text-muted)" }}>Family Budget</div>
             </div>
           </div>
         </div>
 
-        {/* TBB Widget */}
+        {/* TBB card */}
         <div className="px-3 pb-4">
-          <div className={`rounded-xl border px-4 py-3 ${tbbBg}`}>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <div className={cn(
+            "rounded-xl px-4 py-3 border",
+            tbb < 0
+              ? "border-red-900/40 bg-red-950/40"
+              : "border-teal-900/40 bg-teal-950/30"
+          )}>
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--sidebar-text-muted)" }}>
               To Be Budgeted
             </div>
-            <div className={`mt-1 text-2xl font-bold tabular-nums ${tbbColor}`}>
+            <div className={cn("text-2xl font-display font-semibold tabular-nums", tbb < 0 ? "text-red-400" : "text-teal-300")}>
               {loadingTotals ? "—" : money(tbb)}
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-500">Available to assign</div>
+            <div className="text-[11px] mt-0.5" style={{ color: "var(--sidebar-text-muted)" }}>Available to assign</div>
           </div>
         </div>
 
@@ -189,48 +228,50 @@ function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-slate-800 px-3 py-4 space-y-1">
+        {/* User footer */}
+        <div className="px-3 py-4 space-y-1" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
           {userName && (
-            <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-xs font-bold">
-                {userName.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-xs font-semibold text-slate-200">{userName}</div>
-                {userEmail && <div className="truncate text-[10px] text-slate-500">{userEmail}</div>}
+            <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
+              <UserAvatar name={userName} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-semibold text-stone-200">{userName}</div>
+                {userEmail && <div className="truncate text-[10px]" style={{ color: "var(--sidebar-text-muted)" }}>{userEmail}</div>}
               </div>
             </div>
           )}
           <button
             type="button"
             onClick={refreshTotals}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all hover:bg-white/5"
+            style={{ color: "var(--sidebar-text-muted)" }}
           >
-            <span>↻</span>
+            <RefreshCw size={14} />
             <span>Refresh totals</span>
           </button>
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-rose-400 transition-all"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all hover:bg-red-950/40 hover:text-red-400"
+            style={{ color: "var(--sidebar-text-muted)" }}
           >
-            <span>→</span>
-            <span>Logout</span>
+            <LogOut size={14} />
+            <span>Sign out</span>
           </button>
         </div>
       </aside>
 
-      {/* ── Main content area ── */}
-      <div className="flex flex-1 flex-col md:ml-60">
+      {/* ── Main area ─────────────────────────────────── */}
+      <div className="flex flex-1 flex-col md:ml-60 min-w-0">
 
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-white/90 backdrop-blur px-4 md:px-6"
+          style={{ borderColor: "var(--color-border)" }}>
           <PageTitle />
-          <div className="flex items-center gap-3">
-            <div className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${tbbBg} ${tbbColor}`}>
-              <span>TBB</span>
-              <span>{loadingTotals ? "—" : money(tbb)}</span>
+
+          <div className="flex items-center gap-2.5">
+            {/* TBB pill — desktop only */}
+            <div className="hidden sm:block">
+              <TbbPill tbb={tbb} loading={loadingTotals} />
             </div>
 
             {/* User dropdown */}
@@ -238,54 +279,45 @@ function AppShell({ children }: { children: ReactNode }) {
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
+                  aria-label="User menu"
+                  aria-expanded={dropdownOpen}
                   onClick={() => setDropdownOpen((o) => !o)}
-                  className="flex items-center gap-1.5 rounded-full px-2 py-1 hover:bg-slate-100 transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl px-2 py-1 transition-colors hover:bg-stone-100"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white text-xs font-bold">
-                    {userName.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden sm:block max-w-25 truncate text-xs font-medium text-slate-600">{userName}</span>
-                  <svg className="h-3 w-3 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                  </svg>
+                  <UserAvatar name={userName} />
+                  <span className="hidden sm:block max-w-[120px] truncate text-xs font-medium text-stone-600">{userName}</span>
+                  <ChevronDown size={12} className={cn("text-stone-400 transition-transform", dropdownOpen && "rotate-180")} />
                 </button>
 
                 {dropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-slate-200 bg-white shadow-xl z-50 py-2">
-                    {/* User info */}
-                    <div className="px-4 py-2.5 border-b border-slate-100">
-                      <div className="text-sm font-semibold text-slate-800 truncate">{userName}</div>
-                      {userEmail && <div className="text-xs text-slate-400 truncate mt-0.5">{userEmail}</div>}
+                  <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border bg-white shadow-xl z-50 overflow-hidden"
+                    style={{ borderColor: "var(--color-border)" }}>
+                    <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
+                      <div className="flex items-center gap-2.5">
+                        <UserAvatar name={userName} />
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-stone-800 truncate">{userName}</div>
+                          {userEmail && <div className="text-xs text-stone-400 truncate">{userEmail}</div>}
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Actions */}
-                    <div className="py-1">
-                      <button
-                        type="button"
-                        onClick={() => { setDropdownOpen(false); nav("/settings"); }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <span>⚙️</span>
-                        <span>Settings</span>
+                    <div className="py-1.5">
+                      <button type="button" onClick={() => { setDropdownOpen(false); nav("/settings"); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                        <Settings size={14} className="text-stone-400" />
+                        Settings
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => { setDropdownOpen(false); nav("/settings#household"); }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        <span>🏠</span>
-                        <span>Household</span>
+                      <button type="button" onClick={() => { setDropdownOpen(false); nav("/settings#household"); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                        <HomeIcon size={14} className="text-stone-400" />
+                        Household
                       </button>
                     </div>
-
-                    <div className="border-t border-slate-100 py-1">
-                      <button
-                        type="button"
-                        onClick={() => { setDropdownOpen(false); logout(); }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-rose-500 hover:bg-rose-50 transition-colors"
-                      >
-                        <span>→</span>
-                        <span>Sign out</span>
+                    <div className="py-1.5" style={{ borderTop: "1px solid var(--color-border-subtle)" }}>
+                      <button type="button" onClick={() => { setDropdownOpen(false); logout(); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                        <LogOut size={14} />
+                        Sign out
                       </button>
                     </div>
                   </div>
@@ -296,29 +328,34 @@ function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 px-4 py-5 md:px-6 md:py-6">
+        <main className="flex-1 px-4 py-5 md:px-6 md:py-6 max-w-[1200px] w-full mx-auto">
           {children}
         </main>
 
-        {/* ── Mobile bottom tab bar ── */}
-       <nav className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-200 bg-white/95 backdrop-blur">
-          {NAV_ITEMS.map((item) => (
+        {/* ── Mobile bottom tab bar ──────────────────── */}
+        <nav className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t bg-white/95 backdrop-blur-sm"
+          style={{ borderColor: "var(--color-border)" }}>
+          {MOBILE_NAV.map(({ to, label, Icon }) => (
             <NavLink
-              key={item.to}
-              to={item.to}
+              key={to}
+              to={to}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors ${
-                  isActive ? "text-emerald-600" : "text-slate-400"
-                }`
+                cn(
+                  "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+                  isActive ? "text-teal-600" : "text-stone-400"
+                )
               }
             >
-              <span className="text-lg leading-none">{item.icon}</span>
-              <span>{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
+                  <span className={isActive ? "font-semibold" : ""}>{label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Bottom padding for mobile tab bar */}
         <div className="mobile-tab-spacer h-16 md:hidden" />
       </div>
     </div>
@@ -336,18 +373,18 @@ function ProtectedLayout({ children }: { children: ReactElement }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+      <Route path="/login"           element={<Login />} />
+      <Route path="/signup"          element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/reset-password"  element={<ResetPassword />} />
+      <Route path="/"                element={<Navigate to="/home" replace />} />
       <Route path="/home"     element={<ProtectedLayout><Home /></ProtectedLayout>} />
       <Route path="/budget"   element={<ProtectedLayout><Budget /></ProtectedLayout>} />
       <Route path="/bills"    element={<ProtectedLayout><Bills /></ProtectedLayout>} />
       <Route path="/goals"    element={<ProtectedLayout><Goals /></ProtectedLayout>} />
       <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
       <Route path="/debts"    element={<ProtectedLayout><Debts /></ProtectedLayout>} />
-      <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+      <Route path="/settings" element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
       <Route path="/join/:code" element={<JoinHousehold />} />
       <Route path="*"         element={<Navigate to="/home" replace />} />
     </Routes>
