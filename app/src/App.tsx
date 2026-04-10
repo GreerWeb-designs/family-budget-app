@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { api } from "./lib/api";
 
@@ -103,6 +103,9 @@ function AppShell({ children }: { children: ReactNode }) {
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loadingTotals, setLoadingTotals] = useState(false);
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   async function refreshTotals() {
     setLoadingTotals(true);
@@ -118,8 +121,21 @@ function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshTotals();
-    api<{ name: string }>("/api/auth/me").then((r) => setUserName(r.name || "")).catch(() => {});
+    api<{ name: string; email: string }>("/api/auth/me")
+      .then((r) => { setUserName(r.name || ""); setUserEmail(r.email || ""); })
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [dropdownOpen]);
 
   async function logout() {
     try { await api("/api/auth/logout", { method: "POST" }); }
@@ -172,9 +188,14 @@ function AppShell({ children }: { children: ReactNode }) {
         {/* Footer */}
         <div className="border-t border-slate-800 px-3 py-4 space-y-1">
           {userName && (
-            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400">
-              <span>👤</span>
-              <span className="truncate">{userName}</span>
+            <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-xs font-bold">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-xs font-semibold text-slate-200">{userName}</div>
+                {userEmail && <div className="truncate text-[10px] text-slate-500">{userEmail}</div>}
+              </div>
             </div>
           )}
           <button
@@ -207,11 +228,65 @@ function AppShell({ children }: { children: ReactNode }) {
               <span>TBB</span>
               <span>{loadingTotals ? "—" : money(tbb)}</span>
             </div>
+
+            {/* User dropdown */}
             {userName && (
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
-                <span>👤</span>
-                <span>{userName}</span>
-              </span>
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen((o) => !o)}
+                  className="flex items-center gap-1.5 rounded-full px-2 py-1 hover:bg-slate-100 transition-colors"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white text-xs font-bold">
+                    {userName.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="hidden sm:block max-w-25 truncate text-xs font-medium text-slate-600">{userName}</span>
+                  <svg className="h-3 w-3 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-slate-200 bg-white shadow-xl z-50 py-2">
+                    {/* User info */}
+                    <div className="px-4 py-2.5 border-b border-slate-100">
+                      <div className="text-sm font-semibold text-slate-800 truncate">{userName}</div>
+                      {userEmail && <div className="text-xs text-slate-400 truncate mt-0.5">{userEmail}</div>}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => { setDropdownOpen(false); alert("Settings coming soon"); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <span>⚙️</span>
+                        <span>Settings</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDropdownOpen(false); alert("Household management coming soon"); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <span>🏠</span>
+                        <span>Household</span>
+                      </button>
+                    </div>
+
+                    <div className="border-t border-slate-100 py-1">
+                      <button
+                        type="button"
+                        onClick={() => { setDropdownOpen(false); logout(); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-rose-500 hover:bg-rose-50 transition-colors"
+                      >
+                        <span>→</span>
+                        <span>Sign out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </header>

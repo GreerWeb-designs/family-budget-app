@@ -91,9 +91,10 @@ async function ensureAccountState(db: D1Database, userId: string) {
     .run();
 }
 
-async function getCategories(db: D1Database) {
+async function getCategories(db: D1Database, userId: string) {
   const rows = await db
-    .prepare(`SELECT id, name, direction FROM categories ORDER BY name ASC`)
+    .prepare(`SELECT id, name, direction FROM categories WHERE user_id = ? ORDER BY name ASC`)
+    .bind(userId)
     .all<{ id: string; name: string; direction: string }>();
   return rows.results ?? [];
 }
@@ -121,8 +122,9 @@ const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables 
 app.get("/api/health", (c) => c.json({ ok: true }));
 
 // ---- CATEGORIES ----
-app.get("/api/categories", async (c) => {
-  const categories = await getCategories(c.env.DB);
+app.get("/api/categories", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const categories = await getCategories(c.env.DB, userId);
   return c.json({ categories });
 });
 
@@ -133,19 +135,22 @@ app.post("/api/categories", requireUser, async (c) => {
 
   if (!name) return c.json({ error: "Category name is required" }, 400);
 
+  const userId = c.get("userId");
+
   const existing = await c.env.DB.prepare(
-    `SELECT id FROM categories WHERE LOWER(name) = LOWER(?) LIMIT 1`
+    `SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND user_id = ? LIMIT 1`
   )
-    .bind(name)
+    .bind(name, userId)
     .first<{ id: string }>();
 
   if (existing) return c.json({ error: "A category with that name already exists" }, 400);
 
-  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  if (!id) return c.json({ error: "Invalid category name" }, 400);
+  const baseId = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (!baseId) return c.json({ error: "Invalid category name" }, 400);
+  const id = `${userId.slice(0, 8)}_${baseId}`;
 
-  await c.env.DB.prepare(`INSERT INTO categories (id, name, direction) VALUES (?, ?, ?)`)
-    .bind(id, name, direction)
+  await c.env.DB.prepare(`INSERT INTO categories (id, name, direction, user_id) VALUES (?, ?, ?, ?)`)
+    .bind(id, name, direction, userId)
     .run();
 
   return c.json({ ok: true, id });
@@ -183,7 +188,7 @@ app.delete("/api/categories/:id", requireUser, async (c) => {
   }
 
   await c.env.DB.prepare(`DELETE FROM budget_lines WHERE category_id = ?`).bind(id).run();
-  await c.env.DB.prepare(`DELETE FROM categories WHERE id = ?`).bind(id).run();
+  await c.env.DB.prepare(`DELETE FROM categories WHERE id = ? AND user_id = ?`).bind(id, userId).run();
 
   return c.json({ ok: true });
 });
@@ -273,6 +278,25 @@ app.post("/api/auth/signup", async (c) => {
     `INSERT OR IGNORE INTO account_state (id, bank_balance, anchor_balance, to_be_budgeted, updated_at) VALUES (?, 0, 0, 0, ?)`
   ).bind(userId, now).run();
 
+  const defaultCategories = [
+    { id: "income",        name: "Income",         direction: "inflow" },
+    { id: "housing",       name: "Housing",         direction: "outflow" },
+    { id: "groceries",     name: "Groceries",       direction: "outflow" },
+    { id: "transportation",name: "Transportation",  direction: "outflow" },
+    { id: "utilities",     name: "Utilities",       direction: "outflow" },
+    { id: "health",        name: "Health",          direction: "outflow" },
+    { id: "personal",      name: "Personal",        direction: "outflow" },
+    { id: "entertainment", name: "Entertainment",   direction: "outflow" },
+    { id: "savings",       name: "Savings",         direction: "outflow" },
+    { id: "miscellaneous", name: "Miscellaneous",   direction: "outflow" },
+  ];
+  for (const cat of defaultCategories) {
+    const catId = `${userId.slice(0, 8)}_${cat.id}`;
+    await c.env.DB.prepare(
+      `INSERT OR IGNORE INTO categories (id, name, direction, user_id) VALUES (?, ?, ?, ?)`
+    ).bind(catId, cat.name, cat.direction, userId).run();
+  }
+
   const sessionToken = uid();
   const tokenHash = await sha256(sessionToken + c.env.SESSION_SECRET);
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString();
@@ -354,7 +378,7 @@ app.post("/api/account/set", requireUser, async (c) => {
     return c.json({ error: "bankBalance must be a number" }, 400);
   }
 
-  const categories = await getCategories(c.env.DB);
+  const categories = await getCategories(c.env.DB, userId);
   const validIds = categories.filter((c) => c.direction !== "inflow").map((c) => c.id);
   let totalBudgeted = 0;
 
@@ -400,10 +424,10 @@ app.get("/api/totals", requireUser, async (c) => {
   await ensureAccountState(c.env.DB, userId);
 
   const incomeRow = await c.env.DB.prepare(
-    `SELECT COALESCE(SUM(amount), 0) AS totalIncome FROM manual_spends WHERE direction = 'in'`
-  ).first<{ totalIncome: number }>();
+    `SELECT COALESCE(SUM(amount), 0) AS totalIncome FROM manual_spends WHERE direction = 'in' AND user_id = ?`
+  ).bind(userId).first<{ totalIncome: number }>();
 
-  const categories = await getCategories(c.env.DB);
+  const categories = await getCategories(c.env.DB, userId);
   const validIds = categories.filter((c) => c.direction !== "inflow").map((c) => c.id);
   let totalBudgeted = 0;
 
@@ -431,9 +455,10 @@ app.get("/api/totals", requireUser, async (c) => {
 
 // ---- BILLS ----
 app.get("/api/bills", requireUser, async (c) => {
+  const userId = c.get("userId");
   const rows = await c.env.DB.prepare(
-    `SELECT id, user_id, name, amount, mode, due_date FROM bills ORDER BY due_date ASC`
-  ).all<{ id: string; user_id: string; name: string; amount: number; mode: string; due_date: string }>();
+    `SELECT id, user_id, name, amount, mode, due_date FROM bills WHERE user_id = ? ORDER BY due_date ASC`
+  ).bind(userId).all<{ id: string; user_id: string; name: string; amount: number; mode: string; due_date: string }>();
 
   const payments = await c.env.DB.prepare(`SELECT bill_id, paid_date FROM bill_payments`)
     .all<{ bill_id: string; paid_date: string }>();
@@ -589,10 +614,11 @@ app.post("/api/budget/adjust", requireUser, async (c) => {
 
 // ---- SPEND ----
 app.get("/api/spend", requireUser, async (c) => {
+  const userId = c.get("userId");
   const rows = await c.env.DB.prepare(
     `SELECT id, user_id, category_id, amount, date, note, direction, created_at
-     FROM manual_spends ORDER BY date DESC, created_at DESC LIMIT 200`
-  ).all<{
+     FROM manual_spends WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 200`
+  ).bind(userId).all<{
     id: string;
     user_id: string;
     category_id: string;
@@ -626,11 +652,17 @@ app.post("/api/spend", requireUser, async (c) => {
   if (!categoryId || typeof amount !== "number" || Number.isNaN(amount) || amount < 0 || !date) {
     return c.json({ error: "Bad payload" }, 400);
   }
-  if (direction === "in" && categoryId !== "income") {
-    return c.json({ error: "Income entries must use the income category" }, 400);
+
+  const catRow = await c.env.DB.prepare(
+    `SELECT direction FROM categories WHERE id = ? AND user_id = ? LIMIT 1`
+  ).bind(categoryId, userId).first<{ direction: string }>();
+  if (!catRow) return c.json({ error: "Invalid category" }, 400);
+
+  if (direction === "in" && catRow.direction !== "inflow") {
+    return c.json({ error: "Income entries must use an income category" }, 400);
   }
-  if (direction === "out" && categoryId === "income") {
-    return c.json({ error: "Outflow entries cannot use the income category" }, 400);
+  if (direction === "out" && catRow.direction === "inflow") {
+    return c.json({ error: "Outflow entries cannot use an income category" }, 400);
   }
 
   const now = new Date().toISOString();
@@ -697,8 +729,9 @@ app.delete("/api/spend/:id", requireUser, async (c) => {
 
 // ---- SPEND SUMMARY (month-aware) ----
 app.get("/api/spend/summary", requireUser, async (c) => {
+  const userId = c.get("userId");
   const month = (c.req.query("month") || "").trim() || monthKey();
-  const categories = await getCategories(c.env.DB);
+  const categories = await getCategories(c.env.DB, userId);
 
   const [year, mon] = month.split("-");
   const y = Number(year);
@@ -712,10 +745,10 @@ app.get("/api/spend/summary", requireUser, async (c) => {
     `SELECT category_id,
             COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS activity
      FROM manual_spends
-     WHERE date >= ? AND date < ?
+     WHERE date >= ? AND date < ? AND user_id = ?
      GROUP BY category_id`
   )
-    .bind(startDate, endDate)
+    .bind(startDate, endDate, userId)
     .all<{ category_id: string; activity: number }>();
 
   const budgetRows = await c.env.DB.prepare(
@@ -1078,8 +1111,8 @@ app.post("/api/budget/month/close", requireUser, async (c) => {
     .bind(nextMonth, now).run();
 
   const categories = await c.env.DB.prepare(
-    `SELECT id FROM categories WHERE direction != 'inflow'`
-  ).all<{ id: string }>();
+    `SELECT id FROM categories WHERE direction != 'inflow' AND user_id = ?`
+  ).bind(userId).all<{ id: string }>();
 
   for (const cat of categories.results ?? []) {
     await c.env.DB.prepare(
