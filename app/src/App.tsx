@@ -4,6 +4,9 @@ import type { ReactElement, ReactNode } from "react";
 import { api } from "./lib/api";
 
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import Budget from "./pages/Budget";
 import Bills from "./pages/Bills";
@@ -99,6 +102,7 @@ function AppShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loadingTotals, setLoadingTotals] = useState(false);
+  const [userName, setUserName] = useState("");
 
   async function refreshTotals() {
     setLoadingTotals(true);
@@ -112,7 +116,10 @@ function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  useEffect(() => { refreshTotals(); }, []);
+  useEffect(() => {
+    refreshTotals();
+    api<{ name: string }>("/api/auth/me").then((r) => setUserName(r.name || "")).catch(() => {});
+  }, []);
 
   async function logout() {
     try { await api("/api/auth/logout", { method: "POST" }); }
@@ -164,6 +171,12 @@ function AppShell({ children }: { children: ReactNode }) {
 
         {/* Footer */}
         <div className="border-t border-slate-800 px-3 py-4 space-y-1">
+          {userName && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400">
+              <span>👤</span>
+              <span className="truncate">{userName}</span>
+            </div>
+          )}
           <button
             type="button"
             onClick={refreshTotals}
@@ -194,9 +207,12 @@ function AppShell({ children }: { children: ReactNode }) {
               <span>TBB</span>
               <span>{loadingTotals ? "—" : money(tbb)}</span>
             </div>
-            <span className="hidden sm:inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
-              Shared household
-            </span>
+            {userName && (
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
+                <span>👤</span>
+                <span>{userName}</span>
+              </span>
+            )}
           </div>
         </header>
 
@@ -242,6 +258,9 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/home"     element={<ProtectedLayout><Home /></ProtectedLayout>} />
       <Route path="/budget"   element={<ProtectedLayout><Budget /></ProtectedLayout>} />

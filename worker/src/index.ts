@@ -81,13 +81,13 @@ function clearCookie(name: string) {
   return `${name}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0`;
 }
 
-async function ensureAccountState(db: D1Database) {
+async function ensureAccountState(db: D1Database, userId: string) {
   await db
     .prepare(
       `INSERT OR IGNORE INTO account_state (id, bank_balance, anchor_balance, to_be_budgeted, updated_at)
-       VALUES ('main', 0, 0, 0, ?)`
+       VALUES (?, 0, 0, 0, ?)`
     )
-    .bind(new Date().toISOString())
+    .bind(userId, new Date().toISOString())
     .run();
 }
 
@@ -152,7 +152,8 @@ app.post("/api/categories", requireUser, async (c) => {
 });
 
 app.delete("/api/categories/:id", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const id = c.req.param("id");
 
   const inSpends = await c.env.DB.prepare(
@@ -175,9 +176,9 @@ app.delete("/api/categories/:id", requireUser, async (c) => {
 
   if (amountBudgeted !== 0) {
     await c.env.DB.prepare(
-      `UPDATE account_state SET to_be_budgeted = to_be_budgeted + ?, updated_at = ? WHERE id = 'main'`
+      `UPDATE account_state SET to_be_budgeted = to_be_budgeted + ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amountBudgeted, new Date().toISOString())
+      .bind(amountBudgeted, new Date().toISOString(), userId)
       .run();
   }
 
@@ -231,16 +232,110 @@ app.post("/api/auth/logout", async (c) => {
   return c.json({ ok: true });
 });
 
-app.get("/api/auth/me", requireUser, (c) => {
-  return c.json({ ok: true, userId: c.get("userId") });
+app.get("/api/auth/me", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const user = await c.env.DB.prepare(
+    `SELECT id, name, email FROM users WHERE id = ? LIMIT 1`
+  ).bind(userId).first<{ id: string; name: string; email: string }>();
+  return c.json({ ok: true, userId, name: user?.name ?? "", email: user?.email ?? "" });
+});
+
+app.post("/api/auth/signup", async (c) => {
+  const body = await c.req.json<{ name?: string; email?: string; password?: string }>();
+  const name = (body.name || "").trim();
+  const email = (body.email || "").toLowerCase().trim();
+  const password = body.password || "";
+
+  if (!name || !email || !password) return c.json({ error: "Name, email, and password are required" }, 400);
+  if (password.length < 8) return c.json({ error: "Password must be at least 8 characters" }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "Invalid email address" }, 400);
+
+  const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ? LIMIT 1`)
+    .bind(email).first<{ id: string }>();
+  if (existing) return c.json({ error: "An account with that email already exists" }, 400);
+
+  const passwordHash = await sha256(password + c.env.SESSION_SECRET);
+  const now = new Date().toISOString();
+  const userId = uid();
+
+  await c.env.DB.prepare(
+    `INSERT INTO users (id, name, email, password_hash, email_verified, created_at) VALUES (?, ?, ?, ?, 0, ?)`
+  ).bind(userId, name, email, passwordHash, now).run();
+
+  const householdId = uid();
+  await c.env.DB.prepare(`INSERT INTO households (id, name, created_at) VALUES (?, ?, ?)`)
+    .bind(householdId, `${name}'s Household`, now).run();
+  await c.env.DB.prepare(
+    `INSERT INTO household_members (id, household_id, user_id, role, joined_at) VALUES (?, ?, ?, 'admin', ?)`
+  ).bind(uid(), householdId, userId, now).run();
+
+  await c.env.DB.prepare(
+    `INSERT OR IGNORE INTO account_state (id, bank_balance, anchor_balance, to_be_budgeted, updated_at) VALUES (?, 0, 0, 0, ?)`
+  ).bind(userId, now).run();
+
+  const sessionToken = uid();
+  const tokenHash = await sha256(sessionToken + c.env.SESSION_SECRET);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`
+  ).bind(uid(), userId, tokenHash, expiresAt, now).run();
+
+  c.header("Set-Cookie", setCookie("session", sessionToken));
+  return c.json({ ok: true, userId, name });
+});
+
+app.post("/api/auth/forgot-password", async (c) => {
+  const body = await c.req.json<{ email?: string }>();
+  const email = (body.email || "").toLowerCase().trim();
+  if (!email) return c.json({ error: "Email required" }, 400);
+
+  const user = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ? LIMIT 1`)
+    .bind(email).first<{ id: string }>();
+  if (!user) return c.json({ ok: true }); // prevent email enumeration
+
+  const token = uid() + uid();
+  const tokenHash = await sha256(token + c.env.SESSION_SECRET);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+  const now = new Date().toISOString();
+
+  await c.env.DB.prepare(
+    `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, ?, 0, ?)`
+  ).bind(uid(), user.id, tokenHash, expiresAt, now).run();
+
+  return c.json({ ok: true, devToken: token });
+});
+
+app.post("/api/auth/reset-password", async (c) => {
+  const body = await c.req.json<{ token?: string; password?: string }>();
+  const token = (body.token || "").trim();
+  const password = body.password || "";
+  if (!token || !password) return c.json({ error: "Token and password required" }, 400);
+  if (password.length < 8) return c.json({ error: "Password must be at least 8 characters" }, 400);
+
+  const tokenHash = await sha256(token + c.env.SESSION_SECRET);
+  const now = new Date().toISOString();
+
+  const resetToken = await c.env.DB.prepare(
+    `SELECT id, user_id FROM password_reset_tokens WHERE token_hash = ? AND expires_at > ? AND used = 0 LIMIT 1`
+  ).bind(tokenHash, now).first<{ id: string; user_id: string }>();
+  if (!resetToken) return c.json({ error: "Invalid or expired reset link" }, 400);
+
+  const passwordHash = await sha256(password + c.env.SESSION_SECRET);
+  await c.env.DB.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`)
+    .bind(passwordHash, resetToken.user_id).run();
+  await c.env.DB.prepare(`UPDATE password_reset_tokens SET used = 1 WHERE id = ?`)
+    .bind(resetToken.id).run();
+
+  return c.json({ ok: true });
 });
 
 // ---- ACCOUNT ----
 app.get("/api/account", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const row = await c.env.DB.prepare(
-    `SELECT bank_balance, anchor_balance, to_be_budgeted FROM account_state WHERE id = 'main' LIMIT 1`
-  ).first<{ bank_balance: number; anchor_balance: number; to_be_budgeted: number }>();
+    `SELECT bank_balance, anchor_balance, to_be_budgeted FROM account_state WHERE id = ? LIMIT 1`
+  ).bind(userId).first<{ bank_balance: number; anchor_balance: number; to_be_budgeted: number }>();
 
   return c.json({
     bankBalance: Number(row?.bank_balance ?? 0),
@@ -250,7 +345,8 @@ app.get("/api/account", requireUser, async (c) => {
 });
 
 app.post("/api/account/set", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const body = await c.req.json<{ bankBalance?: number }>();
   const bank = body.bankBalance;
 
@@ -274,24 +370,25 @@ app.post("/api/account/set", requireUser, async (c) => {
 
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, updated_at = ? WHERE id = 'main'`
+    `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, updated_at = ? WHERE id = ?`
   )
-    .bind(bank, bank - totalBudgeted, now)
+    .bind(bank, bank - totalBudgeted, now, userId)
     .run();
 
   return c.json({ ok: true });
 });
 
 app.post("/api/account/reconcile", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const acct = await c.env.DB.prepare(
-    `SELECT bank_balance FROM account_state WHERE id = 'main' LIMIT 1`
-  ).first<{ bank_balance: number }>();
+    `SELECT bank_balance FROM account_state WHERE id = ? LIMIT 1`
+  ).bind(userId).first<{ bank_balance: number }>();
 
   await c.env.DB.prepare(
-    `UPDATE account_state SET anchor_balance = ?, updated_at = ? WHERE id = 'main'`
+    `UPDATE account_state SET anchor_balance = ?, updated_at = ? WHERE id = ?`
   )
-    .bind(Number(acct?.bank_balance ?? 0), new Date().toISOString())
+    .bind(Number(acct?.bank_balance ?? 0), new Date().toISOString(), userId)
     .run();
 
   return c.json({ ok: true });
@@ -299,7 +396,8 @@ app.post("/api/account/reconcile", requireUser, async (c) => {
 
 // ---- TOTALS ----
 app.get("/api/totals", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
 
   const incomeRow = await c.env.DB.prepare(
     `SELECT COALESCE(SUM(amount), 0) AS totalIncome FROM manual_spends WHERE direction = 'in'`
@@ -320,8 +418,8 @@ app.get("/api/totals", requireUser, async (c) => {
   }
 
   const accountRow = await c.env.DB.prepare(
-    `SELECT COALESCE(bank_balance, 0) AS bankBalance, COALESCE(to_be_budgeted, 0) AS toBeBudgeted FROM account_state WHERE id = 'main' LIMIT 1`
-  ).first<{ bankBalance: number; toBeBudgeted: number }>();
+    `SELECT COALESCE(bank_balance, 0) AS bankBalance, COALESCE(to_be_budgeted, 0) AS toBeBudgeted FROM account_state WHERE id = ? LIMIT 1`
+  ).bind(userId).first<{ bankBalance: number; toBeBudgeted: number }>();
 
   return c.json({
     bankBalance: Number(accountRow?.bankBalance ?? 0),
@@ -417,7 +515,8 @@ app.get("/api/budget/current", requireUser, async (c) => {
 });
 
 app.post("/api/budget/set", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const body = await c.req.json<{ categoryId?: string; amount?: number; month?: string }>();
   const categoryId = (body.categoryId || "").trim();
   const amount = body.amount;
@@ -445,16 +544,17 @@ app.post("/api/budget/set", requireUser, async (c) => {
     .run();
 
   await c.env.DB.prepare(
-    `UPDATE account_state SET to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = 'main'`
+    `UPDATE account_state SET to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = ?`
   )
-    .bind(delta, new Date().toISOString())
+    .bind(delta, new Date().toISOString(), userId)
     .run();
 
   return c.json({ ok: true });
 });
 
 app.post("/api/budget/adjust", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const body = await c.req.json<{ categoryId?: string; delta?: number; month?: string }>();
   const categoryId = (body.categoryId || "").trim();
   const delta = body.delta;
@@ -479,9 +579,9 @@ app.post("/api/budget/adjust", requireUser, async (c) => {
     .run();
 
   await c.env.DB.prepare(
-    `UPDATE account_state SET to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = 'main'`
+    `UPDATE account_state SET to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = ?`
   )
-    .bind(delta, new Date().toISOString())
+    .bind(delta, new Date().toISOString(), userId)
     .run();
 
   return c.json({ ok: true });
@@ -507,8 +607,8 @@ app.get("/api/spend", requireUser, async (c) => {
 });
 
 app.post("/api/spend", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
   const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const body = await c.req.json<{
     categoryId?: string;
     amount?: number;
@@ -545,15 +645,15 @@ app.post("/api/spend", requireUser, async (c) => {
 
   if (direction === "in") {
     await c.env.DB.prepare(
-      `UPDATE account_state SET bank_balance = bank_balance + ?, to_be_budgeted = to_be_budgeted + ?, updated_at = ? WHERE id = 'main'`
+      `UPDATE account_state SET bank_balance = bank_balance + ?, to_be_budgeted = to_be_budgeted + ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, amount, now)
+      .bind(amount, amount, now, userId)
       .run();
   } else {
     await c.env.DB.prepare(
-      `UPDATE account_state SET bank_balance = bank_balance - ?, updated_at = ? WHERE id = 'main'`
+      `UPDATE account_state SET bank_balance = bank_balance - ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, now)
+      .bind(amount, now, userId)
       .run();
   }
 
@@ -561,7 +661,8 @@ app.post("/api/spend", requireUser, async (c) => {
 });
 
 app.delete("/api/spend/:id", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const spendId = c.req.param("id");
 
   const existing = await c.env.DB.prepare(
@@ -579,15 +680,15 @@ app.delete("/api/spend/:id", requireUser, async (c) => {
 
   if (existing.direction === "in") {
     await c.env.DB.prepare(
-      `UPDATE account_state SET bank_balance = bank_balance - ?, to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = 'main'`
+      `UPDATE account_state SET bank_balance = bank_balance - ?, to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, amount, now)
+      .bind(amount, amount, now, userId)
       .run();
   } else {
     await c.env.DB.prepare(
-      `UPDATE account_state SET bank_balance = bank_balance + ?, updated_at = ? WHERE id = 'main'`
+      `UPDATE account_state SET bank_balance = bank_balance + ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, now)
+      .bind(amount, now, userId)
       .run();
   }
 
@@ -958,7 +1059,8 @@ app.get("/api/budget/months", requireUser, async (c) => {
 });
 
 app.post("/api/budget/month/close", requireUser, async (c) => {
-  await ensureAccountState(c.env.DB);
+  const userId = c.get("userId");
+  await ensureAccountState(c.env.DB, userId);
   const body = await c.req.json<{ currentMonth?: string; nextMonth?: string }>();
   const currentMonth = (body.currentMonth || "").trim();
   const nextMonth = (body.nextMonth || "").trim();
@@ -986,12 +1088,12 @@ app.post("/api/budget/month/close", requireUser, async (c) => {
   }
 
   const acct = await c.env.DB.prepare(
-    `SELECT bank_balance FROM account_state WHERE id = 'main' LIMIT 1`
-  ).first<{ bank_balance: number }>();
+    `SELECT bank_balance FROM account_state WHERE id = ? LIMIT 1`
+  ).bind(userId).first<{ bank_balance: number }>();
 
   await c.env.DB.prepare(
-    `UPDATE account_state SET to_be_budgeted = ?, updated_at = ? WHERE id = 'main'`
-  ).bind(Number(acct?.bank_balance ?? 0), now).run();
+    `UPDATE account_state SET to_be_budgeted = ?, updated_at = ? WHERE id = ?`
+  ).bind(Number(acct?.bank_balance ?? 0), now, userId).run();
 
   return c.json({ ok: true, nextMonth });
 });

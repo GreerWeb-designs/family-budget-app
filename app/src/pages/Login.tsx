@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 
 export default function Login() {
@@ -80,6 +80,15 @@ export default function Login() {
             >
               {busy ? "Signing in…" : "Sign in"}
             </button>
+
+            <div className="flex items-center justify-between pt-1">
+              <Link to="/forgot-password" className="text-xs text-slate-400 hover:text-slate-200 transition-colors">
+                Forgot password?
+              </Link>
+              <Link to="/signup" className="text-xs text-slate-400 hover:text-slate-200 transition-colors">
+                Don't have an account? <span className="text-emerald-400">Sign up</span>
+              </Link>
+            </div>
           </form>
         </div>
 
