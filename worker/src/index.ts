@@ -725,7 +725,7 @@ type DebtRow = { id: string; name: string; balance: number; apr: number; payment
 app.get("/api/debts", requireUser, async (c) => {
   const userId = c.get("userId");
   const rows = await c.env.DB.prepare(
-    `SELECT id, name, balance, apr, payment, payments_remaining, created_at, updated_at FROM debts WHERE user_id = ? ORDER BY created_at DESC`
+    `SELECT id, name, balance, apr, min_payment AS payment, payments_remaining, created_at, updated_at FROM debts WHERE user_id = ? ORDER BY created_at DESC`
   )
     .bind(userId)
     .all<DebtRow>();
@@ -748,7 +748,7 @@ app.post("/api/debts", requireUser, async (c) => {
   const now = new Date().toISOString();
   const id = uid();
   await c.env.DB.prepare(
-    `INSERT INTO debts (id, user_id, name, balance, apr, payment, payments_remaining, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO debts (id, user_id, name, balance, apr, min_payment, payments_remaining, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(id, userId, name, balance, apr, payment, paymentsRemaining, now, now)
     .run();
@@ -775,7 +775,7 @@ app.patch("/api/debts/:id", requireUser, async (c) => {
   }
   if (body.balance !== undefined) { const n = Number(body.balance); if (Number.isNaN(n)) return c.json({ error: "balance must be a number" }, 400); sets.push("balance = ?"); binds.push(n); }
   if (body.apr !== undefined) { const n = Number(body.apr); if (Number.isNaN(n)) return c.json({ error: "apr must be a number" }, 400); sets.push("apr = ?"); binds.push(n); }
-  if (body.payment !== undefined) { const n = Number(body.payment); if (Number.isNaN(n)) return c.json({ error: "payment must be a number" }, 400); sets.push("payment = ?"); binds.push(n); }
+  if (body.payment !== undefined) { const n = Number(body.payment); if (Number.isNaN(n)) return c.json({ error: "payment must be a number" }, 400); sets.push("min_payment = ?"); binds.push(n); }
   if (body.paymentsRemaining !== undefined) { const n = Number(body.paymentsRemaining); if (Number.isNaN(n)) return c.json({ error: "paymentsRemaining must be a number" }, 400); sets.push("payments_remaining = ?"); binds.push(n); }
 
   const now = new Date().toISOString();
