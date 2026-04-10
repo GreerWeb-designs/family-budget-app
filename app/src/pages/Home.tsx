@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; direction?: string };
 type SummaryRow = Category & { budgeted: number; activity: number; available: number };
 type SummaryRes = { byCategory: SummaryRow[] };
 type SpendRow = { id: string; category_id: string; amount: number; direction?: "in" | "out"; date: string; note: string | null; created_at: string };
@@ -11,8 +11,6 @@ type UpcomingEvent = { id: string; title: string; start_at: string; end_at: stri
 type HomeUpcomingRes = { bills: UpcomingBill[]; events: UpcomingEvent[] };
 type Goal = { id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null; };
 type Note = { id: string; user_id: string; body: string; created_at: string; };
-
-const INCOME_ID = "income";
 
 function money(n: number | null | undefined) {
   const v = Number(n ?? 0);
@@ -34,6 +32,7 @@ function availablePill(available: number | undefined) {
 
 export default function Home() {
   const [cats, setCats] = useState<Category[]>([]);
+  const INCOME_ID = useMemo(() => cats.find((c) => c.direction === "inflow")?.id ?? "income", [cats]);
   const [summary, setSummary] = useState<SummaryRes | null>(null);
   const [spends, setSpends] = useState<SpendRow[]>([]);
   const [upcoming, setUpcoming] = useState<HomeUpcomingRes | null>(null);
@@ -115,7 +114,7 @@ export default function Home() {
       if (prev !== INCOME_ID) return prev;
       return cats.find((x) => x.id !== INCOME_ID)?.id ?? prev;
     });
-  }, [direction, cats]);
+  }, [direction, cats, INCOME_ID]);
 
   async function submitSpend(e: React.FormEvent) {
     e.preventDefault();
