@@ -13,6 +13,8 @@ import Bills from "./pages/Bills";
 import Calendar from "./pages/Calendar";
 import Goals from "./pages/Goals";
 import Debts from "./pages/Debts";
+import Settings from "./pages/Settings";
+import JoinHousehold from "./pages/JoinHousehold";
 
 type Totals = {
   bankBalance: number;
@@ -57,6 +59,7 @@ const NAV_ITEMS = [
   { to: "/goals",    label: "Goals",    icon: "🎯" },
   { to: "/calendar", label: "Calendar", icon: "📅" },
   { to: "/debts",    label: "Debts",    icon: "💳" },
+  { to: "/settings", label: "Settings", icon: "⚙️" },
 ];
 
 function SideLink({ to, label, icon, onClick }: { to: string; label: string; icon: string; onClick?: () => void }) {
@@ -87,6 +90,7 @@ function PageTitle() {
     if (pathname.startsWith("/calendar")) return { title: "Calendar", icon: "📅" };
     if (pathname.startsWith("/goals"))    return { title: "Goals",    icon: "🎯" };
     if (pathname.startsWith("/debts"))    return { title: "Debts",    icon: "💳" };
+    if (pathname.startsWith("/settings")) return { title: "Settings", icon: "⚙️" };
     return { title: "Home", icon: "🏠" };
   }, [pathname]);
 
@@ -258,7 +262,7 @@ function AppShell({ children }: { children: ReactNode }) {
                     <div className="py-1">
                       <button
                         type="button"
-                        onClick={() => { setDropdownOpen(false); alert("Settings coming soon"); }}
+                        onClick={() => { setDropdownOpen(false); nav("/settings"); }}
                         className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <span>⚙️</span>
@@ -266,7 +270,7 @@ function AppShell({ children }: { children: ReactNode }) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setDropdownOpen(false); alert("Household management coming soon"); }}
+                        onClick={() => { setDropdownOpen(false); nav("/settings#household"); }}
                         className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <span>🏠</span>
@@ -343,6 +347,8 @@ export default function App() {
       <Route path="/goals"    element={<ProtectedLayout><Goals /></ProtectedLayout>} />
       <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
       <Route path="/debts"    element={<ProtectedLayout><Debts /></ProtectedLayout>} />
+      <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+      <Route path="/join/:code" element={<JoinHousehold />} />
       <Route path="*"         element={<Navigate to="/home" replace />} />
     </Routes>
   );

@@ -91,6 +91,13 @@ async function ensureAccountState(db: D1Database, userId: string) {
     .run();
 }
 
+async function getUserHouseholdId(db: D1Database, userId: string): Promise<string | null> {
+  const row = await db.prepare(
+    `SELECT household_id FROM household_members WHERE user_id = ? LIMIT 1`
+  ).bind(userId).first<{ household_id: string }>();
+  return row?.household_id ?? null;
+}
+
 async function getCategories(db: D1Database, userId: string) {
   const rows = await db
     .prepare(`SELECT id, name, direction FROM categories WHERE user_id = ? ORDER BY name ASC`)
@@ -456,9 +463,12 @@ app.get("/api/totals", requireUser, async (c) => {
 // ---- BILLS ----
 app.get("/api/bills", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ bills: [] });
+
   const rows = await c.env.DB.prepare(
-    `SELECT id, user_id, name, amount, mode, due_date FROM bills WHERE user_id = ? ORDER BY due_date ASC`
-  ).bind(userId).all<{ id: string; user_id: string; name: string; amount: number; mode: string; due_date: string }>();
+    `SELECT id, user_id, name, amount, mode, due_date FROM bills WHERE household_id = ? ORDER BY due_date ASC`
+  ).bind(householdId).all<{ id: string; user_id: string; name: string; amount: number; mode: string; due_date: string }>();
 
   const payments = await c.env.DB.prepare(`SELECT bill_id, paid_date FROM bill_payments`)
     .all<{ bill_id: string; paid_date: string }>();
@@ -476,6 +486,9 @@ app.get("/api/bills", requireUser, async (c) => {
 
 app.post("/api/bills", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
   const body = await c.req.json<{ name?: string; amount?: number; mode?: "auto" | "manual"; dueDate?: string }>();
   const name = (body.name || "").trim();
   const amount = body.amount;
@@ -488,9 +501,9 @@ app.post("/api/bills", requireUser, async (c) => {
 
   const id = uid();
   await c.env.DB.prepare(
-    `INSERT INTO bills (id, user_id, name, amount, mode, due_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO bills (id, user_id, household_id, name, amount, mode, due_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(id, userId, name, amount, mode, dueDate, new Date().toISOString())
+    .bind(id, userId, householdId, name, amount, mode, dueDate, new Date().toISOString())
     .run();
 
   return c.json({ ok: true, id });
@@ -986,15 +999,18 @@ app.post("/api/debts/:id/plan", requireUser, async (c) => {
 // ---- CALENDAR ----
 app.get("/api/calendar/upcoming", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ events: [] });
+
   const days = Math.max(1, Math.min(30, Number(c.req.query("days") || "7")));
   const now = new Date();
   const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
   const rows = await c.env.DB.prepare(
     `SELECT id, title, start_at, end_at, location, notes FROM calendar_events
-     WHERE user_id = ? AND start_at >= ? AND start_at < ? ORDER BY start_at ASC`
+     WHERE household_id = ? AND start_at >= ? AND start_at < ? ORDER BY start_at ASC`
   )
-    .bind(userId, now.toISOString(), end.toISOString())
+    .bind(householdId, now.toISOString(), end.toISOString())
     .all<{ id: string; title: string; start_at: string; end_at: string | null; location: string | null; notes: string | null }>();
 
   return c.json({ events: rows.results ?? [] });
@@ -1002,6 +1018,9 @@ app.get("/api/calendar/upcoming", requireUser, async (c) => {
 
 app.post("/api/calendar", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
   const body = await c.req.json<{ title?: string; startAt?: string; endAt?: string | null; location?: string; notes?: string }>();
   const title = (body.title || "").trim();
   const startAt = (body.startAt || "").trim();
@@ -1014,24 +1033,28 @@ app.post("/api/calendar", requireUser, async (c) => {
   const now = new Date().toISOString();
   const id = uid();
   await c.env.DB.prepare(
-    `INSERT INTO calendar_events (id, user_id, title, start_at, end_at, location, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO calendar_events (id, user_id, household_id, title, start_at, end_at, location, notes, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(id, userId, title, startAt, endAt, location, notes, now, now).run();
+    .bind(id, userId, householdId, title, startAt, endAt, location, notes, now, now).run();
 
   return c.json({ ok: true, id });
 });
 
 app.delete("/api/calendar/:id", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
   const id = c.req.param("id");
-  await c.env.DB.prepare(`DELETE FROM calendar_events WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  await c.env.DB.prepare(
+    `DELETE FROM calendar_events WHERE id = ? AND household_id = ?`
+  ).bind(id, householdId ?? "").run();
   return c.json({ ok: true });
 });
 
 // ---- HOME UPCOMING ----
 app.get("/api/home/upcoming", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
   const billsDays = Math.max(1, Math.min(14, Number(c.req.query("billsDays") || "3")));
   const calDays = Math.max(1, Math.min(30, Number(c.req.query("calDays") || "7")));
 
@@ -1039,45 +1062,49 @@ app.get("/api/home/upcoming", requireUser, async (c) => {
   today.setHours(0, 0, 0, 0);
   const billsEnd = new Date(today.getTime() + billsDays * 24 * 60 * 60 * 1000);
 
-  const billsRows = await c.env.DB.prepare(
+  const billsRows = householdId ? await c.env.DB.prepare(
     `SELECT id, name, mode, due_date FROM bills
-     WHERE user_id = ? AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC`
+     WHERE household_id = ? AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC`
   )
-    .bind(userId, today.toISOString().slice(0, 10), billsEnd.toISOString().slice(0, 10))
-    .all<{ id: string; name: string; mode: "auto" | "manual"; due_date: string }>();
+    .bind(householdId, today.toISOString().slice(0, 10), billsEnd.toISOString().slice(0, 10))
+    .all<{ id: string; name: string; mode: "auto" | "manual"; due_date: string }>()
+  : { results: [] };
 
   const now = new Date();
   const calEnd = new Date(now.getTime() + calDays * 24 * 60 * 60 * 1000);
 
-  const eventsRows = await c.env.DB.prepare(
+  const eventsRows = householdId ? await c.env.DB.prepare(
     `SELECT id, title, start_at, end_at, location FROM calendar_events
-     WHERE user_id = ? AND start_at >= ? AND start_at < ? ORDER BY start_at ASC`
+     WHERE household_id = ? AND start_at >= ? AND start_at < ? ORDER BY start_at ASC`
   )
-    .bind(userId, now.toISOString(), calEnd.toISOString())
-    .all<{ id: string; title: string; start_at: string; end_at: string | null; location: string | null }>();
+    .bind(householdId, now.toISOString(), calEnd.toISOString())
+    .all<{ id: string; title: string; start_at: string; end_at: string | null; location: string | null }>()
+  : { results: [] };
 
   return c.json({ bills: billsRows.results ?? [], events: eventsRows.results ?? [] });
 });
 
 app.get("/api/calendar/range", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
   const start = (c.req.query("start") || "").trim();
   const end = (c.req.query("end") || "").trim();
 
   if (!start || !end) return c.json({ error: "Missing start/end" }, 400);
+  if (!householdId) return c.json({ bills: [], events: [] });
 
   const billsRows = await c.env.DB.prepare(
     `SELECT id, name, mode, due_date FROM bills
-     WHERE user_id = ? AND due_date >= ? AND due_date < ? ORDER BY due_date ASC`
+     WHERE household_id = ? AND due_date >= ? AND due_date < ? ORDER BY due_date ASC`
   )
-    .bind(userId, start, end)
+    .bind(householdId, start, end)
     .all<{ id: string; name: string; mode: "auto" | "manual"; due_date: string }>();
 
   const eventsRows = await c.env.DB.prepare(
     `SELECT id, title, start_at, end_at, location, notes FROM calendar_events
-     WHERE user_id = ? AND start_at >= ? AND start_at < ? ORDER BY start_at ASC`
+     WHERE household_id = ? AND start_at >= ? AND start_at < ? ORDER BY start_at ASC`
   )
-    .bind(userId, `${start}T00:00:00.000Z`, `${end}T00:00:00.000Z`)
+    .bind(householdId, `${start}T00:00:00.000Z`, `${end}T00:00:00.000Z`)
     .all<{ id: string; title: string; start_at: string; end_at: string | null; location: string | null; notes: string | null }>();
 
   return c.json({ bills: billsRows.results ?? [], events: eventsRows.results ?? [] });
@@ -1132,28 +1159,208 @@ app.post("/api/budget/month/close", requireUser, async (c) => {
 });
 
 app.get("/api/notes", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ notes: [] });
+
   const rows = await c.env.DB.prepare(
-    `SELECT id, user_id, body, created_at FROM notes ORDER BY created_at DESC LIMIT 50`
-  ).all<{ id: string; user_id: string; body: string; created_at: string }>();
+    `SELECT id, user_id, body, created_at FROM notes WHERE household_id = ? ORDER BY created_at DESC LIMIT 50`
+  ).bind(householdId).all<{ id: string; user_id: string; body: string; created_at: string }>();
   return c.json({ notes: rows.results ?? [] });
 });
 
 app.post("/api/notes", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
   const body = await c.req.json<{ body?: string }>();
   const text = (body.body || "").trim();
   if (!text || text.length > 500) return c.json({ error: "Message required (max 500 chars)" }, 400);
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `INSERT INTO notes (id, user_id, body, created_at) VALUES (?, ?, ?, ?)`
-  ).bind(uid(), userId, text, now).run();
+    `INSERT INTO notes (id, user_id, household_id, body, created_at) VALUES (?, ?, ?, ?, ?)`
+  ).bind(uid(), userId, householdId, text, now).run();
   return c.json({ ok: true });
 });
 
 app.delete("/api/notes/:id", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
   const id = c.req.param("id");
-  await c.env.DB.prepare(`DELETE FROM notes WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  // allow delete by own user_id OR any member of the same household
+  await c.env.DB.prepare(
+    `DELETE FROM notes WHERE id = ? AND (user_id = ? OR household_id = ?)`
+  ).bind(id, userId, householdId ?? "").run();
+  return c.json({ ok: true });
+});
+
+// ---- HOUSEHOLD MANAGEMENT ----
+app.get("/api/household", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ household: null, members: [] });
+
+  const household = await c.env.DB.prepare(
+    `SELECT id, name, created_at FROM households WHERE id = ? LIMIT 1`
+  ).bind(householdId).first<{ id: string; name: string; created_at: string }>();
+
+  const members = await c.env.DB.prepare(
+    `SELECT u.id, u.name, u.email, hm.role, hm.joined_at
+     FROM household_members hm
+     JOIN users u ON u.id = hm.user_id
+     WHERE hm.household_id = ?
+     ORDER BY hm.joined_at ASC`
+  ).bind(householdId).all<{ id: string; name: string; email: string; role: string; joined_at: string }>();
+
+  return c.json({ household, members: members.results ?? [] });
+});
+
+app.patch("/api/household", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+
+  const body = await c.req.json<{ name?: string }>();
+  const name = (body.name || "").trim();
+  if (!name) return c.json({ error: "Name required" }, 400);
+
+  await c.env.DB.prepare(`UPDATE households SET name = ? WHERE id = ?`)
+    .bind(name, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+app.post("/api/household/invite", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString();
+  const now = new Date().toISOString();
+
+  await c.env.DB.prepare(
+    `INSERT INTO household_invites (id, household_id, code, created_by, expires_at, used, created_at)
+     VALUES (?, ?, ?, ?, ?, 0, ?)`
+  ).bind(uid(), householdId, code, userId, expiresAt, now).run();
+
+  return c.json({ ok: true, code, expiresAt });
+});
+
+app.post("/api/household/join", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json<{ code?: string }>();
+  const code = (body.code || "").trim().toUpperCase();
+
+  if (!code) return c.json({ error: "Invite code required" }, 400);
+
+  const now = new Date().toISOString();
+
+  const invite = await c.env.DB.prepare(
+    `SELECT id, household_id FROM household_invites
+     WHERE code = ? AND expires_at > ? AND used = 0 LIMIT 1`
+  ).bind(code, now).first<{ id: string; household_id: string }>();
+
+  if (!invite) return c.json({ error: "Invalid or expired invite code" }, 400);
+
+  const existingHousehold = await getUserHouseholdId(c.env.DB, userId);
+
+  if (existingHousehold === invite.household_id) {
+    return c.json({ error: "You are already in this household" }, 400);
+  }
+
+  if (existingHousehold) {
+    await c.env.DB.prepare(`DELETE FROM household_members WHERE user_id = ?`).bind(userId).run();
+  }
+
+  await c.env.DB.prepare(
+    `INSERT INTO household_members (id, household_id, user_id, role, joined_at)
+     VALUES (?, ?, ?, 'member', ?)`
+  ).bind(uid(), invite.household_id, userId, now).run();
+
+  await c.env.DB.prepare(
+    `UPDATE household_invites SET used = 1, used_by = ? WHERE id = ?`
+  ).bind(userId, invite.id).run();
+
+  // Return household name for success message
+  const household = await c.env.DB.prepare(
+    `SELECT name FROM households WHERE id = ? LIMIT 1`
+  ).bind(invite.household_id).first<{ name: string }>();
+
+  return c.json({ ok: true, householdName: household?.name ?? "" });
+});
+
+app.delete("/api/household/members/:memberId", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const memberId = c.req.param("memberId");
+
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+
+  const myRole = await c.env.DB.prepare(
+    `SELECT role FROM household_members WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(userId, householdId).first<{ role: string }>();
+
+  if (myRole?.role !== "admin" && userId !== memberId) {
+    return c.json({ error: "Only admins can remove members" }, 403);
+  }
+
+  if (userId === memberId) {
+    const adminCount = await c.env.DB.prepare(
+      `SELECT COUNT(*) as count FROM household_members WHERE household_id = ? AND role = 'admin'`
+    ).bind(householdId).first<{ count: number }>();
+    if ((adminCount?.count ?? 0) <= 1) {
+      return c.json({ error: "Cannot remove the last admin" }, 400);
+    }
+  }
+
+  await c.env.DB.prepare(
+    `DELETE FROM household_members WHERE user_id = ? AND household_id = ?`
+  ).bind(memberId, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+// ---- PROFILE ----
+app.patch("/api/auth/profile", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json<{ name?: string; currentPassword?: string; newPassword?: string }>();
+
+  const sets: string[] = [];
+  const binds: unknown[] = [];
+
+  if (body.name !== undefined) {
+    const name = (body.name || "").trim();
+    if (!name) return c.json({ error: "Name cannot be empty" }, 400);
+    sets.push("name = ?");
+    binds.push(name);
+  }
+
+  if (body.newPassword !== undefined) {
+    if (!body.currentPassword) return c.json({ error: "Current password required" }, 400);
+    if ((body.newPassword || "").length < 8) return c.json({ error: "New password must be at least 8 characters" }, 400);
+
+    const user = await c.env.DB.prepare(
+      `SELECT password_hash FROM users WHERE id = ? LIMIT 1`
+    ).bind(userId).first<{ password_hash: string }>();
+
+    const currentHash = await sha256(body.currentPassword + c.env.SESSION_SECRET);
+    if (currentHash !== user?.password_hash) {
+      return c.json({ error: "Current password is incorrect" }, 401);
+    }
+
+    const newHash = await sha256(body.newPassword + c.env.SESSION_SECRET);
+    sets.push("password_hash = ?");
+    binds.push(newHash);
+  }
+
+  if (sets.length === 0) return c.json({ error: "Nothing to update" }, 400);
+
+  await c.env.DB.prepare(
+    `UPDATE users SET ${sets.join(", ")} WHERE id = ?`
+  ).bind(...binds, userId).run();
+
   return c.json({ ok: true });
 });
 
