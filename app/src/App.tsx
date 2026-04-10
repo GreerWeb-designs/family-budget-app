@@ -206,7 +206,7 @@ function AppShell({ children }: { children: ReactNode }) {
         </main>
 
         {/* ── Mobile bottom tab bar ── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-200 bg-white/95 backdrop-blur">
+       <nav className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-200 bg-white/95 backdrop-blur">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
@@ -224,7 +224,7 @@ function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* Bottom padding for mobile tab bar */}
-        <div className="h-16 md:hidden" />
+        <div className="mobile-tab-spacer h-16 md:hidden" />
       </div>
     </div>
   );

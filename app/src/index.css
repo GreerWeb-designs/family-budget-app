@@ -1,28 +1,40 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   background: #F8FAFC;
 }
 
-/* Smooth scrolling */
-* {
-  scroll-behavior: smooth;
+.font-mono, .tabular-nums {
+  font-family: 'DM Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Better number rendering */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
+/* Landscape mobile — full width content, no wasted space */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Hide bottom tab bar in landscape — use side nav instead */
+  nav.mobile-bottom-nav { display: none !important; }
+  /* Remove bottom padding added for tab bar */
+  .mobile-tab-spacer { display: none !important; }
+}
+
+/* FullCalendar mobile overrides */
+@media (max-width: 640px) {
+  .fc .fc-toolbar { flex-direction: column; gap: 8px; }
+  .fc .fc-toolbar-title { font-size: 1rem; }
+  .fc .fc-daygrid-day-number { font-size: 0.7rem; padding: 2px 4px; }
+  .fc .fc-event-title { font-size: 0.6rem; }
+  .fc .fc-col-header-cell-cushion { font-size: 0.7rem; }
+  .fc .fc-daygrid-day { min-height: 40px; }
+}
+
+/* Landscape mobile — FullCalendar gets more room */
+@media (max-height: 500px) and (orientation: landscape) {
+  .fc .fc-daygrid-day { min-height: 32px; }
+  .fc .fc-toolbar { margin-bottom: 4px !important; }
 }

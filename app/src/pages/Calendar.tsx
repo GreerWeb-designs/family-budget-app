@@ -10,6 +10,10 @@ type FamEvent = { id: string; title: string; start_at: string; end_at: string | 
 type RangeRes = { bills: Bill[]; events: FamEvent[] };
 type FCEvent = { id: string; title: string; start: string; end?: string; allDay?: boolean; backgroundColor?: string; borderColor?: string; textColor?: string; extendedProps?: Record<string, any> };
 
+function checkIsMobile() {
+  return window.innerWidth < 640 && window.innerHeight > window.innerWidth;
+}
+
 function ymd(date: Date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`; }
 function toLocalDT(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}T${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
 function prettyDT(iso: string) { return new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
@@ -19,7 +23,7 @@ export default function Calendar() {
   const [rangeData, setRangeData] = useState<RangeRes | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [isMobile, setIsMobile] = useState(checkIsMobile());
 
   const [visibleStart, setVisibleStart] = useState(() => ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
   const [visibleEnd, setVisibleEnd] = useState(() => ymd(new Date(new Date().getFullYear(), new Date().getMonth()+1, 1)));
@@ -35,11 +39,15 @@ export default function Calendar() {
   const [selected, setSelected] = useState<{ kind: "bill" | "family"; id: string; title: string; start: string; end?: string; location?: string | null } | null>(null);
 
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 640);
+    const handler = () => setIsMobile(checkIsMobile());
     window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
+    window.addEventListener("orientationchange", handler);
+    return () => {
+      window.removeEventListener("resize", handler);
+      window.removeEventListener("orientationchange", handler);
+    };
   }, []);
-
+  
   async function loadRange(start: string, end: string) {
     const r = await api<RangeRes>(`/api/calendar/range?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
     setRangeData(r);
