@@ -467,21 +467,10 @@ app.get("/api/bills", requireUser, async (c) => {
   if (!householdId) return c.json({ bills: [] });
 
   const rows = await c.env.DB.prepare(
-    `SELECT id, user_id, name, amount, mode, due_date FROM bills WHERE household_id = ? ORDER BY due_date ASC`
-  ).bind(householdId).all<{ id: string; user_id: string; name: string; amount: number; mode: string; due_date: string }>();
+    `SELECT id, user_id, name, amount, mode, day_of_month FROM bills WHERE household_id = ? ORDER BY day_of_month ASC`
+  ).bind(householdId).all<{ id: string; user_id: string; name: string; amount: number; mode: string; day_of_month: number }>();
 
-  const payments = await c.env.DB.prepare(`SELECT bill_id, paid_date FROM bill_payments`)
-    .all<{ bill_id: string; paid_date: string }>();
-
-  const today = new Date().toISOString().slice(0, 10);
-  const paidSet = new Set((payments.results ?? []).map((p) => `${p.bill_id}:${p.paid_date}`));
-
-  return c.json({
-    bills: (rows.results ?? []).map((b) => ({
-      ...b,
-      paidToday: paidSet.has(`${b.id}:${today}`),
-    })),
-  });
+  return c.json({ bills: rows.results ?? [] });
 });
 
 app.post("/api/bills", requireUser, async (c) => {
@@ -489,48 +478,34 @@ app.post("/api/bills", requireUser, async (c) => {
   const householdId = await getUserHouseholdId(c.env.DB, userId);
   if (!householdId) return c.json({ error: "No household" }, 400);
 
-  const body = await c.req.json<{ name?: string; amount?: number; mode?: "auto" | "manual"; dueDate?: string }>();
+  const body = await c.req.json<{ name?: string; amount?: number; mode?: "auto" | "manual"; dayOfMonth?: number }>();
   const name = (body.name || "").trim();
   const amount = body.amount;
   const mode = body.mode;
-  const dueDate = body.dueDate;
+  const dayOfMonth = body.dayOfMonth;
 
-  if (!name || typeof amount !== "number" || Number.isNaN(amount) || (mode !== "auto" && mode !== "manual") || !dueDate) {
+  if (
+    !name ||
+    typeof amount !== "number" || Number.isNaN(amount) ||
+    (mode !== "auto" && mode !== "manual") ||
+    typeof dayOfMonth !== "number" || dayOfMonth < 1 || dayOfMonth > 31
+  ) {
     return c.json({ error: "Bad payload" }, 400);
   }
 
   const id = uid();
+  const now = new Date();
+  const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+
   await c.env.DB.prepare(
-    `INSERT INTO bills (id, user_id, household_id, name, amount, mode, due_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  )
-    .bind(id, userId, householdId, name, amount, mode, dueDate, new Date().toISOString())
-    .run();
+    `INSERT INTO bills (id, user_id, household_id, name, amount, mode, due_date, day_of_month, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, userId, householdId, name, amount, mode, dueDate, dayOfMonth, now.toISOString()).run();
 
   return c.json({ ok: true, id });
 });
 
-app.post("/api/bills/:id/pay", requireUser, async (c) => {
-  const id = c.req.param("id");
-  const today = new Date().toISOString().slice(0, 10);
-
-  const bill = await c.env.DB.prepare(`SELECT id FROM bills WHERE id = ? LIMIT 1`)
-    .bind(id)
-    .first<{ id: string }>();
-
-  if (!bill) return c.json({ error: "Not found" }, 404);
-
-  await c.env.DB.prepare(
-    `INSERT INTO bill_payments (id, bill_id, paid_date, created_at) VALUES (?, ?, ?, ?)`
-  )
-    .bind(uid(), id, today, new Date().toISOString())
-    .run();
-
-  return c.json({ ok: true });
-});
-
 app.delete("/api/bills/:id", requireUser, async (c) => {
   const id = c.req.param("id");
-  await c.env.DB.prepare(`DELETE FROM bill_payments WHERE bill_id = ?`).bind(id).run();
   await c.env.DB.prepare(`DELETE FROM bills WHERE id = ?`).bind(id).run();
   return c.json({ ok: true });
 });
@@ -1058,16 +1033,20 @@ app.get("/api/home/upcoming", requireUser, async (c) => {
   const billsDays = Math.max(1, Math.min(14, Number(c.req.query("billsDays") || "3")));
   const calDays = Math.max(1, Math.min(30, Number(c.req.query("calDays") || "7")));
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const billsEnd = new Date(today.getTime() + billsDays * 24 * 60 * 60 * 1000);
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const currentDay = todayDate.getDate();
+  const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
 
+  const upcomingDays: number[] = [];
+  for (let i = 0; i <= billsDays; i++) {
+    upcomingDays.push(((currentDay - 1 + i) % daysInMonth) + 1);
+  }
+
+  const placeholders = upcomingDays.map(() => "?").join(",");
   const billsRows = householdId ? await c.env.DB.prepare(
-    `SELECT id, name, mode, due_date FROM bills
-     WHERE household_id = ? AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC`
-  )
-    .bind(householdId, today.toISOString().slice(0, 10), billsEnd.toISOString().slice(0, 10))
-    .all<{ id: string; name: string; mode: "auto" | "manual"; due_date: string }>()
+    `SELECT id, name, mode, day_of_month FROM bills WHERE household_id = ? AND day_of_month IN (${placeholders}) ORDER BY day_of_month ASC`
+  ).bind(householdId, ...upcomingDays).all<{ id: string; name: string; mode: "auto" | "manual"; day_of_month: number }>()
   : { results: [] };
 
   const now = new Date();
@@ -1093,12 +1072,29 @@ app.get("/api/calendar/range", requireUser, async (c) => {
   if (!start || !end) return c.json({ error: "Missing start/end" }, 400);
   if (!householdId) return c.json({ bills: [], events: [] });
 
-  const billsRows = await c.env.DB.prepare(
-    `SELECT id, name, mode, due_date FROM bills
-     WHERE household_id = ? AND due_date >= ? AND due_date < ? ORDER BY due_date ASC`
-  )
-    .bind(householdId, start, end)
-    .all<{ id: string; name: string; mode: "auto" | "manual"; due_date: string }>();
+  const allBills = await c.env.DB.prepare(
+    `SELECT id, name, mode, day_of_month FROM bills WHERE household_id = ?`
+  ).bind(householdId).all<{ id: string; name: string; mode: string; day_of_month: number }>();
+
+  const [startYear, startMonth] = start.split("-").map(Number);
+  const [endYear, endMonth] = end.split("-").map(Number);
+
+  const billsInRange: { id: string; name: string; mode: string; due_date: string }[] = [];
+  for (const bill of allBills.results ?? []) {
+    for (let y = startYear; y <= endYear; y++) {
+      for (let m = 1; m <= 12; m++) {
+        if (y === startYear && m < startMonth) continue;
+        if (y === endYear && m > endMonth) continue;
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const day = Math.min(bill.day_of_month, daysInMonth);
+        const dateStr = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        if (dateStr >= start && dateStr < end) {
+          billsInRange.push({ ...bill, due_date: dateStr });
+        }
+      }
+    }
+  }
+  billsInRange.sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const eventsRows = await c.env.DB.prepare(
     `SELECT id, title, start_at, end_at, location, notes FROM calendar_events
@@ -1107,7 +1103,7 @@ app.get("/api/calendar/range", requireUser, async (c) => {
     .bind(householdId, `${start}T00:00:00.000Z`, `${end}T00:00:00.000Z`)
     .all<{ id: string; title: string; start_at: string; end_at: string | null; location: string | null; notes: string | null }>();
 
-  return c.json({ bills: billsRows.results ?? [], events: eventsRows.results ?? [] });
+  return c.json({ bills: billsInRange, events: eventsRows.results ?? [] });
 });
 
 // ---- MONTHLY BUDGET ----

@@ -6,7 +6,7 @@ type SummaryRow = Category & { budgeted: number; activity: number; available: nu
 type SummaryRes = { byCategory: SummaryRow[] };
 type SpendRow = { id: string; category_id: string; amount: number; direction?: "in" | "out"; date: string; note: string | null; created_at: string };
 type SpendListRes = { spends: SpendRow[] };
-type UpcomingBill = { id: string; name: string; mode: "auto" | "manual"; due_date: string };
+type UpcomingBill = { id: string; name: string; mode: "auto" | "manual"; day_of_month: number };
 type UpcomingEvent = { id: string; title: string; start_at: string; end_at: string | null; location: string | null };
 type HomeUpcomingRes = { bills: UpcomingBill[]; events: UpcomingEvent[] };
 type Goal = { id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null; };
@@ -245,8 +245,7 @@ export default function Home() {
               <p className="text-sm text-slate-400">No bills due soon.</p>
             ) : upcoming.bills.map((bill) => {
               const today = new Date(); today.setHours(0,0,0,0);
-              const due = new Date(`${bill.due_date}T00:00:00`);
-              const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+              const diff = bill.day_of_month - today.getDate();
               const isAuto = bill.mode === "auto";
               const text = isAuto
                 ? diff === 0 ? `${bill.name} autodrafted today` : `${bill.name} autodrafts in ${diff}d`
