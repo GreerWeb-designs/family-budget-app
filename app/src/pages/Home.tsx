@@ -9,6 +9,7 @@ type SpendListRes = { spends: SpendRow[] };
 type UpcomingBill = { id: string; name: string; mode: "auto" | "manual"; due_date: string };
 type UpcomingEvent = { id: string; title: string; start_at: string; end_at: string | null; location: string | null };
 type HomeUpcomingRes = { bills: UpcomingBill[]; events: UpcomingEvent[] };
+type Goal = { id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null; };
 
 const INCOME_ID = "income";
 
@@ -37,10 +38,21 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [lastSpendId, setLastSpendId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
   const current = useMemo(() => summary?.byCategory.find((c) => c.id === categoryId) ?? null, [summary, categoryId]);
   const catNameById = useMemo(() => { const m: Record<string, string> = {}; for (const c of cats) m[c.id] = c.name; return m; }, [cats]);
   const catAvailableById = useMemo(() => { const m: Record<string, number> = {}; for (const r of summary?.byCategory ?? []) m[r.id] = Number(r.available ?? 0); return m; }, [summary]);
+
+  const upcomingGoals = useMemo(() => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const in30 = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+    return goals.filter((g) => {
+      if (g.status !== "active" || !g.due_date) return false;
+      const due = new Date(`${g.due_date}T00:00:00`);
+      return due >= today && due <= in30;
+    }).sort((a, b) => a.due_date!.localeCompare(b.due_date!));
+  }, [goals]);
 
   const sortedSpends = useMemo(() => {
     const copy = [...spends];
@@ -58,17 +70,19 @@ export default function Home() {
   }, [spends, sortBy, catNameById]);
 
   async function refresh() {
-    const [catRes, sumRes, spendRes, upRes] = await Promise.all([
+    const [catRes, sumRes, spendRes, upRes, goalsRes] = await Promise.all([
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>("/api/spend/summary"),
       api<SpendListRes>("/api/spend"),
       api<HomeUpcomingRes>("/api/home/upcoming?billsDays=3&calDays=7"),
+      api<{ goals: Goal[] }>("/api/goals"),
     ]);
     const allCats = catRes.categories ?? [];
     setCats(allCats);
     setSummary(sumRes);
     setSpends(spendRes.spends ?? []);
     setUpcoming(upRes);
+    setGoals(goalsRes.goals ?? []);
     setCategoryId((prev) => {
       if (prev === INCOME_ID) return prev;
       const nonIncome = allCats.filter((c) => c.id !== INCOME_ID);
@@ -126,7 +140,7 @@ export default function Home() {
     <div className="space-y-5">
 
       {/* Upcoming */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-semibold text-slate-900">📄 Bills due soon</div>
@@ -167,6 +181,34 @@ export default function Home() {
                 <div key={ev.id} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm">
                   <div className="font-medium text-slate-900">{ev.title}</div>
                   <div className="text-slate-500 text-xs mt-0.5">{pretty}{ev.location ? ` · ${ev.location}` : ""}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold text-slate-900">🎯 Goal reminders</div>
+            <span className="text-xs text-slate-400">30 days</span>
+          </div>
+          <div className="space-y-2">
+            {upcomingGoals.length === 0 ? (
+              <p className="text-sm text-slate-400">No goals due in the next 30 days.</p>
+            ) : upcomingGoals.map((g) => {
+              const today = new Date(); today.setHours(0,0,0,0);
+              const due = new Date(`${g.due_date!}T00:00:00`);
+              const daysLeft = Math.round((due.getTime() - today.getTime()) / 86400000);
+              return (
+                <div key={g.id} className={`rounded-xl px-3 py-2 text-sm border ${
+                  daysLeft <= 7 ? "bg-rose-50 border-rose-100 text-rose-800"
+                  : daysLeft <= 14 ? "bg-amber-50 border-amber-100 text-amber-800"
+                  : "bg-emerald-50 border-emerald-100 text-emerald-800"
+                }`}>
+                  <div className="font-medium truncate">{g.title}</div>
+                  <div className="text-xs mt-0.5 opacity-75">
+                    {daysLeft === 0 ? "Due today!" : daysLeft === 1 ? "Due tomorrow" : `${daysLeft} days left`}
+                  </div>
                 </div>
               );
             })}
