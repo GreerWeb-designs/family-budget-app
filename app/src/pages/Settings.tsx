@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 
 type Member = { id: string; name: string; email: string; role: string; joined_at: string };
@@ -411,7 +412,12 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
 // ---- Main Page ----
 
 export default function Settings() {
+  const nav = useNavigate();
   const [me, setMe] = useState<{ userId: string; name: string; email: string } | null>(null);
+
+  async function handleLogout() {
+    try { await api("/api/auth/logout", { method: "POST" }); } finally { nav("/login", { replace: true }); }
+  }
 
   useEffect(() => {
     api<{ userId: string; name: string; email: string }>("/api/auth/me")
@@ -441,6 +447,18 @@ export default function Settings() {
           <div className="text-sm text-slate-400">Loading…</div>
         )}
       </section>
+
+      {/* Mobile sign out */}
+      <div className="md:hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="text-sm font-semibold text-slate-900 mb-3">Account</div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full h-11 rounded-xl border border-rose-200 bg-rose-50 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-all"
+        >
+          → Sign out
+        </button>
+      </div>
 
     </div>
   );

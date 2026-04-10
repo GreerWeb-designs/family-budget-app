@@ -1164,8 +1164,12 @@ app.get("/api/notes", requireUser, async (c) => {
   if (!householdId) return c.json({ notes: [] });
 
   const rows = await c.env.DB.prepare(
-    `SELECT id, user_id, body, created_at FROM notes WHERE household_id = ? ORDER BY created_at DESC LIMIT 50`
-  ).bind(householdId).all<{ id: string; user_id: string; body: string; created_at: string }>();
+    `SELECT n.id, n.user_id, n.body, n.created_at, u.name as author_name
+     FROM notes n
+     LEFT JOIN users u ON u.id = n.user_id
+     WHERE n.household_id = ?
+     ORDER BY n.created_at DESC LIMIT 50`
+  ).bind(householdId).all<{ id: string; user_id: string; body: string; created_at: string; author_name: string | null }>();
   return c.json({ notes: rows.results ?? [] });
 });
 
