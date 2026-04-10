@@ -1164,11 +1164,12 @@ app.get("/api/notes", requireUser, async (c) => {
   if (!householdId) return c.json({ notes: [] });
 
   const rows = await c.env.DB.prepare(
-    `SELECT n.id, n.user_id, n.body, n.created_at, u.name as author_name
+    `SELECT n.id, n.user_id, n.body, n.created_at, u.name AS author_name
      FROM notes n
      LEFT JOIN users u ON u.id = n.user_id
      WHERE n.household_id = ?
-     ORDER BY n.created_at DESC LIMIT 50`
+     ORDER BY n.created_at DESC
+     LIMIT 50`
   ).bind(householdId).all<{ id: string; user_id: string; body: string; created_at: string; author_name: string | null }>();
   return c.json({ notes: rows.results ?? [] });
 });

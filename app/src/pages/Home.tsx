@@ -49,6 +49,7 @@ export default function Home() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [noteInput, setNoteInput] = useState("");
+  const [myUserId, setMyUserId] = useState<string>("");
 
   const current = useMemo(() => summary?.byCategory.find((c) => c.id === categoryId) ?? null, [summary, categoryId]);
   const catNameById = useMemo(() => { const m: Record<string, string> = {}; for (const c of cats) m[c.id] = c.name; return m; }, [cats]);
@@ -80,13 +81,14 @@ export default function Home() {
   }, [spends, sortBy, catNameById]);
 
   async function refresh() {
-    const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes] = await Promise.all([
+    const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes, meRes] = await Promise.all([
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>("/api/spend/summary"),
       api<SpendListRes>("/api/spend"),
       api<HomeUpcomingRes>("/api/home/upcoming?billsDays=3&calDays=7"),
       api<{ goals: Goal[] }>("/api/goals"),
       api<{ notes: Note[] }>("/api/notes"),
+      api<{ userId: string }>("/api/auth/me"),
     ]);
     const allCats = catRes.categories ?? [];
     setCats(allCats);
@@ -95,6 +97,7 @@ export default function Home() {
     setUpcoming(upRes);
     setGoals(goalsRes.goals ?? []);
     setNotes(notesRes.notes ?? []);
+    if (meRes.userId) setMyUserId(meRes.userId);
     setCategoryId((prev) => {
       if (prev === INCOME_ID) return prev;
       const nonIncome = allCats.filter((c) => c.id !== INCOME_ID);
@@ -202,14 +205,16 @@ export default function Home() {
         <div className="space-y-2">
           {notes.length === 0 ? (
             <p className="text-sm text-slate-400">No notes yet. Be the first to leave one!</p>
-          ) : notes.map((note) => (
+          ) : notes.map((note) => {
+            const authorDisplay = note.author_name || (note.user_id === myUserId ? "You" : "Family member");
+            return (
             <div key={note.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
-                    {(note.author_name || "?")[0].toUpperCase()}
+                    {authorDisplay[0].toUpperCase()}
                   </div>
-                  <span className="text-xs font-semibold text-slate-700">{note.author_name || "Unknown"}</span>
+                  <span className="text-xs font-semibold text-slate-700">{authorDisplay}</span>
                   <span className="text-xs text-slate-400">·</span>
                   <span className="text-xs text-slate-400">{timeAgo(note.created_at)}</span>
                 </div>
@@ -223,7 +228,8 @@ export default function Home() {
               </div>
               <p className="text-sm text-slate-700 leading-relaxed">{note.body}</p>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 
