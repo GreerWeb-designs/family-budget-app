@@ -720,12 +720,12 @@ app.delete("/api/goals/:id", requireUser, async (c) => {
 });
 
 // ---- DEBTS ----
-type DebtRow = { id: string; name: string; balance: number; apr: number; payment: number; created_at: string; updated_at: string };
+type DebtRow = { id: string; name: string; balance: number; apr: number; payment: number; payments_remaining: number; created_at: string; updated_at: string };
 
 app.get("/api/debts", requireUser, async (c) => {
   const userId = c.get("userId");
   const rows = await c.env.DB.prepare(
-    `SELECT id, name, balance, apr, payment, created_at, updated_at FROM debts WHERE user_id = ? ORDER BY created_at DESC`
+    `SELECT id, name, balance, apr, payment, payments_remaining, created_at, updated_at FROM debts WHERE user_id = ? ORDER BY created_at DESC`
   )
     .bind(userId)
     .all<DebtRow>();
@@ -734,11 +734,12 @@ app.get("/api/debts", requireUser, async (c) => {
 
 app.post("/api/debts", requireUser, async (c) => {
   const userId = c.get("userId");
-  const body = await c.req.json<{ name?: string; balance?: number; apr?: number; payment?: number }>();
+  const body = await c.req.json<{ name?: string; balance?: number; apr?: number; payment?: number; paymentsRemaining?: number }>();
   const name = (body.name || "").trim();
   const balance = Number(body.balance);
   const apr = Number(body.apr);
   const payment = Number(body.payment);
+  const paymentsRemaining = Number(body.paymentsRemaining ?? 0);
 
   if (!name || Number.isNaN(balance) || Number.isNaN(apr) || Number.isNaN(payment)) {
     return c.json({ error: "Bad payload" }, 400);
@@ -747,9 +748,9 @@ app.post("/api/debts", requireUser, async (c) => {
   const now = new Date().toISOString();
   const id = uid();
   await c.env.DB.prepare(
-    `INSERT INTO debts (id, user_id, name, balance, apr, payment, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO debts (id, user_id, name, balance, apr, payment, payments_remaining, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(id, userId, name, balance, apr, payment, now, now)
+    .bind(id, userId, name, balance, apr, payment, paymentsRemaining, now, now)
     .run();
 
   return c.json({ ok: true, id });
@@ -758,7 +759,7 @@ app.post("/api/debts", requireUser, async (c) => {
 app.patch("/api/debts/:id", requireUser, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id");
-  const body = await c.req.json<{ name?: string; balance?: number; apr?: number; payment?: number }>();
+  const body = await c.req.json<{ name?: string; balance?: number; apr?: number; payment?: number; paymentsRemaining?: number }>();
 
   const existing = await c.env.DB.prepare(`SELECT id FROM debts WHERE id = ? AND user_id = ? LIMIT 1`)
     .bind(id, userId).first<{ id: string }>();
@@ -775,6 +776,7 @@ app.patch("/api/debts/:id", requireUser, async (c) => {
   if (body.balance !== undefined) { const n = Number(body.balance); if (Number.isNaN(n)) return c.json({ error: "balance must be a number" }, 400); sets.push("balance = ?"); binds.push(n); }
   if (body.apr !== undefined) { const n = Number(body.apr); if (Number.isNaN(n)) return c.json({ error: "apr must be a number" }, 400); sets.push("apr = ?"); binds.push(n); }
   if (body.payment !== undefined) { const n = Number(body.payment); if (Number.isNaN(n)) return c.json({ error: "payment must be a number" }, 400); sets.push("payment = ?"); binds.push(n); }
+  if (body.paymentsRemaining !== undefined) { const n = Number(body.paymentsRemaining); if (Number.isNaN(n)) return c.json({ error: "paymentsRemaining must be a number" }, 400); sets.push("payments_remaining = ?"); binds.push(n); }
 
   const now = new Date().toISOString();
   sets.push("updated_at = ?"); binds.push(now);
@@ -794,24 +796,28 @@ app.delete("/api/debts/:id", requireUser, async (c) => {
 
 app.get("/api/debts/settings", requireUser, async (c) => {
   const userId = c.get("userId");
-  const row = await c.env.DB.prepare(`SELECT extra_monthly FROM debt_settings WHERE user_id = ? LIMIT 1`)
-    .bind(userId).first<{ extra_monthly: number }>();
-  return c.json({ extraMonthly: Number(row?.extra_monthly ?? 0) });
+  const row = await c.env.DB.prepare(`SELECT extra_monthly, strategy FROM debt_settings WHERE user_id = ? LIMIT 1`)
+    .bind(userId).first<{ extra_monthly: number; strategy: string }>();
+  return c.json({ extraMonthly: Number(row?.extra_monthly ?? 0), method: row?.strategy ?? "snowball" });
 });
 
 app.post("/api/debts/settings", requireUser, async (c) => {
   const userId = c.get("userId");
-  const body = await c.req.json<{ extraMonthly?: number }>();
-  const n = Number(body.extraMonthly);
-  if (Number.isNaN(n) || n < 0) return c.json({ error: "extraMonthly must be a number >= 0" }, 400);
+  const body = await c.req.json<{ extraMonthly?: number; method?: string }>();
+
+  const existing = await c.env.DB.prepare(`SELECT extra_monthly, strategy FROM debt_settings WHERE user_id = ? LIMIT 1`)
+    .bind(userId).first<{ extra_monthly: number; strategy: string }>();
+
+  const extraMonthly = body.extraMonthly !== undefined ? Number(body.extraMonthly) : Number(existing?.extra_monthly ?? 0);
+  if (Number.isNaN(extraMonthly) || extraMonthly < 0) return c.json({ error: "extraMonthly must be a number >= 0" }, 400);
+  const strategy = body.method === "avalanche" ? "avalanche" : body.method === "snowball" ? "snowball" : (existing?.strategy ?? "snowball");
 
   const now = new Date().toISOString();
   await c.env.DB.prepare(
     `INSERT INTO debt_settings (user_id, extra_monthly, strategy, created_at, updated_at)
-     VALUES (?, ?, 'snowball', ?, ?)
-     ON CONFLICT(user_id) DO UPDATE SET extra_monthly = excluded.extra_monthly, updated_at = excluded.updated_at`
-  )
-    .bind(userId, n, now, now).run();
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET extra_monthly = excluded.extra_monthly, strategy = excluded.strategy, updated_at = excluded.updated_at`
+  ).bind(userId, extraMonthly, strategy, now, now).run();
 
   return c.json({ ok: true });
 });
