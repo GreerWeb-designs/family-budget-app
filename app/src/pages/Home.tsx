@@ -10,12 +10,21 @@ type UpcomingBill = { id: string; name: string; mode: "auto" | "manual"; due_dat
 type UpcomingEvent = { id: string; title: string; start_at: string; end_at: string | null; location: string | null };
 type HomeUpcomingRes = { bills: UpcomingBill[]; events: UpcomingEvent[] };
 type Goal = { id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null; };
+type Note = { id: string; user_id: string; body: string; created_at: string; };
 
 const INCOME_ID = "income";
 
 function money(n: number | null | undefined) {
   const v = Number(n ?? 0);
   return `${v < 0 ? "-" : ""}$${Math.abs(v).toFixed(2)}`;
+}
+
+function timeAgo(iso: string) {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 function availablePill(available: number | undefined) {
@@ -39,6 +48,8 @@ export default function Home() {
   const [lastSpendId, setLastSpendId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [noteInput, setNoteInput] = useState("");
 
   const current = useMemo(() => summary?.byCategory.find((c) => c.id === categoryId) ?? null, [summary, categoryId]);
   const catNameById = useMemo(() => { const m: Record<string, string> = {}; for (const c of cats) m[c.id] = c.name; return m; }, [cats]);
@@ -70,12 +81,13 @@ export default function Home() {
   }, [spends, sortBy, catNameById]);
 
   async function refresh() {
-    const [catRes, sumRes, spendRes, upRes, goalsRes] = await Promise.all([
+    const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes] = await Promise.all([
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>("/api/spend/summary"),
       api<SpendListRes>("/api/spend"),
       api<HomeUpcomingRes>("/api/home/upcoming?billsDays=3&calDays=7"),
       api<{ goals: Goal[] }>("/api/goals"),
+      api<{ notes: Note[] }>("/api/notes"),
     ]);
     const allCats = catRes.categories ?? [];
     setCats(allCats);
@@ -83,6 +95,7 @@ export default function Home() {
     setSpends(spendRes.spends ?? []);
     setUpcoming(upRes);
     setGoals(goalsRes.goals ?? []);
+    setNotes(notesRes.notes ?? []);
     setCategoryId((prev) => {
       if (prev === INCOME_ID) return prev;
       const nonIncome = allCats.filter((c) => c.id !== INCOME_ID);
@@ -125,6 +138,26 @@ export default function Home() {
     } finally { setBusy(false); }
   }
 
+  async function postNote() {
+    const text = noteInput.trim();
+    if (!text) return;
+    await api("/api/notes", { method: "POST", body: JSON.stringify({ body: text }) });
+    setNoteInput("");
+    await refresh();
+  }
+
+  async function deleteNote(id: string) {
+    await api(`/api/notes/${id}`, { method: "DELETE" });
+    await refresh();
+  }
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      api<{ notes: Note[] }>("/api/notes").then((r) => setNotes(r.notes ?? [])).catch(() => {});
+    }, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   async function deleteSpend(id: string, isUndo = false) {
     setBusy(true); setMsg(null);
     try {
@@ -138,6 +171,55 @@ export default function Home() {
 
   return (
     <div className="space-y-5">
+
+      {/* Family Notes */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+        <div className="mb-4">
+          <div className="text-sm font-semibold text-slate-900">📝 Family Notes</div>
+          <div className="text-xs text-slate-400 mt-0.5">Shared message board</div>
+        </div>
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <textarea
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
+              rows={2}
+              maxLength={500}
+              placeholder="Leave a note for the family…"
+              value={noteInput}
+              onChange={(e) => setNoteInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postNote(); }}
+            />
+            <span className="absolute bottom-2 right-3 text-xs text-slate-300">{noteInput.length}/500</span>
+          </div>
+          <button
+            type="button"
+            onClick={postNote}
+            disabled={!noteInput.trim()}
+            className="self-end h-10 px-4 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-400 disabled:opacity-40 transition-all shadow-sm shadow-emerald-500/20"
+          >
+            Send
+          </button>
+        </div>
+        <div className="space-y-2">
+          {notes.length === 0 ? (
+            <p className="text-sm text-slate-400">No notes yet. Be the first to leave one!</p>
+          ) : notes.map((n) => (
+            <div key={n.id} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-slate-900 whitespace-pre-wrap wrap-break-word">{n.body}</p>
+                <p className="text-xs text-slate-400 mt-1">{timeAgo(n.created_at)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => deleteNote(n.id)}
+                className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Upcoming */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

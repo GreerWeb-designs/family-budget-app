@@ -990,4 +990,30 @@ app.post("/api/budget/month/close", requireUser, async (c) => {
   return c.json({ ok: true, nextMonth });
 });
 
+app.get("/api/notes", requireUser, async (c) => {
+  const rows = await c.env.DB.prepare(
+    `SELECT id, user_id, body, created_at FROM notes ORDER BY created_at DESC LIMIT 50`
+  ).all<{ id: string; user_id: string; body: string; created_at: string }>();
+  return c.json({ notes: rows.results ?? [] });
+});
+
+app.post("/api/notes", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json<{ body?: string }>();
+  const text = (body.body || "").trim();
+  if (!text || text.length > 500) return c.json({ error: "Message required (max 500 chars)" }, 400);
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO notes (id, user_id, body, created_at) VALUES (?, ?, ?, ?)`
+  ).bind(uid(), userId, text, now).run();
+  return c.json({ ok: true });
+});
+
+app.delete("/api/notes/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  await c.env.DB.prepare(`DELETE FROM notes WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  return c.json({ ok: true });
+});
+
 export default { fetch: app.fetch };
