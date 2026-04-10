@@ -27,11 +27,16 @@ export default function JoinHousehold() {
         setTimeout(() => nav("/home", { replace: true }), 2500);
       })
       .catch((err) => {
-        // Check if the error is auth-related (401)
-        if (String(err?.message).includes("HTTP 401") || String(err?.message).toLowerCase().includes("unauthorized")) {
+        const msg = String(err?.message || "");
+        if (msg.includes("HTTP 401") || msg.toLowerCase().includes("unauthorized")) {
           setStatus("unauthenticated");
         } else {
-          setErrorMsg(err?.message || "Something went wrong.");
+          const isExpired = msg.toLowerCase().includes("invalid or expired") || msg.toLowerCase().includes("expired invite");
+          setErrorMsg(
+            isExpired
+              ? "This invite code has already been used or has expired. Ask your household admin to generate a new one."
+              : msg || "Something went wrong."
+          );
           setStatus("error");
         }
       });
@@ -110,7 +115,7 @@ export default function JoinHousehold() {
 
           {status === "error" && (
             <div className="space-y-4">
-              <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 px-3 py-3 text-sm text-rose-400">
+              <div className="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-800">
                 {errorMsg}
               </div>
               <Link
