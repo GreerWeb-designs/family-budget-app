@@ -21,6 +21,7 @@ import Goals from "./pages/Goals";
 import Debts from "./pages/Debts";
 import SettingsPage from "./pages/Settings";
 import JoinHousehold from "./pages/JoinHousehold";
+import Onboarding from "./pages/Onboarding";
 
 type Totals = {
   bankBalance: number;
@@ -29,6 +30,20 @@ type Totals = {
   toBeBudgeted: number;
 };
 
+const ONBOARDING_KEY = "familybudget_onboarded";
+
+function AuthSpinner() {
+  return (
+    <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--sidebar-bg)" }}>
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 rounded-full border-2 border-teal-400/30 border-t-teal-400 animate-spin" />
+        <div className="text-sm text-stone-500">Loading…</div>
+      </div>
+    </div>
+  );
+}
+
+/** Guards main app routes — redirects to /login if unauthenticated, /onboarding if not yet onboarded. */
 function Protected({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
   const nav = useNavigate();
@@ -36,22 +51,36 @@ function Protected({ children }: { children: ReactElement }) {
   useEffect(() => {
     let alive = true;
     api<{ ok: boolean }>("/api/auth/me")
-      .then(() => { if (alive) setOk(true); })
-      .catch(() => { if (!alive) return; setOk(false); nav("/login", { replace: true }); });
+      .then(() => {
+        if (!alive) return;
+        if (localStorage.getItem(ONBOARDING_KEY) !== "true") {
+          nav("/onboarding", { replace: true });
+        } else {
+          setOk(true);
+        }
+      })
+      .catch(() => { if (!alive) return; nav("/login", { replace: true }); });
     return () => { alive = false; };
   }, [nav]);
 
-  if (ok === null) {
-    return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--sidebar-bg)" }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-teal-400/30 border-t-teal-400 animate-spin" />
-          <div className="text-sm text-stone-500">Loading…</div>
-        </div>
-      </div>
-    );
-  }
+  if (ok === null) return <AuthSpinner />;
+  return children;
+}
 
+/** Guards the onboarding route — only checks auth (no onboarding flag check to avoid redirect loop). */
+function ProtectedOnboarding({ children }: { children: ReactElement }) {
+  const [ok, setOk] = useState<boolean | null>(null);
+  const nav = useNavigate();
+
+  useEffect(() => {
+    let alive = true;
+    api<{ ok: boolean }>("/api/auth/me")
+      .then(() => { if (alive) setOk(true); })
+      .catch(() => { if (!alive) return; nav("/login", { replace: true }); });
+    return () => { alive = false; };
+  }, [nav]);
+
+  if (ok === null) return <AuthSpinner />;
   return children;
 }
 
@@ -378,6 +407,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password"  element={<ResetPassword />} />
       <Route path="/"                element={<Navigate to="/home" replace />} />
+      <Route path="/onboarding"      element={<ProtectedOnboarding><Onboarding /></ProtectedOnboarding>} />
       <Route path="/home"     element={<ProtectedLayout><Home /></ProtectedLayout>} />
       <Route path="/budget"   element={<ProtectedLayout><Budget /></ProtectedLayout>} />
       <Route path="/bills"    element={<ProtectedLayout><Bills /></ProtectedLayout>} />
