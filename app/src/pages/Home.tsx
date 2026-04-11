@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  MessageSquare, Send, Trash2, TrendingUp, TrendingDown,
+  MessageSquare, Send, Trash2, TrendingUp,
   Calendar, Target, Receipt, Clock, Plus, Minus,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { api } from "../lib/api";
 import { cn, money } from "../lib/utils";
 
-/* ── Types (unchanged from original) ───────────────── */
+/* ── Types ──────────────────────────────────────────── */
 type Category   = { id: string; name: string; direction?: string };
 type SummaryRow = Category & { budgeted: number; activity: number; available: number };
 type SummaryRes = { byCategory: SummaryRow[] };
@@ -18,6 +18,7 @@ type UpcomingEvent = { id: string; title: string; start_at: string; end_at: stri
 type HomeUpcomingRes = { bills: UpcomingBill[]; events: UpcomingEvent[] };
 type Goal = { id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null };
 type Note = { id: string; user_id: string; body: string; created_at: string; author_name?: string };
+type AccountRes = { bankBalance: number; toBeBudgeted: number };
 
 /* ── Helpers ────────────────────────────────────────── */
 function timeAgo(iso: string) {
@@ -85,6 +86,7 @@ export default function Home() {
   const [cats, setCats]         = useState<Category[]>([]);
   const INCOME_ID = useMemo(() => cats.find((c) => c.direction === "inflow")?.id ?? "income", [cats]);
   const [summary, setSummary]   = useState<SummaryRes | null>(null);
+  const [account, setAccount]   = useState<AccountRes | null>(null);
   const [spends, setSpends]     = useState<SpendRow[]>([]);
   const [upcoming, setUpcoming] = useState<HomeUpcomingRes | null>(null);
   const [sortBy, setSortBy]     = useState<"date" | "category">("date");
@@ -138,14 +140,12 @@ export default function Home() {
     return copy;
   }, [spends, sortBy, catNameById]);
 
-  /* Total available (across non-income categories) */
   const totalAvailable = useMemo(() =>
     (summary?.byCategory ?? [])
       .filter(c => c.id !== INCOME_ID)
       .reduce((s, r) => s + Number(r.available ?? 0), 0),
     [summary, INCOME_ID]);
 
-  /* Income vs spending this month */
   const totalIncome   = useMemo(() =>
     spends.filter(s => s.category_id === INCOME_ID || s.direction === "in").reduce((s, r) => s + Number(r.amount), 0),
     [spends, INCOME_ID]);
@@ -153,36 +153,34 @@ export default function Home() {
     spends.filter(s => s.category_id !== INCOME_ID && s.direction !== "in").reduce((s, r) => s + Number(r.amount), 0),
     [spends, INCOME_ID]);
 
-  /* Top 5 spending categories */
-  const topCats = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const s of spends) {
-      if (s.category_id === INCOME_ID || s.direction === "in") continue;
-      map[s.category_id] = (map[s.category_id] ?? 0) + Number(s.amount);
-    }
-    return Object.entries(map)
-      .map(([id, total]) => ({ id, name: catNameById[id] || id, total,
-        budgeted: Number(summary?.byCategory.find(c => c.id === id)?.budgeted ?? 0) }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-  }, [spends, catNameById, summary, INCOME_ID]);
-
   /* Month progress */
-  const daysInMonth  = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-  const dayOfMonth   = new Date().getDate();
-  const monthPct     = Math.round((dayOfMonth / daysInMonth) * 100);
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const dayOfMonth  = new Date().getDate();
+  const monthPct    = Math.round((dayOfMonth / daysInMonth) * 100);
 
-  /* Plain-English summary */
+  /* Bank balance and TBB */
+  const bankBalance  = Number(account?.bankBalance ?? 0);
+  const toBeBudgeted = Number(account?.toBeBudgeted ?? 0);
+
+  /* Motivational subtitle */
   const summaryLine = useMemo(() => {
-    const daysLeft = daysInMonth - dayOfMonth;
-    if (loading) return "";
-    if (totalAvailable < 0) return `You're running a bit tight — consider adjusting a category or two.`;
-    if (totalAvailable < 100) return `Almost at the line — only ${money(totalAvailable)} left with ${daysLeft} days to go.`;
-    return `You're on track — about ${money(totalAvailable)} left across all categories with ${daysLeft} days to go.`;
-  }, [totalAvailable, daysInMonth, dayOfMonth, loading]);
+    if (loading) return { text: "", cls: "" };
+    if (toBeBudgeted === 0) return {
+      text: "You're on track — you've budgeted your entire balance and are taking control of your money 💪",
+      cls: "text-teal-700",
+    };
+    if (toBeBudgeted > 0) return {
+      text: `You have ${money(toBeBudgeted)} left to budget this month. Assign it a job!`,
+      cls: "text-stone-500",
+    };
+    return {
+      text: `You've over-budgeted by ${money(Math.abs(toBeBudgeted))}. Review your categories.`,
+      cls: "text-red-600",
+    };
+  }, [toBeBudgeted, loading]);
 
   async function refresh() {
-    const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes, meRes] = await Promise.all([
+    const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes, meRes, accRes] = await Promise.all([
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>("/api/spend/summary"),
       api<SpendListRes>("/api/spend"),
@@ -190,6 +188,7 @@ export default function Home() {
       api<{ goals: Goal[] }>("/api/goals"),
       api<{ notes: Note[] }>("/api/notes"),
       api<{ userId: string }>("/api/auth/me"),
+      api<AccountRes>("/api/account"),
     ]);
     const allCats = catRes.categories ?? [];
     setCats(allCats);
@@ -199,6 +198,7 @@ export default function Home() {
     setGoals(goalsRes.goals ?? []);
     setNotes(notesRes.notes ?? []);
     if (meRes.userId) setMyUserId(meRes.userId);
+    setAccount(accRes);
     setCategoryId((prev) => {
       if (prev === INCOME_ID) return prev;
       const nonIncome = allCats.filter((c) => c.id !== INCOME_ID);
@@ -271,10 +271,9 @@ export default function Home() {
     await refresh();
   }
 
-  /* Bar chart data */
   const barData = [
-    { name: "Income",   value: totalIncome,   color: "#0F766E" },
-    { name: "Spending", value: totalSpending,  color: "#F59E0B" },
+    { name: "Income",   value: totalIncome,  color: "#0F766E" },
+    { name: "Spending", value: totalSpending, color: "#F59E0B" },
   ];
 
   /* Skeleton loader */
@@ -282,8 +281,8 @@ export default function Home() {
     return (
       <div className="space-y-5 animate-pulse">
         <div className="rounded-2xl bg-white border h-36" style={{ borderColor: "var(--color-border)" }} />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[1,2,3].map(i => <div key={i} className="rounded-2xl bg-white border h-48" style={{ borderColor: "var(--color-border)" }} />)}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[1,2].map(i => <div key={i} className="rounded-2xl bg-white border h-48" style={{ borderColor: "var(--color-border)" }} />)}
         </div>
         <div className="rounded-2xl bg-white border h-48" style={{ borderColor: "var(--color-border)" }} />
       </div>
@@ -293,17 +292,17 @@ export default function Home() {
   return (
     <div className="space-y-5">
 
-      {/* ── Hero ──────────────────────────────────────── */}
+      {/* ── Hero: Bank Balance ─────────────────────────── */}
       <div className="rounded-2xl border bg-white p-6 md:p-8" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-1">Available this month</div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-1">Bank Balance</div>
             <div className={cn("font-display text-5xl md:text-6xl font-semibold tabular-nums leading-none",
-              totalAvailable < 0 ? "text-red-600" : "text-stone-900")}>
-              {money(totalAvailable)}
+              bankBalance < 0 ? "text-red-600" : "text-stone-900")}>
+              {money(bankBalance)}
             </div>
-            {summaryLine && (
-              <p className="mt-3 text-sm text-stone-500 max-w-lg">{summaryLine}</p>
+            {!loading && summaryLine.text && (
+              <p className={cn("mt-3 text-sm max-w-lg", summaryLine.cls)}>{summaryLine.text}</p>
             )}
           </div>
           {/* Month progress */}
@@ -317,7 +316,7 @@ export default function Home() {
       </div>
 
       {/* ── Cards grid ────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
 
         {/* This Month */}
         <Card>
@@ -344,37 +343,8 @@ export default function Home() {
           </div>
         </Card>
 
-        {/* Top Categories */}
-        <Card>
-          <CardHeader title="Top Categories" sub="Where money went" icon={TrendingDown} />
-          {topCats.length === 0 ? (
-            <div className="text-sm text-stone-400 py-4 text-center">No spending recorded yet.</div>
-          ) : (
-            <div className="space-y-3">
-              {topCats.map((cat) => {
-                const pct = cat.budgeted > 0 ? Math.min((cat.total / cat.budgeted) * 100, 100) : 0;
-                const over = cat.budgeted > 0 && cat.total > cat.budgeted;
-                return (
-                  <div key={cat.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-stone-700 truncate max-w-[60%]">{cat.name}</span>
-                      <span className={cn("text-xs font-semibold tabular-nums", over ? "text-red-600" : "text-stone-600")}>
-                        {money(cat.total)}
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-stone-100 overflow-hidden">
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, background: over ? "#EF4444" : pct >= 85 ? "#F59E0B" : "var(--color-primary)" }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-
         {/* Recent Activity */}
-        <Card className="sm:col-span-2 xl:col-span-1">
+        <Card>
           <CardHeader title="Recent Activity" sub="Last 5 transactions" icon={Clock} />
           {sortedSpends.length === 0 ? (
             <div className="text-sm text-stone-400 py-4 text-center">No transactions yet.</div>
@@ -404,11 +374,19 @@ export default function Home() {
         </Card>
       </div>
 
-      {/* ── Upcoming row ──────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* ── Upcoming (combined) ───────────────────────── */}
+      <Card>
+        <div className="text-sm font-semibold text-stone-900 mb-4">Upcoming</div>
+
         {/* Bills */}
-        <Card>
-          <CardHeader title="Bills Due Soon" sub="3 days" icon={Receipt} />
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Receipt size={13} className="text-stone-400" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Bills</span>
+            </div>
+            <span className="text-xs text-stone-400">3 days</span>
+          </div>
           <div className="space-y-2">
             {!upcoming || upcoming.bills.length === 0 ? (
               <p className="text-sm text-stone-400">No bills coming up.</p>
@@ -433,11 +411,19 @@ export default function Home() {
               );
             })}
           </div>
-        </Card>
+        </div>
+
+        <div className="border-b border-stone-100 mb-4" />
 
         {/* Events */}
-        <Card>
-          <CardHeader title="Upcoming Events" sub="7 days" icon={Calendar} />
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Calendar size={13} className="text-stone-400" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Events</span>
+            </div>
+            <span className="text-xs text-stone-400">7 days</span>
+          </div>
           <div className="space-y-2">
             {!upcoming || upcoming.events.length === 0 ? (
               <p className="text-sm text-stone-400">Nothing scheduled soon.</p>
@@ -452,11 +438,19 @@ export default function Home() {
               );
             })}
           </div>
-        </Card>
+        </div>
+
+        <div className="border-b border-stone-100 mb-4" />
 
         {/* Goals */}
-        <Card className="sm:col-span-2 lg:col-span-1">
-          <CardHeader title="Goal Reminders" sub="Due within 30 days" icon={Target} />
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Target size={13} className="text-stone-400" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Goals</span>
+            </div>
+            <span className="text-xs text-stone-400">30 days</span>
+          </div>
           <div className="space-y-2">
             {upcomingGoals.length === 0 ? (
               <p className="text-sm text-stone-400">No goals due soon.</p>
@@ -476,8 +470,56 @@ export default function Home() {
               );
             })}
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
+
+      {/* ── Family Notes ──────────────────────────────── */}
+      <Card>
+        <CardHeader title="Family Notes" sub="Shared message board" icon={MessageSquare} />
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <textarea
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500 transition-all resize-none text-stone-900 placeholder-stone-400"
+              rows={2} maxLength={500}
+              placeholder="Leave a note for the family…"
+              value={noteInput}
+              onChange={(e) => setNoteInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postNote(); }}
+            />
+            <span className="absolute bottom-2 right-3 text-[10px] text-stone-300">{noteInput.length}/500</span>
+          </div>
+          <button type="button" onClick={postNote} disabled={!noteInput.trim()}
+            className="self-end h-10 px-4 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all flex items-center gap-1.5"
+            style={{ background: "var(--color-primary)" }}>
+            <Send size={13} />
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        </div>
+        <div className="space-y-2">
+          {notes.length === 0 ? (
+            <p className="text-sm text-stone-400 text-center py-4">No notes yet. Be the first to leave one!</p>
+          ) : notes.map((note) => {
+            const authorDisplay = note.author_name || (note.user_id === myUserId ? "You" : "Family member");
+            return (
+              <div key={note.id} className="rounded-xl border border-stone-100 bg-stone-50 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <UserAvatar name={authorDisplay} size={6} />
+                    <span className="text-xs font-semibold text-stone-700">{authorDisplay}</span>
+                    <span className="text-stone-300 text-xs">·</span>
+                    <span className="text-xs text-stone-400">{timeAgo(note.created_at)}</span>
+                  </div>
+                  <button type="button" onClick={() => deleteNote(note.id)}
+                    className="text-stone-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <p className="text-sm text-stone-700 leading-relaxed">{note.body}</p>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* ── Log Transaction ───────────────────────────── */}
       <Card>
@@ -610,7 +652,7 @@ export default function Home() {
             <div className="px-5 py-10 text-center text-sm text-stone-400">No transactions yet.</div>
           )}
           {sortedSpends.map((row) => {
-            const catName = catNameById[row.category_id] || row.category_id;
+            const catName  = catNameById[row.category_id] || row.category_id;
             const available = catAvailableById[row.category_id];
             const isIncome  = row.category_id === INCOME_ID || row.direction === "in";
             return (
@@ -634,54 +676,6 @@ export default function Home() {
                   className="shrink-0 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 disabled:opacity-40 transition-all">
                   Undo
                 </button>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* ── Family Notes ──────────────────────────────── */}
-      <Card>
-        <CardHeader title="Family Notes" sub="Shared message board" icon={MessageSquare} />
-        <div className="flex gap-2 mb-4">
-          <div className="relative flex-1">
-            <textarea
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500 transition-all resize-none text-stone-900 placeholder-stone-400"
-              rows={2} maxLength={500}
-              placeholder="Leave a note for the family…"
-              value={noteInput}
-              onChange={(e) => setNoteInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postNote(); }}
-            />
-            <span className="absolute bottom-2 right-3 text-[10px] text-stone-300">{noteInput.length}/500</span>
-          </div>
-          <button type="button" onClick={postNote} disabled={!noteInput.trim()}
-            className="self-end h-10 px-4 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all flex items-center gap-1.5"
-            style={{ background: "var(--color-primary)" }}>
-            <Send size={13} />
-            <span className="hidden sm:inline">Send</span>
-          </button>
-        </div>
-        <div className="space-y-2">
-          {notes.length === 0 ? (
-            <p className="text-sm text-stone-400 text-center py-4">No notes yet. Be the first to leave one!</p>
-          ) : notes.map((note) => {
-            const authorDisplay = note.author_name || (note.user_id === myUserId ? "You" : "Family member");
-            return (
-              <div key={note.id} className="rounded-xl border border-stone-100 bg-stone-50 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <UserAvatar name={authorDisplay} size={6} />
-                    <span className="text-xs font-semibold text-stone-700">{authorDisplay}</span>
-                    <span className="text-stone-300 text-xs">·</span>
-                    <span className="text-xs text-stone-400">{timeAgo(note.created_at)}</span>
-                  </div>
-                  <button type="button" onClick={() => deleteNote(note.id)}
-                    className="text-stone-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50">
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-                <p className="text-sm text-stone-700 leading-relaxed">{note.body}</p>
               </div>
             );
           })}

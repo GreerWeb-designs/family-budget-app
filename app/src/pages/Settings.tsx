@@ -135,7 +135,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [inviteExpiry, setInviteExpiry] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [copied, setCopied]     = useState(false);
+  const [copied, setCopied]     = useState<"code" | "link" | null>(null);
 
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
@@ -166,14 +166,13 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
   async function generateInvite() {
     setInviteLoading(true);
     try {
-      const res = await api<{ ok: boolean; code: string; expiresAt: string }>("/api/household/invite");
-      setInviteCode(res.code); setInviteExpiry(res.expiresAt); setCopied(false);
+      const res = await api<{ ok: boolean; code: string; expiresAt: string }>("/api/household/invite", { method: "POST" });
+      setInviteCode(res.code); setInviteExpiry(res.expiresAt); setCopied(null);
     } finally { setInviteLoading(false); }
   }
 
-  function copyCode() {
-    if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  function copyToClipboard(text: string, type: "code" | "link") {
+    navigator.clipboard.writeText(text).then(() => { setCopied(type); setTimeout(() => setCopied(null), 1500); });
   }
 
   async function removeMember(memberId: string) {
@@ -292,12 +291,17 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
               <div className="text-xs text-center break-all text-teal-600 font-medium">
                 {APP_URL}/join/{inviteCode}
               </div>
-              <div className="flex gap-2 justify-center">
-                <button type="button" onClick={copyCode}
+              <div className="flex gap-2 justify-center flex-wrap">
+                <button type="button" onClick={() => copyToClipboard(inviteCode!, "code")}
                   className="flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all"
                   style={{ background: "var(--color-primary)" }}>
-                  {copied ? <Check size={13} /> : <Copy size={13} />}
-                  {copied ? "Copied!" : "Copy code"}
+                  {copied === "code" ? <Check size={13} /> : <Copy size={13} />}
+                  {copied === "code" ? "Copied!" : "Copy code"}
+                </button>
+                <button type="button" onClick={() => copyToClipboard(`${APP_URL}/join/${inviteCode}`, "link")}
+                  className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-stone-200 text-sm text-stone-600 hover:bg-stone-50 transition-all">
+                  {copied === "link" ? <Check size={13} /> : <Copy size={13} />}
+                  {copied === "link" ? "Copied!" : "Copy link"}
                 </button>
                 <button type="button" onClick={generateInvite} disabled={inviteLoading}
                   className="h-9 px-4 rounded-xl border border-stone-200 text-sm text-stone-600 hover:bg-stone-50 disabled:opacity-60 transition-all">
