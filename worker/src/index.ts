@@ -2,10 +2,14 @@
 
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
+import { Resend } from "resend";
 
 type Bindings = {
   DB: D1Database;
   SESSION_SECRET: string;
+  RESEND_API_KEY: string;
+  ADMIN_EMAIL: string;
+  RESEND_FROM_EMAIL: string;
 };
 
 type Variables = {
@@ -81,13 +85,14 @@ function clearCookie(name: string) {
   return `${name}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0`;
 }
 
-async function ensureAccountState(db: D1Database, userId: string) {
+/** Ensure one account_state row exists per household (id = householdId). */
+async function ensureAccountState(db: D1Database, householdId: string) {
   await db
     .prepare(
       `INSERT OR IGNORE INTO account_state (id, bank_balance, anchor_balance, to_be_budgeted, updated_at)
        VALUES (?, 0, 0, 0, ?)`
     )
-    .bind(userId, new Date().toISOString())
+    .bind(householdId, new Date().toISOString())
     .run();
 }
 
@@ -98,10 +103,29 @@ async function getUserHouseholdId(db: D1Database, userId: string): Promise<strin
   return row?.household_id ?? null;
 }
 
-async function getCategories(db: D1Database, userId: string) {
+/**
+ * Like getUserHouseholdId but creates a fallback personal household if the user
+ * somehow has no household record (guards against edge cases in shared-data routes).
+ */
+async function getOrCreateHouseholdId(db: D1Database, userId: string): Promise<string> {
+  const existing = await getUserHouseholdId(db, userId);
+  if (existing) return existing;
+
+  const householdId = uid();
+  const now = new Date().toISOString();
+  await db.prepare(`INSERT INTO households (id, name, created_at) VALUES (?, ?, ?)`)
+    .bind(householdId, "My Household", now).run();
+  await db.prepare(
+    `INSERT INTO household_members (id, household_id, user_id, role, joined_at) VALUES (?, ?, ?, 'admin', ?)`
+  ).bind(uid(), householdId, userId, now).run();
+  return householdId;
+}
+
+/** Returns categories for the given household (household-scoped). */
+async function getCategories(db: D1Database, householdId: string) {
   const rows = await db
-    .prepare(`SELECT id, name, direction FROM categories WHERE user_id = ? ORDER BY name ASC`)
-    .bind(userId)
+    .prepare(`SELECT id, name, direction FROM categories WHERE household_id = ? ORDER BY name ASC`)
+    .bind(householdId)
     .all<{ id: string; name: string; direction: string }>();
   return rows.results ?? [];
 }
@@ -128,10 +152,11 @@ const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables 
 // ---- HEALTH ----
 app.get("/api/health", (c) => c.json({ ok: true }));
 
-// ---- CATEGORIES ----
+// ---- CATEGORIES (household-scoped) ----
 app.get("/api/categories", requireUser, async (c) => {
   const userId = c.get("userId");
-  const categories = await getCategories(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  const categories = await getCategories(c.env.DB, householdId);
   return c.json({ categories });
 });
 
@@ -143,11 +168,12 @@ app.post("/api/categories", requireUser, async (c) => {
   if (!name) return c.json({ error: "Category name is required" }, 400);
 
   const userId = c.get("userId");
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
 
   const existing = await c.env.DB.prepare(
-    `SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND user_id = ? LIMIT 1`
+    `SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND household_id = ? LIMIT 1`
   )
-    .bind(name, userId)
+    .bind(name, householdId)
     .first<{ id: string }>();
 
   if (existing) return c.json({ error: "A category with that name already exists" }, 400);
@@ -156,8 +182,10 @@ app.post("/api/categories", requireUser, async (c) => {
   if (!baseId) return c.json({ error: "Invalid category name" }, 400);
   const id = `${userId.slice(0, 8)}_${baseId}`;
 
-  await c.env.DB.prepare(`INSERT INTO categories (id, name, direction, user_id) VALUES (?, ?, ?, ?)`)
-    .bind(id, name, direction, userId)
+  await c.env.DB.prepare(
+    `INSERT INTO categories (id, name, direction, user_id, household_id) VALUES (?, ?, ?, ?, ?)`
+  )
+    .bind(id, name, direction, userId, householdId)
     .run();
 
   return c.json({ ok: true, id });
@@ -165,7 +193,8 @@ app.post("/api/categories", requireUser, async (c) => {
 
 app.delete("/api/categories/:id", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const id = c.req.param("id");
 
   const inSpends = await c.env.DB.prepare(
@@ -190,12 +219,12 @@ app.delete("/api/categories/:id", requireUser, async (c) => {
     await c.env.DB.prepare(
       `UPDATE account_state SET to_be_budgeted = to_be_budgeted + ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amountBudgeted, new Date().toISOString(), userId)
+      .bind(amountBudgeted, new Date().toISOString(), householdId)
       .run();
   }
 
   await c.env.DB.prepare(`DELETE FROM budget_lines WHERE category_id = ?`).bind(id).run();
-  await c.env.DB.prepare(`DELETE FROM categories WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+  await c.env.DB.prepare(`DELETE FROM categories WHERE id = ? AND household_id = ?`).bind(id, householdId).run();
 
   return c.json({ ok: true });
 });
@@ -287,27 +316,34 @@ app.post("/api/auth/signup", async (c) => {
     `INSERT INTO household_members (id, household_id, user_id, role, joined_at) VALUES (?, ?, ?, 'admin', ?)`
   ).bind(uid(), householdId, userId, now).run();
 
+  // Seed account_state keyed by householdId (shared across household members)
   await c.env.DB.prepare(
     `INSERT OR IGNORE INTO account_state (id, bank_balance, anchor_balance, to_be_budgeted, updated_at) VALUES (?, 0, 0, 0, ?)`
-  ).bind(userId, now).run();
+  ).bind(householdId, now).run();
 
+  // Seed budget_months for the current month
+  await c.env.DB.prepare(
+    `INSERT OR IGNORE INTO budget_months (month, household_id, created_at) VALUES (?, ?, ?)`
+  ).bind(monthKey(), householdId, now).run();
+
+  // Seed default categories keyed by householdId
   const defaultCategories = [
-    { id: "income",        name: "Income",         direction: "inflow" },
-    { id: "housing",       name: "Housing",         direction: "outflow" },
-    { id: "groceries",     name: "Groceries",       direction: "outflow" },
-    { id: "transportation",name: "Transportation",  direction: "outflow" },
-    { id: "utilities",     name: "Utilities",       direction: "outflow" },
-    { id: "health",        name: "Health",          direction: "outflow" },
-    { id: "personal",      name: "Personal",        direction: "outflow" },
-    { id: "entertainment", name: "Entertainment",   direction: "outflow" },
-    { id: "savings",       name: "Savings",         direction: "outflow" },
-    { id: "miscellaneous", name: "Miscellaneous",   direction: "outflow" },
+    { id: "income",         name: "Income",         direction: "inflow"  },
+    { id: "housing",        name: "Housing",         direction: "outflow" },
+    { id: "groceries",      name: "Groceries",       direction: "outflow" },
+    { id: "transportation", name: "Transportation",  direction: "outflow" },
+    { id: "utilities",      name: "Utilities",       direction: "outflow" },
+    { id: "health",         name: "Health",          direction: "outflow" },
+    { id: "personal",       name: "Personal",        direction: "outflow" },
+    { id: "entertainment",  name: "Entertainment",   direction: "outflow" },
+    { id: "savings",        name: "Savings",         direction: "outflow" },
+    { id: "miscellaneous",  name: "Miscellaneous",   direction: "outflow" },
   ];
   for (const cat of defaultCategories) {
-    const catId = `${userId.slice(0, 8)}_${cat.id}`;
+    const catId = `${householdId.slice(0, 8)}_${cat.id}`;
     await c.env.DB.prepare(
-      `INSERT OR IGNORE INTO categories (id, name, direction, user_id) VALUES (?, ?, ?, ?)`
-    ).bind(catId, cat.name, cat.direction, userId).run();
+      `INSERT OR IGNORE INTO categories (id, name, direction, user_id, household_id) VALUES (?, ?, ?, ?, ?)`
+    ).bind(catId, cat.name, cat.direction, userId, householdId).run();
   }
 
   const sessionToken = uid();
@@ -318,6 +354,32 @@ app.post("/api/auth/signup", async (c) => {
   ).bind(uid(), userId, tokenHash, expiresAt, now).run();
 
   c.header("Set-Cookie", setCookie("session", sessionToken));
+
+  // Admin notification — fire-and-forget, never blocks signup
+  const householdName = `${name}'s Household`;
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        const resend = new Resend(c.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: c.env.RESEND_FROM_EMAIL,
+          to:   c.env.ADMIN_EMAIL,
+          subject: "New signup: FamilyBudgetApp",
+          html: `
+            <p>A new user just signed up for FamilyBudgetApp.</p>
+            <ul>
+              <li><strong>Display name:</strong> ${name}</li>
+              <li><strong>Household created:</strong> ${householdName}</li>
+              <li><strong>Signed up at:</strong> ${now} (UTC)</li>
+            </ul>
+          `.trim(),
+        });
+      } catch (err) {
+        console.error("[resend] Admin notification failed:", err);
+      }
+    })()
+  );
+
   return c.json({ ok: true, userId, name });
 });
 
@@ -366,24 +428,26 @@ app.post("/api/auth/reset-password", async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- ACCOUNT ----
+// ---- ACCOUNT (household-scoped) ----
 app.get("/api/account", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const row = await c.env.DB.prepare(
     `SELECT bank_balance, anchor_balance, to_be_budgeted FROM account_state WHERE id = ? LIMIT 1`
-  ).bind(userId).first<{ bank_balance: number; anchor_balance: number; to_be_budgeted: number }>();
+  ).bind(householdId).first<{ bank_balance: number; anchor_balance: number; to_be_budgeted: number }>();
 
   return c.json({
-    bankBalance: Number(row?.bank_balance ?? 0),
-    anchorBalance: Number(row?.anchor_balance ?? 0),
-    toBeBudgeted: Number(row?.to_be_budgeted ?? 0),
+    bankBalance:    Number(row?.bank_balance    ?? 0),
+    anchorBalance:  Number(row?.anchor_balance  ?? 0),
+    toBeBudgeted:   Number(row?.to_be_budgeted  ?? 0),
   });
 });
 
 app.post("/api/account/set", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const body = await c.req.json<{ bankBalance?: number }>();
   const bank = body.bankBalance;
 
@@ -391,7 +455,7 @@ app.post("/api/account/set", requireUser, async (c) => {
     return c.json({ error: "bankBalance must be a number" }, 400);
   }
 
-  const categories = await getCategories(c.env.DB, userId);
+  const categories = await getCategories(c.env.DB, householdId);
   const validIds = categories.filter((c) => c.direction !== "inflow").map((c) => c.id);
   let totalBudgeted = 0;
 
@@ -409,7 +473,7 @@ app.post("/api/account/set", requireUser, async (c) => {
   await c.env.DB.prepare(
     `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, updated_at = ? WHERE id = ?`
   )
-    .bind(bank, bank - totalBudgeted, now, userId)
+    .bind(bank, bank - totalBudgeted, now, householdId)
     .run();
 
   return c.json({ ok: true });
@@ -417,15 +481,16 @@ app.post("/api/account/set", requireUser, async (c) => {
 
 app.post("/api/account/reconcile", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const acct = await c.env.DB.prepare(
     `SELECT bank_balance FROM account_state WHERE id = ? LIMIT 1`
-  ).bind(userId).first<{ bank_balance: number }>();
+  ).bind(householdId).first<{ bank_balance: number }>();
 
   await c.env.DB.prepare(
     `UPDATE account_state SET anchor_balance = ?, updated_at = ? WHERE id = ?`
   )
-    .bind(Number(acct?.bank_balance ?? 0), new Date().toISOString(), userId)
+    .bind(Number(acct?.bank_balance ?? 0), new Date().toISOString(), householdId)
     .run();
 
   return c.json({ ok: true });
@@ -435,6 +500,7 @@ app.post("/api/account/reconcile", requireUser, async (c) => {
 
 app.post("/api/onboarding/complete", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
   const body = await c.req.json<{ quizAnswers?: Record<string, string>; startingBalance?: number | null }>();
   const now = new Date().toISOString();
 
@@ -447,14 +513,14 @@ app.post("/api/onboarding/complete", requireUser, async (c) => {
     userId,
   ).run();
 
-  // Set live bank balance in account_state if provided
+  // Set live bank balance in account_state (household-scoped) if provided
   const bank = typeof body.startingBalance === "number" && !Number.isNaN(body.startingBalance) && body.startingBalance > 0
     ? body.startingBalance
     : null;
 
   if (bank !== null) {
-    await ensureAccountState(c.env.DB, userId);
-    const categories = await getCategories(c.env.DB, userId);
+    await ensureAccountState(c.env.DB, householdId);
+    const categories = await getCategories(c.env.DB, householdId);
     const validIds = categories.filter((cat) => cat.direction !== "inflow").map((cat) => cat.id);
     let totalBudgeted = 0;
     if (validIds.length > 0) {
@@ -466,7 +532,7 @@ app.post("/api/onboarding/complete", requireUser, async (c) => {
     }
     await c.env.DB.prepare(
       `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, updated_at = ? WHERE id = ?`
-    ).bind(bank, bank - totalBudgeted, now, userId).run();
+    ).bind(bank, bank - totalBudgeted, now, householdId).run();
   }
 
   return c.json({ ok: true, completedAt: now });
@@ -480,16 +546,17 @@ app.post("/api/onboarding/reset", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- TOTALS ----
+// ---- TOTALS (household-scoped) ----
 app.get("/api/totals", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
 
   const incomeRow = await c.env.DB.prepare(
-    `SELECT COALESCE(SUM(amount), 0) AS totalIncome FROM manual_spends WHERE direction = 'in' AND user_id = ?`
-  ).bind(userId).first<{ totalIncome: number }>();
+    `SELECT COALESCE(SUM(amount), 0) AS totalIncome FROM manual_spends WHERE direction = 'in' AND household_id = ?`
+  ).bind(householdId).first<{ totalIncome: number }>();
 
-  const categories = await getCategories(c.env.DB, userId);
+  const categories = await getCategories(c.env.DB, householdId);
   const validIds = categories.filter((c) => c.direction !== "inflow").map((c) => c.id);
   let totalBudgeted = 0;
 
@@ -505,17 +572,17 @@ app.get("/api/totals", requireUser, async (c) => {
 
   const accountRow = await c.env.DB.prepare(
     `SELECT COALESCE(bank_balance, 0) AS bankBalance, COALESCE(to_be_budgeted, 0) AS toBeBudgeted FROM account_state WHERE id = ? LIMIT 1`
-  ).bind(userId).first<{ bankBalance: number; toBeBudgeted: number }>();
+  ).bind(householdId).first<{ bankBalance: number; toBeBudgeted: number }>();
 
   return c.json({
-    bankBalance: Number(accountRow?.bankBalance ?? 0),
-    totalIncome: Number(incomeRow?.totalIncome ?? 0),
+    bankBalance:    Number(accountRow?.bankBalance   ?? 0),
+    totalIncome:    Number(incomeRow?.totalIncome    ?? 0),
     totalBudgeted,
-    toBeBudgeted: Number(accountRow?.toBeBudgeted ?? 0),
+    toBeBudgeted:   Number(accountRow?.toBeBudgeted  ?? 0),
   });
 });
 
-// ---- BILLS ----
+// ---- BILLS (already household-scoped — unchanged) ----
 app.get("/api/bills", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
@@ -565,13 +632,16 @@ app.delete("/api/bills/:id", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- BUDGET ----
+// ---- BUDGET (household-scoped) ----
 app.get("/api/budget/current", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
   const month = (c.req.query("month") || "").trim() || monthKey();
+
   const rows = await c.env.DB.prepare(
-    `SELECT category_id, amount_budgeted FROM budget_lines WHERE month = ?`
+    `SELECT category_id, amount_budgeted FROM budget_lines WHERE month = ? AND household_id = ?`
   )
-    .bind(month)
+    .bind(month, householdId)
     .all<{ category_id: string; amount_budgeted: number }>();
 
   const budget: Record<string, number> = {};
@@ -584,7 +654,8 @@ app.get("/api/budget/current", requireUser, async (c) => {
 
 app.post("/api/budget/set", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const body = await c.req.json<{ categoryId?: string; amount?: number; month?: string }>();
   const categoryId = (body.categoryId || "").trim();
   const amount = body.amount;
@@ -604,17 +675,17 @@ app.post("/api/budget/set", requireUser, async (c) => {
   const delta = Number(amount) - oldAmount;
 
   await c.env.DB.prepare(
-    `INSERT INTO budget_lines (id, category_id, amount_budgeted, month)
-     VALUES (?, ?, ?, ?)
+    `INSERT INTO budget_lines (id, category_id, amount_budgeted, month, household_id)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(category_id, month) DO UPDATE SET amount_budgeted = excluded.amount_budgeted`
   )
-    .bind(uid(), categoryId, amount, month)
+    .bind(uid(), categoryId, amount, month, householdId)
     .run();
 
   await c.env.DB.prepare(
     `UPDATE account_state SET to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = ?`
   )
-    .bind(delta, new Date().toISOString(), userId)
+    .bind(delta, new Date().toISOString(), householdId)
     .run();
 
   return c.json({ ok: true });
@@ -622,7 +693,8 @@ app.post("/api/budget/set", requireUser, async (c) => {
 
 app.post("/api/budget/adjust", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const body = await c.req.json<{ categoryId?: string; delta?: number; month?: string }>();
   const categoryId = (body.categoryId || "").trim();
   const delta = body.delta;
@@ -633,11 +705,11 @@ app.post("/api/budget/adjust", requireUser, async (c) => {
   }
 
   await c.env.DB.prepare(
-    `INSERT INTO budget_lines (id, category_id, amount_budgeted, month)
-     VALUES (?, ?, 0, ?)
+    `INSERT INTO budget_lines (id, category_id, amount_budgeted, month, household_id)
+     VALUES (?, ?, 0, ?, ?)
      ON CONFLICT(category_id, month) DO NOTHING`
   )
-    .bind(uid(), categoryId, month)
+    .bind(uid(), categoryId, month, householdId)
     .run();
 
   await c.env.DB.prepare(
@@ -649,19 +721,21 @@ app.post("/api/budget/adjust", requireUser, async (c) => {
   await c.env.DB.prepare(
     `UPDATE account_state SET to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = ?`
   )
-    .bind(delta, new Date().toISOString(), userId)
+    .bind(delta, new Date().toISOString(), householdId)
     .run();
 
   return c.json({ ok: true });
 });
 
-// ---- SPEND ----
+// ---- SPEND (household-scoped; user_id kept as audit trail) ----
 app.get("/api/spend", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+
   const rows = await c.env.DB.prepare(
     `SELECT id, user_id, category_id, amount, date, note, direction, created_at
-     FROM manual_spends WHERE user_id = ? ORDER BY date DESC, created_at DESC LIMIT 200`
-  ).bind(userId).all<{
+     FROM manual_spends WHERE household_id = ? ORDER BY date DESC, created_at DESC LIMIT 200`
+  ).bind(householdId).all<{
     id: string;
     user_id: string;
     category_id: string;
@@ -677,7 +751,8 @@ app.get("/api/spend", requireUser, async (c) => {
 
 app.post("/api/spend", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const body = await c.req.json<{
     categoryId?: string;
     amount?: number;
@@ -697,8 +772,8 @@ app.post("/api/spend", requireUser, async (c) => {
   }
 
   const catRow = await c.env.DB.prepare(
-    `SELECT direction FROM categories WHERE id = ? AND user_id = ? LIMIT 1`
-  ).bind(categoryId, userId).first<{ direction: string }>();
+    `SELECT direction FROM categories WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(categoryId, householdId).first<{ direction: string }>();
   if (!catRow) return c.json({ error: "Invalid category" }, 400);
 
   if (direction === "in" && catRow.direction !== "inflow") {
@@ -712,23 +787,23 @@ app.post("/api/spend", requireUser, async (c) => {
   const spendId = uid();
 
   await c.env.DB.prepare(
-    `INSERT INTO manual_spends (id, user_id, category_id, amount, date, note, direction, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO manual_spends (id, user_id, household_id, category_id, amount, date, note, direction, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(spendId, userId, categoryId, amount, date, note, direction, now)
+    .bind(spendId, userId, householdId, categoryId, amount, date, note, direction, now)
     .run();
 
   if (direction === "in") {
     await c.env.DB.prepare(
       `UPDATE account_state SET bank_balance = bank_balance + ?, to_be_budgeted = to_be_budgeted + ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, amount, now, userId)
+      .bind(amount, amount, now, householdId)
       .run();
   } else {
     await c.env.DB.prepare(
       `UPDATE account_state SET bank_balance = bank_balance - ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, now, userId)
+      .bind(amount, now, householdId)
       .run();
   }
 
@@ -737,13 +812,14 @@ app.post("/api/spend", requireUser, async (c) => {
 
 app.delete("/api/spend/:id", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const spendId = c.req.param("id");
 
   const existing = await c.env.DB.prepare(
-    `SELECT id, amount, direction FROM manual_spends WHERE id = ? LIMIT 1`
+    `SELECT id, amount, direction FROM manual_spends WHERE id = ? AND household_id = ? LIMIT 1`
   )
-    .bind(spendId)
+    .bind(spendId, householdId)
     .first<{ id: string; amount: number; direction: "in" | "out" }>();
 
   if (!existing) return c.json({ error: "Not found" }, 404);
@@ -757,24 +833,25 @@ app.delete("/api/spend/:id", requireUser, async (c) => {
     await c.env.DB.prepare(
       `UPDATE account_state SET bank_balance = bank_balance - ?, to_be_budgeted = to_be_budgeted - ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, amount, now, userId)
+      .bind(amount, amount, now, householdId)
       .run();
   } else {
     await c.env.DB.prepare(
       `UPDATE account_state SET bank_balance = bank_balance + ?, updated_at = ? WHERE id = ?`
     )
-      .bind(amount, now, userId)
+      .bind(amount, now, householdId)
       .run();
   }
 
   return c.json({ ok: true });
 });
 
-// ---- SPEND SUMMARY (month-aware) ----
+// ---- SPEND SUMMARY (household-scoped) ----
 app.get("/api/spend/summary", requireUser, async (c) => {
   const userId = c.get("userId");
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
   const month = (c.req.query("month") || "").trim() || monthKey();
-  const categories = await getCategories(c.env.DB, userId);
+  const categories = await getCategories(c.env.DB, householdId);
 
   const [year, mon] = month.split("-");
   const y = Number(year);
@@ -788,16 +865,16 @@ app.get("/api/spend/summary", requireUser, async (c) => {
     `SELECT category_id,
             COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS activity
      FROM manual_spends
-     WHERE date >= ? AND date < ? AND user_id = ?
+     WHERE date >= ? AND date < ? AND household_id = ?
      GROUP BY category_id`
   )
-    .bind(startDate, endDate, userId)
+    .bind(startDate, endDate, householdId)
     .all<{ category_id: string; activity: number }>();
 
   const budgetRows = await c.env.DB.prepare(
-    `SELECT category_id, amount_budgeted FROM budget_lines WHERE month = ?`
+    `SELECT category_id, amount_budgeted FROM budget_lines WHERE month = ? AND household_id = ?`
   )
-    .bind(month)
+    .bind(month, householdId)
     .all<{ category_id: string; amount_budgeted: number }>();
 
   const activityByCategory: Record<string, number> = {};
@@ -821,7 +898,7 @@ app.get("/api/spend/summary", requireUser, async (c) => {
   return c.json({ byCategory });
 });
 
-// ---- GOALS ----
+// ---- GOALS (personal — user_id scoped, unchanged) ----
 app.get("/api/goals", requireUser, async (c) => {
   const userId = c.get("userId");
   const rows = await c.env.DB.prepare(
@@ -896,7 +973,7 @@ app.delete("/api/goals/:id", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- DEBTS ----
+// ---- DEBTS (personal — user_id scoped, unchanged) ----
 type DebtRow = { id: string; name: string; balance: number; apr: number; payment: number; payments_remaining: number; created_at: string; updated_at: string };
 
 app.get("/api/debts", requireUser, async (c) => {
@@ -1026,7 +1103,7 @@ app.post("/api/debts/:id/plan", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- CALENDAR ----
+// ---- CALENDAR (already household-scoped — unchanged) ----
 app.get("/api/calendar/upcoming", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
@@ -1081,7 +1158,7 @@ app.delete("/api/calendar/:id", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- HOME UPCOMING ----
+// ---- HOME UPCOMING (already household-scoped — unchanged) ----
 app.get("/api/home/upcoming", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
@@ -1161,17 +1238,21 @@ app.get("/api/calendar/range", requireUser, async (c) => {
   return c.json({ bills: billsInRange, events: eventsRows.results ?? [] });
 });
 
-// ---- MONTHLY BUDGET ----
+// ---- MONTHLY BUDGET (household-scoped) ----
 app.get("/api/budget/months", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+
   const rows = await c.env.DB.prepare(
-    `SELECT month, closed_at FROM budget_months ORDER BY month DESC`
-  ).all<{ month: string; closed_at: string | null }>();
+    `SELECT month, closed_at FROM budget_months WHERE household_id = ? ORDER BY month DESC`
+  ).bind(householdId).all<{ month: string; closed_at: string | null }>();
   return c.json({ months: rows.results ?? [] });
 });
 
 app.post("/api/budget/month/close", requireUser, async (c) => {
   const userId = c.get("userId");
-  await ensureAccountState(c.env.DB, userId);
+  const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
+  await ensureAccountState(c.env.DB, householdId);
   const body = await c.req.json<{ currentMonth?: string; nextMonth?: string }>();
   const currentMonth = (body.currentMonth || "").trim();
   const nextMonth = (body.nextMonth || "").trim();
@@ -1182,33 +1263,34 @@ app.post("/api/budget/month/close", requireUser, async (c) => {
 
   const now = new Date().toISOString();
 
-  await c.env.DB.prepare(`UPDATE budget_months SET closed_at = ? WHERE month = ?`)
-    .bind(now, currentMonth).run();
+  await c.env.DB.prepare(
+    `UPDATE budget_months SET closed_at = ? WHERE month = ? AND household_id = ?`
+  ).bind(now, currentMonth, householdId).run();
 
-  await c.env.DB.prepare(`INSERT OR IGNORE INTO budget_months (month, created_at) VALUES (?, ?)`)
-    .bind(nextMonth, now).run();
+  await c.env.DB.prepare(
+    `INSERT OR IGNORE INTO budget_months (month, household_id, created_at) VALUES (?, ?, ?)`
+  ).bind(nextMonth, householdId, now).run();
 
-  const categories = await c.env.DB.prepare(
-    `SELECT id FROM categories WHERE direction != 'inflow' AND user_id = ?`
-  ).bind(userId).all<{ id: string }>();
+  const categories = await getCategories(c.env.DB, householdId);
 
-  for (const cat of categories.results ?? []) {
+  for (const cat of categories.filter((c) => c.direction !== "inflow")) {
     await c.env.DB.prepare(
-      `INSERT OR IGNORE INTO budget_lines (id, category_id, amount_budgeted, month) VALUES (?, ?, 0, ?)`
-    ).bind(uid(), cat.id, nextMonth).run();
+      `INSERT OR IGNORE INTO budget_lines (id, category_id, amount_budgeted, month, household_id) VALUES (?, ?, 0, ?, ?)`
+    ).bind(uid(), cat.id, nextMonth, householdId).run();
   }
 
   const acct = await c.env.DB.prepare(
     `SELECT bank_balance FROM account_state WHERE id = ? LIMIT 1`
-  ).bind(userId).first<{ bank_balance: number }>();
+  ).bind(householdId).first<{ bank_balance: number }>();
 
   await c.env.DB.prepare(
     `UPDATE account_state SET to_be_budgeted = ?, updated_at = ? WHERE id = ?`
-  ).bind(Number(acct?.bank_balance ?? 0), now, userId).run();
+  ).bind(Number(acct?.bank_balance ?? 0), now, householdId).run();
 
   return c.json({ ok: true, nextMonth });
 });
 
+// ---- NOTES (already household-scoped — unchanged) ----
 app.get("/api/notes", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
@@ -1244,14 +1326,13 @@ app.delete("/api/notes/:id", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
   const id = c.req.param("id");
-  // allow delete by own user_id OR any member of the same household
   await c.env.DB.prepare(
     `DELETE FROM notes WHERE id = ? AND (user_id = ? OR household_id = ?)`
   ).bind(id, userId, householdId ?? "").run();
   return c.json({ ok: true });
 });
 
-// ---- HOUSEHOLD MANAGEMENT ----
+// ---- HOUSEHOLD MANAGEMENT (unchanged) ----
 app.get("/api/household", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
@@ -1339,7 +1420,6 @@ app.post("/api/household/join", requireUser, async (c) => {
     `UPDATE household_invites SET used = 1, used_by = ? WHERE id = ?`
   ).bind(userId, invite.id).run();
 
-  // Return household name for success message
   const household = await c.env.DB.prepare(
     `SELECT name FROM households WHERE id = ? LIMIT 1`
   ).bind(invite.household_id).first<{ name: string }>();
@@ -1378,7 +1458,7 @@ app.delete("/api/household/members/:memberId", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
-// ---- PROFILE ----
+// ---- PROFILE (unchanged) ----
 app.patch("/api/auth/profile", requireUser, async (c) => {
   const userId = c.get("userId");
   const body = await c.req.json<{ name?: string; currentPassword?: string; newPassword?: string }>();

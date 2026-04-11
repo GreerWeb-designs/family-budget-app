@@ -17,3 +17,14 @@ database_id = "dd44c966-4b30-4c6c-a887-a03969fdaacd"
 
 # ✅ Optional: same DB for preview/local deploys
 preview_database_id = "dd44c966-4b30-4c6c-a887-a03969fdaacd"
+
+# ── Email (admin notifications via Resend) ────────────────────────────────────
+# RESEND_API_KEY is a secret — set it with:
+#   npx wrangler secret put RESEND_API_KEY
+# (never put the actual key here)
+
+[vars]
+# The address admin signup alerts go TO (your inbox)
+ADMIN_EMAIL = "robert@ducharmefamily.ca"
+# The verified sender address in your Resend account/domain
+RESEND_FROM_EMAIL = "noreply@ducharmefamilybudget.com"
