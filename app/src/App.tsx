@@ -30,8 +30,6 @@ type Totals = {
   toBeBudgeted: number;
 };
 
-const ONBOARDING_KEY = "familybudget_onboarded";
-
 function AuthSpinner() {
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--sidebar-bg)" }}>
@@ -43,6 +41,8 @@ function AuthSpinner() {
   );
 }
 
+type MeResponse = { ok: boolean; userId: string; name: string; email: string; onboardingCompletedAt: string | null };
+
 /** Guards main app routes — redirects to /login if unauthenticated, /onboarding if not yet onboarded. */
 function Protected({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
@@ -50,10 +50,10 @@ function Protected({ children }: { children: ReactElement }) {
 
   useEffect(() => {
     let alive = true;
-    api<{ ok: boolean }>("/api/auth/me")
-      .then(() => {
+    api<MeResponse>("/api/auth/me")
+      .then((me) => {
         if (!alive) return;
-        if (localStorage.getItem(ONBOARDING_KEY) !== "true") {
+        if (!me.onboardingCompletedAt) {
           nav("/onboarding", { replace: true });
         } else {
           setOk(true);
@@ -67,15 +67,25 @@ function Protected({ children }: { children: ReactElement }) {
   return children;
 }
 
-/** Guards the onboarding route — only checks auth (no onboarding flag check to avoid redirect loop). */
+/**
+ * Guards /onboarding — requires auth. Redirects already-onboarded users back to /home
+ * so manually navigating to /onboarding after completion returns to the dashboard.
+ */
 function ProtectedOnboarding({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
   const nav = useNavigate();
 
   useEffect(() => {
     let alive = true;
-    api<{ ok: boolean }>("/api/auth/me")
-      .then(() => { if (alive) setOk(true); })
+    api<MeResponse>("/api/auth/me")
+      .then((me) => {
+        if (!alive) return;
+        if (me.onboardingCompletedAt) {
+          nav("/home", { replace: true }); // already done — skip to dashboard
+        } else {
+          setOk(true);
+        }
+      })
       .catch(() => { if (!alive) return; nav("/login", { replace: true }); });
     return () => { alive = false; };
   }, [nav]);

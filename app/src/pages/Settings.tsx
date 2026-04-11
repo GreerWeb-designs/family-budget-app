@@ -345,9 +345,20 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
 export default function Settings() {
   const nav = useNavigate();
   const [me, setMe] = useState<{ userId: string; name: string; email: string } | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   async function handleLogout() {
     try { await api("/api/auth/logout", { method: "POST" }); } finally { nav("/login", { replace: true }); }
+  }
+
+  async function resetOnboarding() {
+    setResetting(true);
+    try {
+      await api("/api/onboarding/reset", { method: "POST" });
+      nav("/onboarding", { replace: true });
+    } catch (err: any) {
+      alert(err?.message || "Failed to reset onboarding.");
+    } finally { setResetting(false); }
   }
 
   useEffect(() => {
@@ -383,6 +394,24 @@ export default function Settings() {
           </button>
         </Card>
       </div>
+
+      {/* Dev-only: Reset onboarding */}
+      {import.meta.env.DEV && (
+        <Card>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              DEV ONLY
+            </span>
+          </div>
+          <p className="text-xs text-stone-400 mb-3 mt-2">
+            Clears your onboarding status so you can test the flow again without creating a new account.
+          </p>
+          <button type="button" onClick={resetOnboarding} disabled={resetting}
+            className="h-9 px-4 rounded-xl border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60 transition-all">
+            {resetting ? "Resetting…" : "Reset onboarding"}
+          </button>
+        </Card>
+      )}
 
     </div>
   );

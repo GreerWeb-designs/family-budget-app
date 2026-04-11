@@ -247,9 +247,15 @@ app.post("/api/auth/logout", async (c) => {
 app.get("/api/auth/me", requireUser, async (c) => {
   const userId = c.get("userId");
   const user = await c.env.DB.prepare(
-    `SELECT id, name, email FROM users WHERE id = ? LIMIT 1`
-  ).bind(userId).first<{ id: string; name: string; email: string }>();
-  return c.json({ ok: true, userId, name: user?.name ?? "", email: user?.email ?? "" });
+    `SELECT id, name, email, onboarding_completed_at FROM users WHERE id = ? LIMIT 1`
+  ).bind(userId).first<{ id: string; name: string; email: string; onboarding_completed_at: string | null }>();
+  return c.json({
+    ok: true,
+    userId,
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    onboardingCompletedAt: user?.onboarding_completed_at ?? null,
+  });
 });
 
 app.post("/api/auth/signup", async (c) => {
@@ -422,6 +428,55 @@ app.post("/api/account/reconcile", requireUser, async (c) => {
     .bind(Number(acct?.bank_balance ?? 0), new Date().toISOString(), userId)
     .run();
 
+  return c.json({ ok: true });
+});
+
+// ---- ONBOARDING ----
+
+app.post("/api/onboarding/complete", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json<{ quizAnswers?: Record<string, string>; startingBalance?: number | null }>();
+  const now = new Date().toISOString();
+
+  await c.env.DB.prepare(
+    `UPDATE users SET onboarding_completed_at = ?, onboarding_quiz_answers = ?, starting_balance = ? WHERE id = ?`
+  ).bind(
+    now,
+    body.quizAnswers ? JSON.stringify(body.quizAnswers) : null,
+    typeof body.startingBalance === "number" && !Number.isNaN(body.startingBalance) ? body.startingBalance : null,
+    userId,
+  ).run();
+
+  // Set live bank balance in account_state if provided
+  const bank = typeof body.startingBalance === "number" && !Number.isNaN(body.startingBalance) && body.startingBalance > 0
+    ? body.startingBalance
+    : null;
+
+  if (bank !== null) {
+    await ensureAccountState(c.env.DB, userId);
+    const categories = await getCategories(c.env.DB, userId);
+    const validIds = categories.filter((cat) => cat.direction !== "inflow").map((cat) => cat.id);
+    let totalBudgeted = 0;
+    if (validIds.length > 0) {
+      const placeholders = validIds.map(() => "?").join(",");
+      const budgetRow = await c.env.DB.prepare(
+        `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ?`
+      ).bind(...validIds, monthKey()).first<{ totalBudgeted: number }>();
+      totalBudgeted = Number(budgetRow?.totalBudgeted ?? 0);
+    }
+    await c.env.DB.prepare(
+      `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, updated_at = ? WHERE id = ?`
+    ).bind(bank, bank - totalBudgeted, now, userId).run();
+  }
+
+  return c.json({ ok: true, completedAt: now });
+});
+
+app.post("/api/onboarding/reset", requireUser, async (c) => {
+  const userId = c.get("userId");
+  await c.env.DB.prepare(
+    `UPDATE users SET onboarding_completed_at = NULL, onboarding_quiz_answers = NULL, starting_balance = NULL WHERE id = ?`
+  ).bind(userId).run();
   return c.json({ ok: true });
 });
 

@@ -6,8 +6,7 @@ import { HeartPulse, TrendingUp, Compass, ArrowLeft, Check } from "lucide-react"
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
 
-const STORAGE_KEY = "familybudget_onboarded";
-const QUIZ_KEY    = "familybudget_quiz";
+const QUIZ_KEY = "familybudget_quiz";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -569,12 +568,7 @@ function Step6Balance({ onComplete }: { onComplete: (amount: number | null) => P
 export default function Onboarding() {
   const navigate = useNavigate();
 
-  // Redirect if already onboarded
-  useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY) === "true") {
-      navigate("/home", { replace: true });
-    }
-  }, [navigate]);
+  // Redirect handled by ProtectedOnboarding guard in App.tsx — no localStorage check needed here.
 
   const [step, setStep]       = useState(1);
   const [dir, setDir]         = useState(1);  // 1=forward, -1=backward
@@ -624,17 +618,25 @@ export default function Onboarding() {
   }
 
   async function finish(amount: number | null) {
-    if (amount !== null) {
-      try {
-        await api("/api/account/set", {
-          method: "POST",
-          body: JSON.stringify({ bankBalance: amount }),
-        });
-      } catch {
-        // proceed regardless
-      }
+    const quizAnswers: Record<string, string> = {};
+    try { Object.assign(quizAnswers, JSON.parse(localStorage.getItem(QUIZ_KEY) || "{}")); } catch {}
+
+    try {
+      await api("/api/onboarding/complete", {
+        method: "POST",
+        body: JSON.stringify({
+          startingBalance: amount,
+          quizAnswers: Object.keys(quizAnswers).length > 0 ? quizAnswers : undefined,
+        }),
+      });
+    } catch {
+      // Don't block navigation — worst case they re-see onboarding on next load,
+      // but /api/onboarding/reset exists to recover.
     }
-    localStorage.setItem(STORAGE_KEY, "true");
+
+    // Clear cached quiz data
+    try { localStorage.removeItem(QUIZ_KEY); } catch {}
+
     navigate("/home", { replace: true });
   }
 
