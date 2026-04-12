@@ -47,19 +47,19 @@ export default function JoinHousehold() {
 
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white mb-3"
-            style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
-            DB
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold mb-3"
+            style={{ background: "#C8A464", color: "#0B2A4A" }}>
+            KW
           </div>
-          <div className="font-display text-xl font-semibold text-white">Ducharme Budget</div>
-          <div className="text-sm text-stone-500 mt-0.5">Family household invite</div>
+          <div className="font-display text-xl font-semibold text-white">KeelWise</div>
+          <div className="text-sm text-stone-500 mt-0.5">Household invite</div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-xl" style={{ border: "1px solid var(--sidebar-border)" }}>
 
           {(status === "checking" || status === "joining") && (
             <div className="text-center py-6 space-y-4">
-              <Loader2 size={32} className="mx-auto text-teal-500 animate-spin" />
+              <Loader2 size={32} className="mx-auto text-[#C8A464] animate-spin" />
               <p className="text-sm text-stone-600">
                 {status === "checking" ? "Checking your account…" : "Joining household…"}
               </p>
@@ -68,7 +68,7 @@ export default function JoinHousehold() {
 
           {status === "success" && (
             <div className="text-center py-6 space-y-4">
-              <CheckCircle2 size={40} className="mx-auto text-teal-500" />
+              <CheckCircle2 size={40} className="mx-auto text-[#2F6B52]" />
               <div>
                 <p className="text-base font-semibold text-stone-900">You've joined "{householdName}"!</p>
                 <p className="text-sm text-stone-400 mt-1">Redirecting to your dashboard…</p>
@@ -97,7 +97,7 @@ export default function JoinHousehold() {
               </div>
               <p className="text-xs text-stone-400 text-center">
                 After signing in, go to{" "}
-                <Link to="/settings" className="font-semibold text-teal-600 hover:text-teal-700">
+                <Link to="/settings" className="font-semibold text-[#C8A464] hover:text-[#C8A464]/80">
                   Settings → Household
                 </Link>{" "}
                 and enter the code.
@@ -107,9 +107,9 @@ export default function JoinHousehold() {
 
           {status === "error" && (
             <div className="space-y-4">
-              <div className="flex gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
-                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{errorMsg}</p>
+              <div className="flex gap-3 rounded-xl bg-[#FDF3E3] border border-[#B8791F]/30 px-4 py-3">
+                <AlertCircle size={16} className="text-[#B8791F] shrink-0 mt-0.5" />
+                <p className="text-sm text-[#B8791F]">{errorMsg}</p>
               </div>
               <Link to="/settings"
                 className="block text-center text-sm text-stone-500 hover:text-stone-700 transition-colors">

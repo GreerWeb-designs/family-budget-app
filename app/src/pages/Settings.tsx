@@ -7,7 +7,7 @@ import { cn } from "../lib/utils";
 type Member    = { id: string; name: string; email: string; role: string; joined_at: string };
 type Household = { id: string; name: string; created_at: string };
 
-const inputCls = "w-full h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm text-stone-900 placeholder-stone-400 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all";
+const inputCls = "w-full h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm text-stone-900 placeholder-stone-400 outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -30,7 +30,7 @@ function SectionTitle({ icon: Icon, title }: { icon: React.FC<{ size?: number; c
 function StatusMsg({ msg }: { msg: { ok: boolean; text: string } | null }) {
   if (!msg) return null;
   return (
-    <p className={cn("mt-2 text-xs font-medium", msg.ok ? "text-teal-600" : "text-red-500")}>{msg.text}</p>
+    <p className={cn("mt-2 text-xs font-medium", msg.ok ? "text-[#2F6B52]" : "text-[#B8791F]")}>{msg.text}</p>
   );
 }
 
@@ -38,7 +38,7 @@ function MemberAvatar({ name }: { name: string }) {
   const initials = name.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-      style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
+      style={{ background: "#C8A464", color: "#0B2A4A" }}>
       {initials}
     </div>
   );
@@ -83,13 +83,13 @@ function ProfileSection({ name: initialName, email }: { name: string; email: str
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <User size={14} className="text-stone-400" />
-          <span className="text-sm font-semibold text-stone-900">Display Name</span>
+          <span className="text-sm font-semibold text-[#0B2A4A]">Display name</span>
         </div>
         <form onSubmit={saveName} className="flex gap-2">
           <input className={cn(inputCls, "flex-1")} value={name} onChange={(e) => setName(e.target.value)} required />
           <button type="submit" disabled={nameLoading}
             className="h-10 px-4 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all"
-            style={{ background: "var(--color-primary)" }}>
+            style={{ background: "#0B2A4A" }}>
             {nameLoading ? "…" : "Save"}
           </button>
         </form>
@@ -100,7 +100,7 @@ function ProfileSection({ name: initialName, email }: { name: string; email: str
       <Card>
         <div className="flex items-center gap-2 mb-4">
           <Lock size={14} className="text-stone-400" />
-          <span className="text-sm font-semibold text-stone-900">Change Password</span>
+          <span className="text-sm font-semibold text-[#0B2A4A]">Change password</span>
         </div>
         <form onSubmit={changePassword} className="space-y-2.5">
           <input className={inputCls} type="password" placeholder="Current password"
@@ -108,7 +108,7 @@ function ProfileSection({ name: initialName, email }: { name: string; email: str
           <input className={inputCls} type="password" placeholder="New password (min 8 chars)"
             value={newPw} onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" required />
           <input
-            className={cn(inputCls, confirmPw && confirmPw !== newPw ? "border-red-300 focus:border-red-400" : "")}
+            className={cn(inputCls, confirmPw && confirmPw !== newPw ? "border-[#B8791F]/50" : "")}
             type="password" placeholder="Confirm new password"
             value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} autoComplete="new-password" required />
           <StatusMsg msg={pwMsg} />
@@ -210,11 +210,11 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Home size={14} className="text-stone-400" />
-              <span className="text-sm font-semibold text-stone-900">Household Name</span>
+              <span className="text-sm font-semibold text-[#0B2A4A]">Household name</span>
             </div>
             {!editingName && (
               <button type="button" onClick={() => setEditingName(true)}
-                className="p-1.5 rounded-lg text-stone-400 hover:text-teal-600 hover:bg-teal-50 transition-colors">
+                className="p-1.5 rounded-lg text-[#5C6B7A] hover:text-[#C8A464] hover:bg-[#F5F1EA] transition-colors">
                 <Pencil size={13} />
               </button>
             )}
@@ -225,7 +225,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
                 onChange={(e) => setHouseholdName(e.target.value)} autoFocus required />
               <button type="submit" disabled={nameLoading}
                 className="h-10 px-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-                style={{ background: "var(--color-primary)" }}>
+                style={{ background: "#0B2A4A" }}>
                 {nameLoading ? "…" : "Save"}
               </button>
               <button type="button" onClick={() => { setEditingName(false); setHouseholdName(household.name); }}
@@ -244,7 +244,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Users size={14} className="text-stone-400" />
-            <span className="text-sm font-semibold text-stone-900">Members ({members.length})</span>
+            <span className="text-sm font-semibold text-[#0B2A4A]">Members ({members.length})</span>
           </div>
           <ul className="space-y-3">
             {members.map((m) => (
@@ -254,8 +254,8 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-sm font-medium text-stone-800 truncate">{m.name}</span>
                     {m.id === currentUserId && <span className="text-xs text-stone-400">(you)</span>}
-                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
-                      m.role === "admin" ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-stone-500")}>
+                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border",
+                      m.role === "admin" ? "bg-[#FDF8F0] text-[#B8791F] border-[#C8A464]/30" : "bg-[#F5F1EA] text-[#5C6B7A] border-[#E8E2D9]")}>
                       {m.role === "admin" ? "Admin" : "Member"}
                     </span>
                   </div>
@@ -263,7 +263,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
                 </div>
                 {(myRole === "admin" || m.id === currentUserId) && !(m.id === currentUserId && adminCount <= 1) && (
                   <button type="button" onClick={() => removeMember(m.id)}
-                    className="text-xs text-stone-300 hover:text-red-500 transition-colors font-medium shrink-0">
+                    className="text-xs text-[#5C6B7A] hover:text-[#B8791F] transition-colors font-medium shrink-0">
                     Remove
                   </button>
                 )}
@@ -278,23 +278,23 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Link2 size={14} className="text-stone-400" />
-            <span className="text-sm font-semibold text-stone-900">Invite Someone</span>
+            <span className="text-sm font-semibold text-[#0B2A4A]">Invite a crew member</span>
           </div>
           {inviteCode ? (
             <div className="space-y-3">
-              <div className="text-center py-5 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50">
-                <div className="font-display text-3xl font-semibold text-stone-900 tracking-widest select-all">{inviteCode}</div>
-                <div className="text-xs text-stone-400 mt-2">
+              <div className="text-center py-5 rounded-2xl border-2 border-dashed border-[#C8A464] bg-[#F5F1EA]">
+                <div className="font-mono text-3xl font-semibold text-[#0B2A4A] tracking-widest select-all">{inviteCode}</div>
+                <div className="text-xs text-[#5C6B7A] mt-2">
                   Expires {new Date(inviteExpiry!).toLocaleString()}
                 </div>
               </div>
-              <div className="text-xs text-center break-all text-teal-600 font-medium">
+              <div className="text-xs text-center break-all text-[#C8A464] font-medium">
                 {APP_URL}/join/{inviteCode}
               </div>
               <div className="flex gap-2 justify-center flex-wrap">
                 <button type="button" onClick={() => copyToClipboard(inviteCode!, "code")}
                   className="flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all"
-                  style={{ background: "var(--color-primary)" }}>
+                  style={{ background: "#0B2A4A" }}>
                   {copied === "code" ? <Check size={13} /> : <Copy size={13} />}
                   {copied === "code" ? "Copied!" : "Copy code"}
                 </button>
@@ -312,7 +312,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
           ) : (
             <button type="button" onClick={generateInvite} disabled={inviteLoading}
               className="h-10 px-5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all"
-              style={{ background: "var(--color-primary)" }}>
+              style={{ background: "#0B2A4A" }}>
               {inviteLoading ? "Generating…" : "Generate invite code"}
             </button>
           )}
@@ -323,7 +323,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
       <Card>
         <div className="flex items-center gap-2 mb-1">
           <Link2 size={14} className="text-stone-400" />
-          <span className="text-sm font-semibold text-stone-900">Join a Household</span>
+          <span className="text-sm font-semibold text-[#0B2A4A]">Join a household</span>
         </div>
         <p className="text-xs text-stone-400 mb-4">Enter an invite code to join someone's household.</p>
         <form onSubmit={joinHousehold} className="flex gap-2">
@@ -335,7 +335,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
             {joinLoading ? "Joining…" : "Join"}
           </button>
         </form>
-        {joinMsg && <p className={cn("mt-2 text-xs font-medium", joinMsg.ok ? "text-teal-600" : "text-red-500")}>{joinMsg.text}</p>}
+        {joinMsg && <p className={cn("mt-2 text-xs font-medium", joinMsg.ok ? "text-[#2F6B52]" : "text-[#B8791F]")}>{joinMsg.text}</p>}
       </Card>
     </div>
   );
@@ -371,13 +371,13 @@ export default function Settings() {
 
       {/* Profile */}
       <section id="profile">
-        <SectionTitle icon={User} title="Profile" />
+        <SectionTitle icon={User} title="Your profile" />
         {me ? <ProfileSection name={me.name} email={me.email} /> : <div className="text-sm text-stone-400 animate-pulse">Loading…</div>}
       </section>
 
       {/* Household */}
       <section id="household">
-        <SectionTitle icon={Home} title="Household" />
+        <SectionTitle icon={Home} title="Your household" />
         {me ? <HouseholdSection currentUserId={me.userId} /> : <div className="text-sm text-stone-400 animate-pulse">Loading…</div>}
       </section>
 
@@ -389,7 +389,7 @@ export default function Settings() {
             <span className="text-sm font-semibold text-stone-900">Account</span>
           </div>
           <button type="button" onClick={handleLogout}
-            className="w-full h-10 rounded-xl border border-red-200 bg-red-50 text-sm font-semibold text-red-700 hover:bg-red-100 transition-all">
+            className="w-full h-10 rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] text-sm font-semibold text-[#B8791F] hover:bg-[#FAE8D0] transition-all">
             Sign out
           </button>
         </Card>

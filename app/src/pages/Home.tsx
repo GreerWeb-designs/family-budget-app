@@ -32,8 +32,8 @@ function timeAgo(iso: string) {
 function UserAvatar({ name, size = 6 }: { name: string; size?: number }) {
   const initials = name.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
-    <div className={cn(`h-${size} w-${size} rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold text-white`)}
-      style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
+    <div className={cn(`h-${size} w-${size} rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold`)}
+      style={{ background: "#C8A464", color: "#0B2A4A" }}>
       {initials}
     </div>
   );
@@ -64,7 +64,7 @@ function CardHeader({ title, sub, icon: Icon }: { title: string; sub?: string; i
 }
 
 /* ── Input / select styling ─────────────────────────── */
-const inputCls = "h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all w-full";
+const inputCls = "h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all w-full";
 const selectCls = inputCls;
 
 /* ── Pill for category snapshot ─────────────────────── */
@@ -72,8 +72,10 @@ function AvailPill({ val }: { val: number | null | undefined }) {
   if (val == null) return null;
   const over = val < 0;
   return (
-    <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-      over ? "bg-red-50 text-red-700" : "bg-teal-50 text-teal-700")}>
+    <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums border",
+      over
+        ? "bg-[#FDF3E3] text-[#B8791F] border-[#B8791F]/30"
+        : "bg-[#EBF3EF] text-[#2F6B52] border-[#2F6B52]/30")}>
       {over ? `Over ${money(Math.abs(val))}` : `Left ${money(val)}`}
     </span>
   );
@@ -166,16 +168,16 @@ export default function Home() {
   const summaryLine = useMemo(() => {
     if (loading) return { text: "", cls: "" };
     if (toBeBudgeted === 0) return {
-      text: "You're on track — you've budgeted your entire balance and are taking control of your money 💪",
-      cls: "text-teal-700",
+      text: "Every dollar has a job. Well done.",
+      cls: "text-[#2F6B52]",
     };
     if (toBeBudgeted > 0) return {
-      text: `You have ${money(toBeBudgeted)} left to budget this month. Assign it a job!`,
-      cls: "text-stone-500",
+      text: `You have ${money(toBeBudgeted)} left to assign. Give it a purpose.`,
+      cls: "text-[#5C6B7A]",
     };
     return {
-      text: `You've over-budgeted by ${money(Math.abs(toBeBudgeted))}. Review your categories.`,
-      cls: "text-red-600",
+      text: `You've assigned ${money(Math.abs(toBeBudgeted))} more than you have. Trim a category.`,
+      cls: "text-[#B8791F]",
     };
   }, [toBeBudgeted, loading]);
 
@@ -274,7 +276,7 @@ export default function Home() {
   }
 
   const barData = [
-    { name: "Income",   value: totalIncome,  color: "#0F766E" },
+    { name: "Income",   value: totalIncome,  color: "#2F6B52" },
     { name: "Spending", value: totalSpending, color: "#F59E0B" },
   ];
 
@@ -300,7 +302,7 @@ export default function Home() {
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-1">Bank Balance</div>
             <div className={cn("font-display text-5xl md:text-6xl font-semibold tabular-nums leading-none",
-              bankBalance < 0 ? "text-red-600" : "text-stone-900")}>
+              bankBalance < 0 ? "text-[#B8791F]" : "text-stone-900")}>
               {money(bankBalance)}
             </div>
             {!loading && summaryLine.text && (
@@ -317,26 +319,26 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Log Transaction ───────────────────────────── */}
+      {/* ── Record a transaction ──────────────────────── */}
       <Card>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="text-sm font-semibold text-stone-900">Log Transaction</div>
-            <div className="text-xs text-stone-400 mt-0.5">
-              {direction === "out" ? "Outflow · reduces category balance" : "Income · increases To Be Budgeted"}
+            <div className="text-sm font-semibold text-[#0B2A4A]">Record a transaction</div>
+            <div className="text-xs text-[#5C6B7A] mt-0.5">
+              {direction === "out" ? "Outflow · reduces category balance" : "Income · increases ready to assign"}
             </div>
           </div>
-          <div className="inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1">
+          <div className="inline-flex rounded-xl border border-[#E8E2D9] bg-[#F5F1EA] p-1">
             <button type="button" onClick={() => setDirection("out")}
               className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "out" ? "bg-red-500 text-white shadow-sm" : "text-stone-500 hover:text-stone-800")}>
-              Out
+                direction === "out" ? "bg-[#B8791F] text-white shadow-sm" : "text-[#5C6B7A] hover:text-[#0B2A4A]")}>
+              Outflow
             </button>
             <button type="button" onClick={() => setDirection("in")}
               className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "in" ? "text-white shadow-sm" : "text-stone-500 hover:text-stone-800")}
-              style={direction === "in" ? { background: "var(--color-primary)" } : {}}>
-              In
+                direction === "in" ? "text-white shadow-sm" : "text-[#5C6B7A] hover:text-[#0B2A4A]")}
+              style={direction === "in" ? { background: "#2F6B52" } : {}}>
+              Income
             </button>
           </div>
         </div>
@@ -344,7 +346,7 @@ export default function Home() {
         <form onSubmit={submitSpend} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Category</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Where did it go?</span>
               <select className={selectCls} disabled={direction === "in"}
                 value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 {(direction === "in"
@@ -354,32 +356,32 @@ export default function Home() {
               </select>
             </label>
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Amount</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Amount</span>
               <input className={inputCls + " tabular-nums"} value={amount}
                 onChange={(e) => setAmount(e.target.value)} placeholder="0.00" inputMode="decimal" />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Date</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Date</span>
               <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
           </div>
           <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Note (optional)</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Note (optional)</span>
             <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)}
               placeholder={direction === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
           </label>
           <div className="flex items-center gap-3 pt-1">
             <button type="submit" disabled={busy}
               className="h-10 px-5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
-              style={{ background: direction === "in" ? "var(--color-primary)" : "#EF4444" }}>
-              {busy ? "Saving…" : direction === "in" ? "Add Income" : "Add Transaction"}
+              style={{ background: direction === "in" ? "#2F6B52" : "#0B2A4A" }}>
+              {busy ? "Saving…" : direction === "in" ? "Add income" : "Record"}
             </button>
             <button type="button" disabled={busy || !lastSpendId} onClick={() => deleteSpend(lastSpendId!, true)}
-              className="h-10 px-4 rounded-xl border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-40 transition-all">
-              Undo last
+              className="h-10 px-4 rounded-xl border border-[#E8E2D9] text-sm font-medium text-[#5C6B7A] hover:bg-[#F5F1EA] disabled:opacity-40 transition-all">
+              Undo
             </button>
             {msg && (
-              <span className={cn("text-sm", msg.includes("Error") || msg.includes("error") ? "text-red-600" : "text-teal-700")}>
+              <span className={cn("text-sm", msg.includes("Error") || msg.includes("error") ? "text-[#B8791F]" : "text-[#2F6B52]")}>
                 {msg}
               </span>
             )}
@@ -409,15 +411,15 @@ export default function Home() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-2 flex gap-4 text-xs text-stone-500">
-            <div><span className="font-semibold text-teal-700">{money(totalIncome)}</span> in</div>
-            <div><span className="font-semibold text-amber-600">{money(totalSpending)}</span> spent</div>
+          <div className="mt-2 flex gap-4 text-xs text-[#5C6B7A]">
+            <div><span className="font-semibold text-[#2F6B52]">{money(totalIncome)}</span> in</div>
+            <div><span className="font-semibold text-[#B8791F]">{money(totalSpending)}</span> spent</div>
           </div>
         </Card>
 
         {/* Recent Activity */}
         <Card>
-          <CardHeader title="Recent Activity" sub="Last 5 transactions" icon={Clock} />
+          <CardHeader title="Recent activity" sub="Last 5 transactions" icon={Clock} />
           {sortedSpends.length === 0 ? (
             <div className="text-sm text-stone-400 py-4 text-center">No transactions yet.</div>
           ) : (
@@ -428,14 +430,14 @@ export default function Home() {
                 return (
                   <div key={row.id} className="flex items-center gap-3">
                     <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
-                      isIncome ? "bg-teal-50 text-teal-700" : "bg-stone-50 text-stone-600")}>
+                      isIncome ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#F5F1EA] text-[#5C6B7A]")}>
                       {isIncome ? <Plus size={12} /> : <Minus size={12} />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-stone-700 truncate">{catName}{row.note ? ` · ${row.note}` : ""}</div>
-                      <div className="text-[10px] text-stone-400">{row.date}</div>
+                      <div className="text-xs font-medium text-[#0B2A4A] truncate">{catName}{row.note ? ` · ${row.note}` : ""}</div>
+                      <div className="text-[10px] text-[#5C6B7A]">{row.date}</div>
                     </div>
-                    <div className={cn("text-xs font-semibold tabular-nums shrink-0", isIncome ? "text-teal-700" : "text-stone-700")}>
+                    <div className={cn("text-xs font-semibold tabular-nums shrink-0", isIncome ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>
                       {isIncome ? "+" : "-"}{money(row.amount)}
                     </div>
                   </div>
@@ -461,7 +463,7 @@ export default function Home() {
           </div>
           <div className="space-y-2">
             {!upcoming || upcoming.bills.length === 0 ? (
-              <p className="text-sm text-stone-400">No bills coming up.</p>
+              <p className="text-sm text-[#5C6B7A]">Clear skies — no bills due soon.</p>
             ) : upcoming.bills.map((bill) => {
               const diff    = bill.day_of_month - new Date().getDate();
               const isAuto  = bill.mode === "auto";
@@ -492,13 +494,13 @@ export default function Home() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <Calendar size={13} className="text-stone-400" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Events</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#5C6B7A]">Upcoming events</span>
             </div>
             <span className="text-xs text-stone-400">7 days</span>
           </div>
           <div className="space-y-2">
             {!upcoming || upcoming.events.length === 0 ? (
-              <p className="text-sm text-stone-400">Nothing scheduled soon.</p>
+              <p className="text-sm text-[#5C6B7A]">Nothing on the horizon.</p>
             ) : upcoming.events.map((ev) => {
               const d = new Date(ev.start_at);
               const pretty = d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -519,13 +521,13 @@ export default function Home() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <Target size={13} className="text-stone-400" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Goals</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#5C6B7A]">Goals due soon</span>
             </div>
             <span className="text-xs text-stone-400">30 days</span>
           </div>
           <div className="space-y-2">
             {upcomingGoals.length === 0 ? (
-              <p className="text-sm text-stone-400">No goals due soon.</p>
+              <p className="text-sm text-[#5C6B7A]">No goals on the near horizon.</p>
             ) : upcomingGoals.map((g) => {
               const today    = new Date(); today.setHours(0, 0, 0, 0);
               const due      = new Date(`${g.due_date!}T00:00:00`);
@@ -533,10 +535,10 @@ export default function Home() {
               const urgent   = daysLeft <= 7;
               return (
                 <div key={g.id} className={cn("rounded-xl border px-3 py-2",
-                  urgent ? "bg-red-50 border-red-100" : "bg-teal-50 border-teal-100")}>
-                  <div className={cn("text-sm font-medium truncate", urgent ? "text-red-800" : "text-teal-800")}>{g.title}</div>
-                  <div className={cn("text-xs mt-0.5", urgent ? "text-red-500" : "text-teal-600")}>
-                    {daysLeft === 0 ? "Due today!" : daysLeft === 1 ? "Due tomorrow" : `${daysLeft} days left`}
+                  urgent ? "bg-[#FDF3E3] border-[#B8791F]/20" : "bg-[#EBF3EF]/70 border-[#2F6B52]/20")}>
+                  <div className={cn("text-sm font-medium truncate", urgent ? "text-[#B8791F]" : "text-[#2F6B52]")}>{g.title}</div>
+                  <div className={cn("text-xs mt-0.5", urgent ? "text-[#B8791F]" : "text-[#2F6B52]")}>
+                    {daysLeft === 0 ? "Due today" : daysLeft === 1 ? "Due tomorrow" : `${daysLeft} days left`}
                   </div>
                 </div>
               );
@@ -547,11 +549,11 @@ export default function Home() {
 
       {/* ── Family Notes ──────────────────────────────── */}
       <Card>
-        <CardHeader title="Family Notes" sub="Shared message board" icon={MessageSquare} />
+        <CardHeader title="Crew notes" sub="Visible to your whole household" icon={MessageSquare} />
         <div className="flex gap-2 mb-4">
           <div className="relative flex-1">
             <textarea
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500 transition-all resize-none text-stone-900 placeholder-stone-400"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/15 focus:border-[#C8A464] transition-all resize-none text-stone-900 placeholder-stone-400"
               rows={2} maxLength={500}
               placeholder="Leave a note for the family…"
               value={noteInput}
@@ -562,27 +564,27 @@ export default function Home() {
           </div>
           <button type="button" onClick={postNote} disabled={!noteInput.trim()}
             className="self-end h-10 px-4 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all flex items-center gap-1.5"
-            style={{ background: "var(--color-primary)" }}>
+            style={{ background: "#0B2A4A" }}>
             <Send size={13} />
             <span className="hidden sm:inline">Send</span>
           </button>
         </div>
         <div className="space-y-2">
           {notes.length === 0 ? (
-            <p className="text-sm text-stone-400 text-center py-4">No notes yet. Be the first to leave one!</p>
+            <p className="text-sm text-[#5C6B7A] text-center py-4">No notes yet. Be the first to leave one.</p>
           ) : notes.map((note) => {
             const authorDisplay = note.author_name || (note.user_id === myUserId ? "You" : "Family member");
             return (
-              <div key={note.id} className="rounded-xl border border-stone-100 bg-stone-50 p-3">
+              <div key={note.id} className="rounded-xl border border-[#E8E2D9] bg-[#F5F1EA] p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <UserAvatar name={authorDisplay} size={6} />
-                    <span className="text-xs font-semibold text-stone-700">{authorDisplay}</span>
-                    <span className="text-stone-300 text-xs">·</span>
-                    <span className="text-xs text-stone-400">{timeAgo(note.created_at)}</span>
+                    <span className="text-xs font-semibold text-[#0B2A4A]">{authorDisplay}</span>
+                    <span className="text-[#5C6B7A] text-xs">·</span>
+                    <span className="text-xs text-[#5C6B7A]">{timeAgo(note.created_at)}</span>
                   </div>
                   <button type="button" onClick={() => deleteNote(note.id)}
-                    className="text-stone-300 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50">
+                    className="text-stone-300 hover:text-[#B8791F] transition-colors p-1 rounded-lg hover:bg-[#FDF3E3]">
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -596,7 +598,7 @@ export default function Home() {
       {/* ── Budget snapshot + total ────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">Category Snapshot</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-3">Category detail</div>
           {summary?.byCategory.find(c => c.id === categoryId) ? (() => {
             const cur = summary!.byCategory.find(c => c.id === categoryId)!;
             return (
@@ -610,8 +612,8 @@ export default function Home() {
                     <div key={lbl} className="flex justify-between">
                       <span className="text-stone-500">{lbl}</span>
                       <span className={cn("font-semibold tabular-nums",
-                        lbl === "Available" && val < 0 ? "text-red-600" :
-                        lbl === "Available" ? "text-teal-700" : "text-stone-900")}>
+                        lbl === "Available" && val < 0 ? "text-[#B8791F]" :
+                        lbl === "Available" ? "text-[#2F6B52]" : "text-stone-900")}>
                         {money(val)}
                       </span>
                     </div>
@@ -626,7 +628,7 @@ export default function Home() {
           <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">Total Available</div>
           <div className="text-xs text-stone-400 mb-4">Across all budget categories</div>
           <div className={cn("font-display text-4xl font-semibold tabular-nums",
-            totalAvailable < 0 ? "text-red-600" : "text-stone-900")}>
+            totalAvailable < 0 ? "text-[#B8791F]" : "text-stone-900")}>
             {money(totalAvailable)}
           </div>
         </Card>
@@ -636,8 +638,8 @@ export default function Home() {
       <Card className="p-0! overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div>
-            <div className="text-sm font-semibold text-stone-900">Transaction History</div>
-            <div className="text-xs text-stone-400">Most recent 200 entries</div>
+            <div className="text-sm font-semibold text-[#0B2A4A]">Recent transactions</div>
+            <div className="text-xs text-[#5C6B7A]">Most recent 200 entries</div>
           </div>
           <div className="inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1">
             {(["date", "category"] as const).map((s) => (
@@ -651,21 +653,21 @@ export default function Home() {
         </div>
         <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
           {sortedSpends.length === 0 && (
-            <div className="px-5 py-10 text-center text-sm text-stone-400">No transactions yet.</div>
+            <div className="px-5 py-10 text-center text-sm text-[#5C6B7A]">Nothing recorded yet. Add your first transaction above.</div>
           )}
           {sortedSpends.map((row) => {
             const catName  = catNameById[row.category_id] || row.category_id;
             const available = catAvailableById[row.category_id];
             const isIncome  = row.category_id === INCOME_ID || row.direction === "in";
             return (
-              <div key={row.id} className="flex items-center gap-3 px-5 py-3 hover:bg-stone-50 transition-colors">
+              <div key={row.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[#F5F1EA] transition-colors">
                 <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
-                  isIncome ? "bg-teal-50 text-teal-700" : "bg-stone-100 text-stone-600")}>
+                  isIncome ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#F5F1EA] text-[#5C6B7A]")}>
                   {isIncome ? <Plus size={13} /> : <Minus size={13} />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={cn("font-semibold text-sm tabular-nums", isIncome ? "text-teal-700" : "text-stone-900")}>
+                    <span className={cn("font-semibold text-sm tabular-nums", isIncome ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>
                       {isIncome ? "+" : ""}{money(row.amount)}
                     </span>
                     <AvailPill val={available} />

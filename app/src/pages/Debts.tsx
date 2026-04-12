@@ -57,8 +57,8 @@ function simulatePayoff(debts: { id: string; balance: number; apr: number; payme
   return { perDebt, totalMonths: allMonths.length === state.length ? Math.max(0, ...allMonths) : null, totalInterest: state.reduce((s, d) => s + d.totalInterest, 0) };
 }
 
-const BAR_COLORS = ["#0F766E","#14B8A6","#F59E0B","#6366F1","#EC4899","#06B6D4","#84CC16","#F97316"];
-const inputCls = "h-10 w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm tabular-nums outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all";
+const BAR_COLORS = ["#0B2A4A","#2F6B52","#C8A464","#5C6B7A","#B8791F","#1A4A7A","#4A8A6A","#D4AF74"];
+const inputCls = "h-10 w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm tabular-nums outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
 
 export default function Debts() {
   const [busy, setBusy]         = useState(false);
@@ -166,8 +166,8 @@ export default function Debts() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">Total Debt</div>
-          <div className="font-display text-2xl font-semibold text-red-600 tabular-nums">{money(totalBalance)}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">Total debt</div>
+          <div className="font-display text-2xl font-semibold text-[#B8791F] tabular-nums">{money(totalBalance)}</div>
           <div className="text-xs text-stone-400 mt-0.5">{debts.length} debt{debts.length !== 1 ? "s" : ""}</div>
         </div>
 
@@ -182,7 +182,7 @@ export default function Debts() {
           <div className="flex gap-2">
             <div className="relative flex-1 min-w-0">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm pointer-events-none">$</span>
-              <input className="h-9 w-full rounded-xl border border-stone-200 bg-stone-50 pl-6 pr-2 text-sm tabular-nums outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all"
+              <input className="h-9 w-full rounded-xl border border-stone-200 bg-stone-50 pl-6 pr-2 text-sm tabular-nums outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all"
                 value={extra} onChange={(e) => setExtra(e.target.value)} inputMode="decimal" placeholder="0.00" />
             </div>
             <button type="button" onClick={saveExtra} disabled={busy}
@@ -201,13 +201,13 @@ export default function Debts() {
               <button key={m} type="button" onClick={() => saveMethod(m)} disabled={savingMethod}
                 className={cn("flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all capitalize",
                   method === m ? "text-white shadow-sm" : "text-stone-600 hover:text-stone-900")}
-                style={method === m ? { background: m === "snowball" ? "#0F766E" : "#6366F1" } : {}}>
+                style={method === m ? { background: m === "snowball" ? "#0B2A4A" : "#C8A464", color: m === "avalanche" ? "#0B2A4A" : undefined } : {}}>
                 {m}
               </button>
             ))}
           </div>
-          <div className="text-xs text-stone-400 mt-1.5">
-            {method === "snowball" ? "Lowest balance first" : "Highest interest first"}
+          <div className="text-xs text-[#5C6B7A] mt-1.5">
+            {method === "snowball" ? "Snowball (lowest balance first)" : "Avalanche (highest rate first)"}
           </div>
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function Debts() {
           <div>
             <div className="flex items-center gap-2">
               <CreditCard size={15} className="text-stone-400" />
-              <div className="text-sm font-semibold text-stone-900">Your Debts</div>
+              <div className="text-sm font-semibold text-[#0B2A4A]">Your debts</div>
             </div>
             <div className="text-xs text-stone-400 mt-0.5">
               Sorted by {method === "snowball" ? "balance (lowest first)" : "interest rate (highest first)"}
@@ -226,9 +226,9 @@ export default function Debts() {
           </div>
           <button type="button" onClick={addDebt} disabled={busy}
             className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold text-white disabled:opacity-60 transition-all"
-            style={{ background: "var(--color-primary)" }}>
+            style={{ background: "#0B2A4A" }}>
             <PlusCircle size={12} />
-            Add Debt
+            Add a debt
           </button>
         </div>
 
@@ -255,7 +255,7 @@ export default function Debts() {
                     style={{ background: accentColor }}>
                     {i + 1}
                   </div>
-                  <input className="flex-1 h-10 min-w-0 rounded-xl border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all"
+                  <input className="flex-1 h-10 min-w-0 rounded-xl border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-900 outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all"
                     value={d.name} onChange={(e) => setDraft(row.id, { name: e.target.value })} placeholder="Debt name" />
                   <div className="flex gap-2 shrink-0">
                     <button type="button" disabled={busy} onClick={() => saveDebt(row.id)}
@@ -264,7 +264,7 @@ export default function Debts() {
                       Save
                     </button>
                     <button type="button" disabled={busy} onClick={() => removeDebt(row.id)}
-                      className="h-10 rounded-xl border border-stone-200 px-2.5 text-stone-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-60 transition-all">
+                      className="h-10 rounded-xl border border-[#E8E2D9] px-2.5 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] disabled:opacity-60 transition-all">
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -303,33 +303,33 @@ export default function Debts() {
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="rounded-xl border border-stone-100 bg-stone-50 p-3">
                     <div className="text-xs font-semibold text-stone-500 mb-2">Minimum only</div>
-                    {base?.warning ? <div className="text-xs text-red-500">{base.warning}</div> : (
+                    {base?.warning ? <div className="text-xs text-[#B8791F]">{base.warning}</div> : (
                       <div className="space-y-1">
                         {([["Payoff", base?.payoffDate ?? "—"], ["Months", String(base?.months ?? "—")], ["Interest", money(base?.totalInterest ?? 0)]] as [string, string][]).map(([lbl, val]) => (
                           <div key={lbl} className="flex justify-between text-xs">
                             <span className="text-stone-400">{lbl}</span>
-                            <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-red-500" : "text-stone-900")}>{val}</span>
+                            <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-[#B8791F]" : "text-[#0B2A4A]")}>{val}</span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
-                  <div className="rounded-xl border p-3" style={{ borderColor: "rgba(20,184,166,0.25)", background: "rgba(20,184,166,0.04)" }}>
-                    <div className="text-xs font-semibold mb-2" style={{ color: "var(--color-primary)" }}>
-                      With {method === "snowball" ? "Snowball" : "Avalanche"}
+                  <div className="rounded-xl border p-3" style={{ borderColor: "rgba(47,107,82,0.25)", background: "rgba(47,107,82,0.04)" }}>
+                    <div className="text-xs font-semibold mb-2 text-[#2F6B52]">
+                      With your strategy
                     </div>
-                    {strat?.warning ? <div className="text-xs text-red-500">{strat.warning}</div> : (
+                    {strat?.warning ? <div className="text-xs text-[#B8791F]">{strat.warning}</div> : (
                       <>
                         <div className="space-y-1">
                           {([["Payoff", strat?.payoffDate ?? "—"], ["Months", String(strat?.months ?? "—")], ["Interest", money(strat?.totalInterest ?? 0)]] as [string, string][]).map(([lbl, val]) => (
                             <div key={lbl} className="flex justify-between text-xs">
-                              <span className="text-stone-400">{lbl}</span>
-                              <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-teal-700" : "text-stone-900")}>{val}</span>
+                              <span className="text-[#5C6B7A]">{lbl}</span>
+                              <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>{val}</span>
                             </div>
                           ))}
                         </div>
                         {base?.months != null && strat?.months != null && base.months > strat.months && (
-                          <div className="mt-2 pt-2 border-t border-teal-100 text-xs font-semibold text-teal-700">
+                          <div className="mt-2 pt-2 border-t border-[#2F6B52]/20 text-xs font-semibold text-[#2F6B52]">
                             {base.months - strat.months} mo sooner · saves {money((base.totalInterest ?? 0) - (strat.totalInterest ?? 0))}
                           </div>
                         )}
@@ -357,7 +357,7 @@ export default function Debts() {
           <div className="grid gap-3 sm:grid-cols-3 mb-6">
             {[
               { label: "Baseline (min only)", months: baseline.totalMonths, color: "text-stone-900", bg: "bg-stone-50", border: "border-stone-100" },
-              { label: `With ${method === "snowball" ? "Snowball" : "Avalanche"}`, months: withStrategy.totalMonths, color: "text-teal-700", bg: "bg-teal-50/50", border: "border-teal-100" },
+              { label: "With your strategy", months: withStrategy.totalMonths, color: "text-[#2F6B52]", bg: "bg-[#EBF3EF]/50", border: "border-[#2F6B52]/20" },
             ].map(({ label, months, color, bg, border }) => (
               <div key={label} className={cn("rounded-xl border p-3", bg, border)}>
                 <div className="text-xs text-stone-400 mb-1">{label}</div>
@@ -367,12 +367,12 @@ export default function Debts() {
                 {months ? <div className="text-xs text-stone-400 mt-0.5">{fmtDate(addMonths(new Date(), months))}</div> : null}
               </div>
             ))}
-            <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3">
-              <div className="text-xs text-stone-400 mb-1">You save</div>
+            <div className="rounded-xl border border-[#2F6B52]/20 bg-[#EBF3EF]/50 p-3">
+              <div className="text-xs text-[#5C6B7A] mb-1">You save</div>
               {baseline.totalMonths && withStrategy.totalMonths && baseline.totalMonths > withStrategy.totalMonths ? (
                 <>
-                  <div className="text-sm font-semibold text-teal-700 tabular-nums">{baseline.totalMonths - withStrategy.totalMonths} months</div>
-                  <div className="text-xs text-teal-600 mt-0.5">{money(baseline.totalInterest - withStrategy.totalInterest)} interest</div>
+                  <div className="text-sm font-semibold text-[#2F6B52] tabular-nums">{baseline.totalMonths - withStrategy.totalMonths} months</div>
+                  <div className="text-xs text-[#2F6B52] mt-0.5">{money(baseline.totalInterest - withStrategy.totalInterest)} interest</div>
                 </>
               ) : (
                 <div className="text-xs text-stone-400 mt-1">Add extra payment to see savings</div>
@@ -410,7 +410,7 @@ export default function Debts() {
               </div>
             )}
           </div>
-          <div className="mt-4 text-xs text-stone-300">Monthly compounding · freed minimums roll into the next debt when one is paid off.</div>
+          <div className="mt-4 text-xs text-[#5C6B7A]">Estimates use monthly compounding (APR ÷ 12).</div>
         </div>
       )}
     </div>

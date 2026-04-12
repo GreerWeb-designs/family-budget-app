@@ -11,7 +11,7 @@ function ordinal(n: number) {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
 
-const inputCls = "h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all";
+const inputCls = "h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
 
 export default function Bills() {
   const [bills, setBills]         = useState<Bill[]>([]);
@@ -79,7 +79,7 @@ export default function Bills() {
 
       {msg && (
         <div className={cn("rounded-xl border px-4 py-2.5 text-sm",
-          msg.includes("ailed") ? "bg-red-50 border-red-200 text-red-700" : "bg-teal-50 border-teal-200 text-teal-700")}>
+          msg.includes("ailed") ? "bg-[#FDF3E3] border-[#B8791F]/30 text-[#B8791F]" : "bg-[#EBF3EF] border-[#2F6B52]/30 text-[#2F6B52]")}>
           {msg}
         </div>
       )}
@@ -89,13 +89,13 @@ export default function Bills() {
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div className="flex items-center gap-2">
             <Receipt size={15} className="text-stone-400" />
-            <div className="text-sm font-semibold text-stone-900">Recurring Bills</div>
+            <div className="text-sm font-semibold text-[#0B2A4A]">Monthly bills</div>
           </div>
           <button type="button" onClick={() => setShowForm((v) => !v)}
             className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold text-white transition-all"
-            style={{ background: "var(--color-primary)" }}>
+            style={{ background: "#0B2A4A" }}>
             <PlusCircle size={13} />
-            Add bill
+            Add a recurring bill
           </button>
         </div>
 
@@ -128,7 +128,7 @@ export default function Bills() {
                   </select>
                   <button type="submit" disabled={busy}
                     className="h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-60 transition-all"
-                    style={{ background: "var(--color-primary)" }}>
+                    style={{ background: "#0B2A4A" }}>
                     Save
                   </button>
                 </div>
@@ -156,7 +156,7 @@ export default function Bills() {
               <div key={b.id} className="flex items-center gap-4 px-5 py-4 hover:bg-stone-50/60 transition-colors">
                 {/* Mode icon */}
                 <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                  isAuto ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600")}>
+                  isAuto ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#FDF8F0] text-[#B8791F]")}>
                   {isAuto ? <Zap size={16} /> : <Hand size={16} />}
                 </div>
 
@@ -165,12 +165,12 @@ export default function Bills() {
                     <span className="text-sm font-semibold text-stone-900">{b.name}</span>
                     <span className="font-semibold text-sm tabular-nums text-stone-700">{money(b.amount)}</span>
                     <span className={cn("text-[10px] font-semibold rounded-full px-2 py-0.5",
-                      isAuto ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700")}>
+                      isAuto ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#FDF8F0] text-[#B8791F]")}>
                       {isAuto ? "Auto" : "Manual"}
                     </span>
                     {dueSoon && (
-                      <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-red-100 text-red-700">
-                        {diff === 0 ? "Today!" : `in ${diff}d`}
+                      <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#FDF3E3] text-[#B8791F]">
+                        {diff === 0 ? "Due today" : `in ${diff}d`}
                       </span>
                     )}
                   </div>
@@ -178,7 +178,7 @@ export default function Bills() {
                 </div>
 
                 <button onClick={() => remove(b.id)} disabled={busy}
-                  className="shrink-0 rounded-xl p-2 text-stone-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-40 transition-all">
+                  className="shrink-0 rounded-xl p-2 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] disabled:opacity-40 transition-all">
                   <Trash2 size={15} />
                 </button>
               </div>

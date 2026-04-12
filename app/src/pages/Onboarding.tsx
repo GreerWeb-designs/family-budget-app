@@ -11,9 +11,9 @@ const QUIZ_KEY = "familybudget_quiz";
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const VALUE_CARDS = [
-  { Icon: HeartPulse, phrase: "Less Stress",  bg: "linear-gradient(135deg, #f0fdfb 0%, #ccfbf1 100%)", iconColor: "#0F766E" },
-  { Icon: TrendingUp, phrase: "More Savings", bg: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", iconColor: "#D97706" },
-  { Icon: Compass,    phrase: "More Control", bg: "linear-gradient(135deg, #f0fdfb 0%, #fef3c7 100%)", iconColor: "#0F766E" },
+  { Icon: HeartPulse, phrase: "Less Stress",  bg: "linear-gradient(135deg, #F5F1EA 0%, #EBF3EF 100%)", iconColor: "#2F6B52" },
+  { Icon: TrendingUp, phrase: "More Savings", bg: "linear-gradient(135deg, #F5F1EA 0%, #fef3c7 100%)", iconColor: "#C8A464" },
+  { Icon: Compass,    phrase: "More Control", bg: "linear-gradient(135deg, #EBF3EF 0%, #F5F1EA 100%)", iconColor: "#0B2A4A" },
 ];
 
 const TOUR_CARDS = [
@@ -322,7 +322,7 @@ function Step2Tour({
               onClick={() => { setPaused(true); setTourDir(i > idx ? 1 : -1); setIdx(i); }}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-300",
-                i === idx ? "w-6 bg-teal-600" : "w-1.5 bg-stone-300",
+                i === idx ? "w-6 bg-[#0B2A4A]" : "w-1.5 bg-stone-300",
               )}
             />
           ))}
@@ -400,16 +400,16 @@ function Step3Quiz({
                 className={cn(
                   "w-full flex items-center gap-4 rounded-2xl border px-4 py-3.5 text-left transition-all",
                   isSelected
-                    ? "border-teal-500 bg-teal-50/60 shadow-sm"
+                    ? "border-[#C8A464] bg-[#F5F1EA]/60 shadow-sm"
                     : "border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50",
                 )}
               >
                 <span className="text-2xl leading-none">{emoji}</span>
-                <span className={cn("flex-1 text-sm font-medium", isSelected ? "text-teal-900" : "text-stone-800")}>
+                <span className={cn("flex-1 text-sm font-medium", isSelected ? "text-[#0B2A4A]" : "text-stone-800")}>
                   {label}
                 </span>
                 {isSelected && (
-                  <div className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-teal-600">
+                  <div className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#C8A464]">
                     <Check size={11} className="text-white" strokeWidth={3} />
                   </div>
                 )}
@@ -438,7 +438,7 @@ function Step4Interlude({ onBack, onContinue }: { onBack: () => void; onContinue
       <div className="flex-1 flex flex-col items-center justify-center px-7 text-center">
         {/* TODO: unDraw illustration — 400×280 — suggested keyword: "together" or "people money"
             Drop an <img src="..." alt="..." className="w-full max-w-xs mx-auto mb-8" /> here */}
-        <div className="w-full max-w-xs mx-auto mb-8 h-[200px] rounded-2xl bg-gradient-to-br from-teal-50 to-amber-50 border border-dashed border-stone-200 flex items-center justify-center">
+        <div className="w-full max-w-xs mx-auto mb-8 h-[200px] rounded-2xl bg-gradient-to-br from-[#EBF3EF] to-[#F5F1EA] border border-dashed border-stone-200 flex items-center justify-center">
           <span className="text-xs text-stone-400">
             {/* TODO: unDraw illustration — keyword: "together" — 400×280 */}
             Illustration coming soon
@@ -471,9 +471,9 @@ function Step5Commitment({ onBack, onContinue }: { onBack: () => void; onContinu
         {/* Brand mark */}
         <div
           className="flex h-16 w-16 items-center justify-center rounded-2xl font-bold text-xl text-white mb-8 shadow-lg"
-          style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}
+          style={{ background: "#C8A464", color: "#0B2A4A" }}
         >
-          DB
+          KW
         </div>
 
         <p className="font-display text-2xl font-semibold text-stone-900 leading-snug mb-3">
@@ -545,7 +545,7 @@ function Step6Balance({ onComplete }: { onComplete: (amount: number | null) => P
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0.00"
-            className="w-full pl-10 pr-4 py-4 font-display text-3xl font-semibold text-stone-900 tabular-nums text-center border-2 border-stone-200 rounded-2xl outline-none focus:border-teal-500 transition-colors"
+            className="w-full pl-10 pr-4 py-4 font-display text-3xl font-semibold text-stone-900 tabular-nums text-center border-2 border-stone-200 rounded-2xl outline-none focus:border-[#C8A464] transition-colors"
           />
         </div>
 

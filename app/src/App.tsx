@@ -34,8 +34,8 @@ function AuthSpinner() {
   return (
     <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--sidebar-bg)" }}>
       <div className="flex flex-col items-center gap-3">
-        <div className="h-8 w-8 rounded-full border-2 border-teal-400/30 border-t-teal-400 animate-spin" />
-        <div className="text-sm text-stone-500">Loading…</div>
+        <div className="h-8 w-8 rounded-full border-2 border-[#C8A464]/30 border-t-[#C8A464] animate-spin" />
+        <div className="text-sm text-[#5C6B7A]">Loading…</div>
       </div>
     </div>
   );
@@ -43,7 +43,6 @@ function AuthSpinner() {
 
 type MeResponse = { ok: boolean; userId: string; name: string; email: string; onboardingCompletedAt: string | null };
 
-/** Guards main app routes — redirects to /login if unauthenticated, /onboarding if not yet onboarded. */
 function Protected({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
   const nav = useNavigate();
@@ -67,10 +66,6 @@ function Protected({ children }: { children: ReactElement }) {
   return children;
 }
 
-/**
- * Guards /onboarding — requires auth. Redirects already-onboarded users back to /home
- * so manually navigating to /onboarding after completion returns to the dashboard.
- */
 function ProtectedOnboarding({ children }: { children: ReactElement }) {
   const [ok, setOk] = useState<boolean | null>(null);
   const nav = useNavigate();
@@ -81,7 +76,7 @@ function ProtectedOnboarding({ children }: { children: ReactElement }) {
       .then((me) => {
         if (!alive) return;
         if (me.onboardingCompletedAt) {
-          nav("/home", { replace: true }); // already done — skip to dashboard
+          nav("/home", { replace: true });
         } else {
           setOk(true);
         }
@@ -122,17 +117,17 @@ function SideLink({ to, label, Icon }: { to: string; label: string; Icon: React.
         cn(
           "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
           isActive
-            ? "text-teal-300 font-semibold"
-            : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
+            ? "font-semibold text-[#C8A464]"
+            : "text-[#8A9BA8] hover:text-[#C8A464] hover:bg-white/5"
         )
       }
-      style={({ isActive }) => isActive ? { background: "var(--sidebar-active-bg)" } : {}}
+      style={({ isActive }) => isActive ? { background: "rgba(200, 164, 100, 0.12)" } : {}}
     >
       {({ isActive }) => (
         <>
-          <Icon size={16} className={isActive ? "text-teal-400" : "text-stone-500"} />
+          <Icon size={16} className={isActive ? "text-[#C8A464]" : "text-[#5C6B7A]"} />
           <span>{label}</span>
-          {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-400" />}
+          {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#C8A464]" />}
         </>
       )}
     </NavLink>
@@ -152,7 +147,7 @@ function PageTitle() {
   }, [pathname]);
 
   return (
-    <h1 className="font-display text-lg font-semibold text-stone-900">{title}</h1>
+    <h1 className="text-lg font-medium text-[#0B2A4A]">{title}</h1>
   );
 }
 
@@ -161,7 +156,7 @@ function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" })
   const sz = size === "sm" ? "h-7 w-7 text-[10px]" : "h-8 w-8 text-xs";
   return (
     <div className={cn("flex shrink-0 items-center justify-center rounded-full font-bold", sz)}
-      style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)", color: "#fff" }}>
+      style={{ background: "#C8A464", color: "#0B2A4A" }}>
       {initials}
     </div>
   );
@@ -171,8 +166,10 @@ function TbbPill({ tbb, loading }: { tbb: number; loading: boolean }) {
   const positive = tbb >= 0;
   return (
     <div className={cn(
-      "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tabular-nums",
-      positive ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200" : "bg-red-50 text-red-700 ring-1 ring-red-200"
+      "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tabular-nums border",
+      positive
+        ? "bg-[#EBF3EF] text-[#2F6B52] border-[#2F6B52]/30"
+        : "bg-[#FDF3E3] text-[#B8791F] border-[#B8791F]/30"
     )}>
       <span className="text-[10px] uppercase tracking-wider opacity-60">TBB</span>
       <span>{loading ? "—" : money(tbb)}</span>
@@ -231,13 +228,13 @@ function AppShell({ children }: { children: ReactNode }) {
         {/* Brand */}
         <div className="px-5 pt-6 pb-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm text-white shadow-lg"
-              style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
-              DB
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-lg"
+              style={{ background: "#C8A464", color: "#0B2A4A" }}>
+              KW
             </div>
             <div>
-              <div className="text-sm font-bold text-white leading-tight">Ducharme</div>
-              <div className="text-xs leading-tight" style={{ color: "var(--sidebar-text-muted)" }}>Family Budget</div>
+              <div className="text-sm font-semibold text-white leading-tight">KeelWise</div>
+              <div className="text-xs leading-tight" style={{ color: "var(--sidebar-text-muted)" }}>Steady money. Straight course.</div>
             </div>
           </div>
         </div>
@@ -247,16 +244,16 @@ function AppShell({ children }: { children: ReactNode }) {
           <div className={cn(
             "rounded-xl px-4 py-3 border",
             tbb < 0
-              ? "border-red-900/40 bg-red-950/40"
-              : "border-teal-900/40 bg-teal-950/30"
+              ? "border-[#B8791F]/30 bg-[#B8791F]/10"
+              : "border-[#C8A464]/30 bg-[#C8A464]/10"
           )}>
             <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--sidebar-text-muted)" }}>
-              To Be Budgeted
+              Ready to assign
             </div>
-            <div className={cn("text-2xl font-display font-semibold tabular-nums", tbb < 0 ? "text-red-400" : "text-teal-300")}>
+            <div className={cn("text-2xl font-medium tabular-nums", tbb < 0 ? "text-[#B8791F]" : "text-[#C8A464]")}>
               {loadingTotals ? "—" : money(tbb)}
             </div>
-            <div className="text-[11px] mt-0.5" style={{ color: "var(--sidebar-text-muted)" }}>Available to assign</div>
+            <div className="text-[11px] mt-0.5" style={{ color: "var(--sidebar-text-muted)" }}>Available to budget</div>
           </div>
         </div>
 
@@ -273,7 +270,7 @@ function AppShell({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
               <UserAvatar name={userName} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-semibold text-stone-200">{userName}</div>
+                <div className="truncate text-xs font-semibold text-[#C8D6E2]">{userName}</div>
                 {userEmail && <div className="truncate text-[10px]" style={{ color: "var(--sidebar-text-muted)" }}>{userEmail}</div>}
               </div>
             </div>
@@ -281,7 +278,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={refreshTotals}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all hover:bg-white/5"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all hover:bg-white/5 hover:text-[#C8A464]"
             style={{ color: "var(--sidebar-text-muted)" }}
           >
             <RefreshCw size={14} />
@@ -290,7 +287,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all hover:bg-red-950/40 hover:text-red-400"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all hover:bg-white/5 hover:text-[#C8A464]"
             style={{ color: "var(--sidebar-text-muted)" }}
           >
             <LogOut size={14} />
@@ -321,11 +318,11 @@ function AppShell({ children }: { children: ReactNode }) {
                   aria-label="User menu"
                   aria-expanded={dropdownOpen}
                   onClick={() => setDropdownOpen((o) => !o)}
-                  className="flex items-center gap-1.5 rounded-xl px-2 py-1 transition-colors hover:bg-stone-100"
+                  className="flex items-center gap-1.5 rounded-xl px-2 py-1 transition-colors hover:bg-[#F5F1EA]"
                 >
                   <UserAvatar name={userName} />
-                  <span className="hidden sm:block max-w-[120px] truncate text-xs font-medium text-stone-600">{userName}</span>
-                  <ChevronDown size={12} className={cn("text-stone-400 transition-transform", dropdownOpen && "rotate-180")} />
+                  <span className="hidden sm:block max-w-[120px] truncate text-xs font-medium text-[#5C6B7A]">{userName}</span>
+                  <ChevronDown size={12} className={cn("text-[#5C6B7A] transition-transform", dropdownOpen && "rotate-180")} />
                 </button>
 
                 {dropdownOpen && (
@@ -335,26 +332,26 @@ function AppShell({ children }: { children: ReactNode }) {
                       <div className="flex items-center gap-2.5">
                         <UserAvatar name={userName} />
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-stone-800 truncate">{userName}</div>
-                          {userEmail && <div className="text-xs text-stone-400 truncate">{userEmail}</div>}
+                          <div className="text-sm font-medium text-[#0B2A4A] truncate">{userName}</div>
+                          {userEmail && <div className="text-xs text-[#5C6B7A] truncate">{userEmail}</div>}
                         </div>
                       </div>
                     </div>
                     <div className="py-1.5">
                       <button type="button" onClick={() => { setDropdownOpen(false); nav("/settings"); }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
-                        <Settings size={14} className="text-stone-400" />
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-[#0B2A4A] hover:bg-[#F5F1EA] transition-colors">
+                        <Settings size={14} className="text-[#5C6B7A]" />
                         Settings
                       </button>
                       <button type="button" onClick={() => { setDropdownOpen(false); nav("/settings#household"); }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
-                        <HomeIcon size={14} className="text-stone-400" />
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-[#0B2A4A] hover:bg-[#F5F1EA] transition-colors">
+                        <HomeIcon size={14} className="text-[#5C6B7A]" />
                         Household
                       </button>
                     </div>
                     <div className="py-1.5" style={{ borderTop: "1px solid var(--color-border-subtle)" }}>
                       <button type="button" onClick={() => { setDropdownOpen(false); logout(); }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-[#B8791F] hover:bg-[#FDF3E3] transition-colors">
                         <LogOut size={14} />
                         Sign out
                       </button>
@@ -381,7 +378,7 @@ function AppShell({ children }: { children: ReactNode }) {
               className={({ isActive }) =>
                 cn(
                   "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                  isActive ? "text-teal-600" : "text-stone-400"
+                  isActive ? "text-[#0B2A4A]" : "text-[#5C6B7A]"
                 )
               }
             >

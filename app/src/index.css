@@ -1,34 +1,41 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter/index.css";
-@import "@fontsource/fraunces/400.css";
-@import "@fontsource/fraunces/600.css";
-@import "@fontsource/fraunces/700.css";
 
-/* ── Design tokens ─────────────────────────────────── */
+/* ── KeelWise design tokens ─────────────────────────── */
 :root {
-  --color-primary:        #0F766E;
-  --color-primary-light:  #14B8A6;
-  --color-primary-dark:   #0D5C57;
-  --color-accent:         #F59E0B;
-  --color-success:        #10B981;
-  --color-warning:        #F59E0B;
-  --color-danger:         #EF4444;
+  --keel-navy:      #0B2A4A;
+  --brass:          #C8A464;
+  --sand:           #F5F1EA;
+  --paper:          #FFFFFF;
+  --deep-ink:       #0B2A4A;
+  --slate:          #5C6B7A;
+  --harbor-green:   #2F6B52;
+  --tideline-amber: #B8791F;
+  --sand-border:    #E8E2D9;
 
-  --color-bg:             #FAFAF9;
+  --color-primary:       #0B2A4A;
+  --color-primary-light: #0F3360;
+  --color-primary-dark:  #071E33;
+  --color-accent:        #C8A464;
+  --color-success:       #2F6B52;
+  --color-warning:       #B8791F;
+  --color-danger:        #B8791F;
+
+  --color-bg:             #F5F1EA;
   --color-surface:        #FFFFFF;
-  --color-border:         #E7E5E4;
-  --color-border-subtle:  #F5F5F4;
+  --color-border:         #E8E2D9;
+  --color-border-subtle:  #EDE8E0;
 
-  --color-text:           #1C1917;
-  --color-text-muted:     #78716C;
-  --color-text-subtle:    #A8A29E;
+  --color-text:           #0B2A4A;
+  --color-text-muted:     #5C6B7A;
+  --color-text-subtle:    #8A9BA8;
 
-  --sidebar-bg:           #0C1410;
-  --sidebar-border:       #1a2e24;
-  --sidebar-text:         #D6D3D1;
-  --sidebar-text-muted:   #6B7280;
-  --sidebar-active-bg:    rgba(20, 184, 166, 0.12);
-  --sidebar-active-text:  #5EEAD4;
+  --sidebar-bg:           #0B2A4A;
+  --sidebar-border:       #143860;
+  --sidebar-text:         #C8D6E2;
+  --sidebar-text-muted:   #5C6B7A;
+  --sidebar-active-bg:    rgba(200, 164, 100, 0.12);
+  --sidebar-active-text:  #C8A464;
 
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.04);
   --shadow-card-hover: 0 4px 16px 0 rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04);
@@ -44,27 +51,44 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--color-bg);
   color: var(--color-text);
+  line-height: 1.6;
 }
 
 /* ── Typography ────────────────────────────────────── */
 .font-display {
-  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  font-family: 'Inter Variable', 'Inter', sans-serif;
+  font-weight: 500;
 }
 
-.tabular-nums {
+.tabular-nums, [class*="font-mono"] {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* ── Global input styles ───────────────────────────── */
+input, select, textarea {
+  border-color: #E8E2D9;
+  background-color: #FFFFFF;
+  color: #0B2A4A;
+}
+input::placeholder, textarea::placeholder {
+  color: #5C6B7A;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #C8A464;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(200, 164, 100, 0.15);
 }
 
 /* ── Scrollbar ─────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D6D3D1; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #A8A29E; }
+::-webkit-scrollbar-thumb { background: #C8D6E2; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #8A9BA8; }
 
 /* ── Focus rings ───────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--brass);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -83,25 +107,25 @@ body {
   .mobile-tab-spacer    { display: none !important; }
 }
 
-/* ── FullCalendar overrides ────────────────────────── */
+/* ── KeelWise FullCalendar theme ───────────────────── */
 .fc { font-family: inherit; }
 .fc .fc-button {
-  background: var(--color-primary) !important;
-  border-color: var(--color-primary) !important;
+  background: #0B2A4A !important;
+  border-color: #0B2A4A !important;
   font-size: 0.8rem !important;
   padding: 0.35rem 0.8rem !important;
   border-radius: 0.5rem !important;
 }
-.fc .fc-button:hover { background: var(--color-primary-dark) !important; }
+.fc .fc-button:hover { background: #0F3360 !important; }
 .fc .fc-toolbar-title {
-  font-family: 'Fraunces', serif;
-  font-size: 1.1rem !important;
-  font-weight: 600;
-  color: var(--color-text);
+  font-size: 1rem !important;
+  font-weight: 500;
+  color: #0B2A4A;
 }
 .fc .fc-daygrid-event { border-radius: 4px; font-size: 0.72rem; }
-.fc .fc-day-today { background: rgba(20, 184, 166, 0.06) !important; }
-.fc .fc-day-today .fc-daygrid-day-number { color: var(--color-primary) !important; font-weight: 700; }
+.fc .fc-day-today { background: #F5F1EA !important; }
+.fc .fc-day-today .fc-daygrid-day-number { color: #C8A464 !important; font-weight: 600; }
+.fc .fc-daygrid-day-number { color: #5C6B7A; }
 
 @media (max-width: 640px) {
   .fc .fc-toolbar { flex-direction: column; gap: 8px; }

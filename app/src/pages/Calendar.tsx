@@ -128,12 +128,12 @@ export default function Calendar() {
       <div className="flex items-center justify-between">
         <p className="text-xs text-slate-400">Click a day to add an event · Click an event to view</p>
         <button type="button" onClick={() => openAdd(new Date(), true)}
-          className="h-9 rounded-xl bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800 transition-all">
+          className="h-9 rounded-xl px-4 text-xs font-semibold text-white transition-all" style={{ background: "#0B2A4A" }}>
           + Add Event
         </button>
       </div>
 
-      {msg && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-700">{msg}</div>}
+      {msg && <div className="rounded-xl border bg-[#FDF3E3] border-[#B8791F]/30 px-4 py-2.5 text-sm text-[#B8791F]">{msg}</div>}
 
       {/* Mobile: list view */}
       {isMobile ? (
@@ -208,36 +208,36 @@ export default function Calendar() {
           <form onSubmit={saveEvent} className="space-y-3">
             <label className="grid gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Title</span>
-              <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
                 value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Soccer, dentist, trip…" autoFocus />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Start</span>
-                <input type="datetime-local" className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                <input type="datetime-local" className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
                   value={startAt} onChange={(e) => setStartAt(e.target.value)} />
               </label>
               <label className="grid gap-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">End (optional)</span>
-                <input type="datetime-local" className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                <input type="datetime-local" className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
                   value={endAt} onChange={(e) => setEndAt(e.target.value)} />
               </label>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Location</span>
-                <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
                   value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" />
               </label>
               <label className="grid gap-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Notes</span>
-                <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
                   value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
               </label>
             </div>
-            {msg && <div className="text-sm text-rose-600">{msg}</div>}
+            {msg && <div className="text-sm text-[#B8791F]">{msg}</div>}
             <button disabled={busy}
-              className="h-11 w-full rounded-xl bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 transition-all">
+              className="h-11 w-full rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all" style={{ background: "#0B2A4A" }}>
               {busy ? "Saving…" : "Save Event"}
             </button>
           </form>
@@ -269,7 +269,7 @@ export default function Calendar() {
           <div className="mt-5 flex gap-2 justify-end">
             {selected.kind === "family" && (
               <button type="button" disabled={busy} onClick={deleteSelected}
-                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60 transition-all">
+                className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] px-4 py-2 text-sm font-semibold text-[#B8791F] hover:bg-[#FDF3E3]/70 disabled:opacity-60 transition-all">
                 Delete event
               </button>
             )}

@@ -30,9 +30,9 @@ export default function ForgotPassword() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--color-bg)" }}>
       <div className="w-full max-w-100">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white mb-3"
-            style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
-            DB
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold mb-3"
+            style={{ background: "#C8A464", color: "#0B2A4A" }}>
+            KW
           </div>
           <div className="font-display text-xl font-semibold text-stone-900">Reset your password</div>
           <div className="text-sm text-stone-400 mt-0.5">We'll send you a link to get back in</div>
@@ -41,14 +41,14 @@ export default function ForgotPassword() {
         <div className="rounded-2xl bg-white border p-8 shadow-sm" style={{ borderColor: "var(--color-border)" }}>
           {done ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-teal-50 border border-teal-200 px-4 py-3 text-sm text-teal-800">
+              <div className="rounded-xl bg-[#EBF3EF] border border-[#2F6B52]/30 px-4 py-3 text-sm text-[#2F6B52]">
                 If an account with that email exists, you'll receive reset instructions shortly.
               </div>
               {devToken && (
                 <div className="rounded-xl bg-stone-50 border border-stone-200 px-4 py-3 text-xs text-stone-600 space-y-2">
                   <div className="font-semibold text-amber-600">Dev mode — reset link:</div>
                   <Link to={`/reset-password?token=${devToken}`}
-                    className="text-teal-600 hover:text-teal-700 break-all block transition-colors">
+                    className="text-[#C8A464] hover:text-[#C8A464]/80 break-all block transition-colors">
                     /reset-password?token={devToken.slice(0, 16)}…
                   </Link>
                 </div>

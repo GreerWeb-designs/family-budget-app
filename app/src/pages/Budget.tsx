@@ -29,7 +29,7 @@ function getPrevMonth(m: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-const inputCls = "h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all";
+const inputCls = "h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
 
 export default function Budget() {
   const [cats, setCats]           = useState<Category[]>([]);
@@ -191,10 +191,10 @@ export default function Budget() {
         <div className="text-center">
           <div className="font-display text-base font-semibold text-stone-900">{monthLabel(activeMonth)}</div>
           {isReadOnly
-            ? <div className="text-xs text-stone-400 mt-0.5">Closed · Read-only</div>
+            ? <div className="text-xs text-[#5C6B7A] mt-0.5">Closed · View only</div>
             : isCurrentMonth
-            ? <div className="text-xs mt-0.5" style={{ color: "var(--color-primary)" }}>Current month</div>
-            : <div className="text-xs text-amber-600 mt-0.5">Viewing past month</div>}
+            ? <div className="text-xs mt-0.5 text-[#2F6B52]">Current month</div>
+            : <div className="text-xs text-[#B8791F] mt-0.5">Viewing past month</div>}
         </div>
         <button type="button" onClick={() => setActiveMonth(getNextMonth(activeMonth))} disabled={isCurrentMonth}
           className="h-9 w-9 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 disabled:opacity-30 transition-all flex items-center justify-center">
@@ -205,8 +205,8 @@ export default function Budget() {
       {/* Bank + TBB stats */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">Bank Balance</div>
-          <div className="font-display text-3xl font-semibold text-stone-900 tabular-nums">{money(bankBalance)}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">Bank balance</div>
+          <div className="font-display text-3xl font-semibold text-[#0B2A4A] tabular-nums">{money(bankBalance)}</div>
           {isCurrentMonth && !isReadOnly && (
             <form onSubmit={handleResetBankBalance} className="mt-3 flex gap-2">
               <input value={bankInput} onChange={(e) => setBankInput(e.target.value)} inputMode="decimal"
@@ -219,19 +219,19 @@ export default function Budget() {
           )}
         </div>
 
-        <div className={cn("rounded-2xl border p-4", tbbPositive ? "bg-white" : "bg-red-50")}
-          style={{ borderColor: tbbPositive ? "var(--color-border)" : "#FCA5A5", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">To Be Budgeted</div>
-          <div className={cn("font-display text-3xl font-semibold tabular-nums", tbbPositive ? "text-stone-900" : "text-red-600")}>
+        <div className={cn("rounded-2xl border p-4", tbbPositive ? "bg-white" : "bg-[#FDF3E3]")}
+          style={{ borderColor: tbbPositive ? "var(--color-border)" : "rgba(184,121,31,0.4)", boxShadow: "var(--shadow-card)" }}>
+          <div className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">Ready to assign</div>
+          <div className={cn("font-display text-3xl font-semibold tabular-nums", tbbPositive ? "text-[#2F6B52]" : "text-[#B8791F]")}>
             {money(toBeBudgeted)}
           </div>
           {!tbbPositive && (
-            <div className="text-xs text-red-500 mt-1">Over-budgeted — reduce some categories</div>
+            <div className="text-xs text-[#B8791F] mt-1">Over-assigned — trim a category</div>
           )}
           {isCurrentMonth && !isReadOnly && (
             <button type="button" onClick={handleCloseMonth} disabled={closingMonth || busy}
-              className="mt-3 h-9 w-full rounded-xl border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 transition-all">
-              {closingMonth ? "Closing…" : `Close ${monthLabel(activeMonth)} →`}
+              className="mt-3 h-9 w-full rounded-xl border border-[#C8A464]/40 bg-[#FDF8F0] px-3 text-xs font-semibold text-[#B8791F] hover:bg-[#FAF0E0] disabled:opacity-60 transition-all">
+              {closingMonth ? "Closing…" : "Start next month →"}
             </button>
           )}
         </div>
@@ -240,8 +240,8 @@ export default function Budget() {
       {msg && (
         <div className={cn("rounded-xl border px-4 py-2.5 text-sm",
           msg.includes("ailed") || msg.includes("Error")
-            ? "bg-red-50 border-red-200 text-red-700"
-            : "bg-teal-50 border-teal-200 text-teal-700")}>
+            ? "bg-[#FDF3E3] border-[#B8791F]/30 text-[#B8791F]"
+            : "bg-[#EBF3EF] border-[#2F6B52]/30 text-[#2F6B52]")}>
           {msg}
         </div>
       )}
@@ -251,12 +251,12 @@ export default function Budget() {
         {/* Category cards */}
         <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
           {/* Header row — desktop */}
-          <div className="hidden md:grid md:grid-cols-[1fr_100px_100px_110px_32px] gap-3 px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider text-stone-400"
+          <div className="hidden md:grid md:grid-cols-[1fr_100px_100px_110px_32px] gap-3 px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]"
             style={{ borderColor: "var(--color-border)" }}>
             <div>Category</div>
-            <div className="text-right">Budgeted</div>
+            <div className="text-right">Planned</div>
             <div className="text-right">Spent</div>
-            <div className="text-right">Available</div>
+            <div className="text-right">Remaining</div>
             <div />
           </div>
 
@@ -293,20 +293,20 @@ export default function Budget() {
                   <button key={row.id} type="button" onClick={() => setCategoryId(row.id)}
                     className={cn(
                       "w-full text-left transition-colors px-5 py-4",
-                      isSelected ? "bg-teal-50/60" : "bg-white hover:bg-stone-50/60"
+                      isSelected ? "bg-[#EBF3EF]/40" : "bg-white hover:bg-stone-50/60"
                     )}>
                     {/* Mobile */}
                     <div className="md:hidden space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-stone-900 truncate max-w-[60%]">{row.name}</span>
                         <div className="flex items-center gap-2">
-                          <span className={cn("text-sm font-semibold tabular-nums", over ? "text-red-600" : "text-teal-700")}>
+                          <span className={cn("text-sm font-semibold tabular-nums", over ? "text-[#B8791F]" : "text-[#2F6B52]")}>
                             {money(row.available)}
                           </span>
                           {!isReadOnly && (
                             <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteCategory(row.id, row.name); }}
                               disabled={deletingCategoryId === row.id}
-                              className="rounded-lg p-1 text-stone-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40">
+                              className="rounded-lg p-1 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-colors disabled:opacity-40">
                               <Trash2 size={13} />
                             </button>
                           )}
@@ -332,14 +332,14 @@ export default function Budget() {
                         </div>
                         <div className="text-right text-sm tabular-nums text-stone-600">{money(row.budgeted)}</div>
                         <div className="text-right text-sm tabular-nums text-stone-500">{money(row.activity)}</div>
-                        <div className={cn("text-right text-sm font-semibold tabular-nums", over ? "text-red-600" : "text-teal-700")}>
+                        <div className={cn("text-right text-sm font-semibold tabular-nums", over ? "text-[#B8791F]" : "text-[#2F6B52]")}>
                           {money(row.available)}
                         </div>
                         <div className="flex justify-end">
                           {!isReadOnly && (
                             <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteCategory(row.id, row.name); }}
                               disabled={deletingCategoryId === row.id}
-                              className="rounded-lg p-1 text-stone-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40">
+                              className="rounded-lg p-1 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-colors disabled:opacity-40">
                               <Trash2 size={13} />
                             </button>
                           )}
@@ -358,9 +358,9 @@ export default function Budget() {
 
           {/* Selected category */}
           <div className="rounded-2xl border bg-white p-5" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-            <div className="text-sm font-semibold text-stone-900 mb-0.5">{selectedName}</div>
-            <div className="text-xs text-stone-400 mb-4">
-              {isReadOnly ? "Read-only — month closed" : "Click any category, then set a budget"}
+            <div className="text-sm font-semibold text-[#0B2A4A] mb-0.5">{selectedName}</div>
+            <div className="text-xs text-[#5C6B7A] mb-4">
+              {isReadOnly ? "This month is closed. View only." : "Click any category, then set a budget"}
             </div>
 
             <div className="space-y-2 rounded-xl bg-stone-50 border border-stone-100 p-3 text-sm mb-4">
@@ -368,8 +368,8 @@ export default function Budget() {
                 <div key={label} className="flex justify-between">
                   <span className="text-stone-500">{label}</span>
                   <span className={cn("font-semibold tabular-nums",
-                    label === "Available" && Number(val ?? 0) < 0 ? "text-red-600" :
-                    label === "Available" ? "text-teal-700" : "text-stone-900")}>
+                    label === "Available" && Number(val ?? 0) < 0 ? "text-[#B8791F]" :
+                    label === "Available" ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>
                     {money(Number(val ?? 0))}
                   </span>
                 </div>
@@ -388,8 +388,8 @@ export default function Budget() {
                     className={cn(inputCls, "flex-1 min-w-0 bg-stone-50 tabular-nums")} />
                   <button type="submit" disabled={busy}
                     className="h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-60 transition-all"
-                    style={{ background: "var(--color-primary)" }}>
-                    Set
+                    style={{ background: "#0B2A4A" }}>
+                    Save
                   </button>
                 </form>
               </div>
@@ -418,16 +418,16 @@ export default function Budget() {
           {/* Month history */}
           {months.length > 0 && (
             <div className="rounded-2xl border bg-white p-5" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-              <div className="text-sm font-semibold text-stone-900 mb-3">Month History</div>
+              <div className="text-sm font-semibold text-[#0B2A4A] mb-3">Past months</div>
               <div className="space-y-1">
                 {months.map((m) => (
                   <button key={m.month} type="button" onClick={() => setActiveMonth(m.month)}
                     className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-all",
-                      m.month === activeMonth ? "text-white" : "text-stone-700 hover:bg-stone-50")}
-                    style={m.month === activeMonth ? { background: "var(--color-primary)" } : {}}>
+                      m.month === activeMonth ? "text-white" : "text-[#0B2A4A] hover:bg-[#F5F1EA]")}
+                    style={m.month === activeMonth ? { background: "#0B2A4A" } : {}}>
                     <span>{monthLabel(m.month)}</span>
-                    <span className={cn("text-xs", m.month === activeMonth ? "opacity-70" : m.closed_at ? "text-stone-400" : "text-teal-600")}>
-                      {m.closed_at ? "Closed" : "Active"}
+                    <span className={cn("text-xs", m.month === activeMonth ? "opacity-70" : m.closed_at ? "text-[#5C6B7A]" : "text-[#2F6B52]")}>
+                      {m.closed_at ? "Closed" : "Current"}
                     </span>
                   </button>
                 ))}
@@ -438,22 +438,23 @@ export default function Budget() {
       </div>
 
       {/* ── Log a Transaction (dark panel) ───────────── */}
-      <div className="rounded-2xl bg-slate-900 p-5 shadow-lg mt-4">
+      <div className="rounded-2xl p-5 shadow-lg mt-4" style={{ background: "#0B2A4A" }}>
         <div className="flex items-center gap-2 mb-4">
-          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="h-2 w-2 rounded-full bg-[#C8A464] animate-pulse" />
           <span className="text-sm font-semibold text-white">Log a Transaction</span>
           <span className="text-xs text-slate-400 ml-auto">Quick entry</span>
         </div>
 
         {/* Direction toggle */}
-        <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800 p-1 mb-4">
+        <div className="inline-flex rounded-xl border border-[#143860] bg-[#0F3360] p-1 mb-4">
           <button type="button" onClick={() => {
             setTxDirection("out");
             setTxCategoryId(cats[0]?.id ?? "");
           }}
             className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-              txDirection === "out" ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-white")}>
-            Out
+              txDirection === "out" ? "text-white shadow-sm" : "text-[#5C6B7A] hover:text-white")}
+            style={txDirection === "out" ? { background: "#B8791F" } : {}}>
+            Outflow
           </button>
           <button type="button" onClick={() => {
             setTxDirection("in");
@@ -461,8 +462,9 @@ export default function Budget() {
             if (income) setTxCategoryId(income.id);
           }}
             className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-              txDirection === "in" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white")}>
-            In
+              txDirection === "in" ? "text-white shadow-sm" : "text-[#5C6B7A] hover:text-white")}
+            style={txDirection === "in" ? { background: "#2F6B52" } : {}}>
+            Income
           </button>
         </div>
 
@@ -471,7 +473,7 @@ export default function Budget() {
             <label className="grid gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Category</span>
               <select
-                className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                className="h-10 rounded-xl border border-[#143860] bg-[#0F3360] px-3 text-sm text-white outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all"
                 value={txCategoryId}
                 onChange={(e) => setTxCategoryId(e.target.value)}
                 disabled={txDirection === "in"}>
@@ -484,32 +486,33 @@ export default function Budget() {
             <label className="grid gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Amount</span>
               <input
-                className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all tabular-nums"
+                className="h-10 rounded-xl border border-[#143860] bg-[#0F3360] px-3 text-sm text-white outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all tabular-nums"
                 value={txAmount} onChange={(e) => setTxAmount(e.target.value)}
                 placeholder="0.00" inputMode="decimal" />
             </label>
             <label className="grid gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Date</span>
               <input type="date"
-                className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                className="h-10 rounded-xl border border-[#143860] bg-[#0F3360] px-3 text-sm text-white outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all"
                 value={txDate} onChange={(e) => setTxDate(e.target.value)} />
             </label>
           </div>
           <label className="grid gap-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Note (optional)</span>
             <input
-              className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+              className="h-10 rounded-xl border border-[#143860] bg-[#0F3360] px-3 text-sm text-white outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all"
               value={txNote} onChange={(e) => setTxNote(e.target.value)}
               placeholder={txDirection === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
           </label>
           <div className="flex items-center gap-3 pt-1">
             <button type="submit" disabled={txBusy}
-              className="h-10 w-full rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 transition-all">
-              {txBusy ? "Saving…" : txDirection === "in" ? "Add Income" : "Add Transaction"}
+              className="h-10 w-full rounded-xl text-sm font-semibold text-[#0B2A4A] hover:opacity-90 disabled:opacity-60 transition-all"
+              style={{ background: "#C8A464" }}>
+              {txBusy ? "Saving…" : txDirection === "in" ? "Add income" : "Record"}
             </button>
           </div>
           {txMsg && (
-            <div className={cn("text-sm text-center", txMsg.includes("Error") || txMsg.includes("error") ? "text-rose-400" : "text-emerald-400")}>
+            <div className={cn("text-sm text-center", txMsg.includes("Error") || txMsg.includes("error") ? "text-[#B8791F]" : "text-[#C8A464]")}>
               {txMsg}
             </div>
           )}

@@ -31,9 +31,9 @@ export default function ResetPassword() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--color-bg)" }}>
       <div className="w-full max-w-100">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white mb-3"
-            style={{ background: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" }}>
-            DB
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold mb-3"
+            style={{ background: "#C8A464", color: "#0B2A4A" }}>
+            KW
           </div>
           <div className="font-display text-xl font-semibold text-stone-900">Choose a new password</div>
         </div>
@@ -41,17 +41,17 @@ export default function ResetPassword() {
         <div className="rounded-2xl bg-white border p-8 shadow-sm" style={{ borderColor: "var(--color-border)" }}>
           {!token ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-xl bg-[#FDF3E3] border border-[#B8791F]/30 px-4 py-3 text-sm text-[#B8791F]">
                 This reset link isn't valid. Please request a new one.
               </div>
               <Link to="/forgot-password"
-                className="block text-center text-sm font-semibold text-teal-600 hover:text-teal-700 transition-colors">
+                className="block text-center text-sm font-semibold text-[#C8A464] hover:text-[#C8A464]/80 transition-colors">
                 Request a new link
               </Link>
             </div>
           ) : done ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-teal-50 border border-teal-200 px-4 py-3 text-sm text-teal-800">
+              <div className="rounded-xl bg-[#EBF3EF] border border-[#2F6B52]/30 px-4 py-3 text-sm text-[#2F6B52]">
                 Password updated successfully! You can now sign in with your new password.
               </div>
               <Link to="/login"
@@ -70,7 +70,7 @@ export default function ResetPassword() {
               <label className="block">
                 <span className={labelCls}>Confirm password</span>
                 <input
-                  className={inputCls + (confirm && confirm !== password ? " border-red-300 focus:border-red-400 focus:ring-red-100" : "")}
+                  className={inputCls + (confirm && confirm !== password ? " border-[#B8791F]/60" : "")}
                   type="password" placeholder="••••••••"
                   value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
               </label>

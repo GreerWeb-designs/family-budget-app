@@ -15,7 +15,7 @@ type Goal = {
   saved_amount: number;
 };
 
-const inputCls = "h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all w-full";
+const inputCls = "h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all w-full";
 
 function daysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -25,9 +25,9 @@ function daysUntil(dateStr: string): number {
 
 function GoalBadge({ days }: { days: number }) {
   if (days < 0) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-stone-100 text-stone-400">Overdue</span>;
-  if (days === 0) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-red-100 text-red-700">Due today!</span>;
-  if (days <= 7)  return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-amber-100 text-amber-700">{days}d left</span>;
-  if (days <= 30) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-teal-100 text-teal-700">{days}d left</span>;
+  if (days === 0) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#FDF3E3] text-[#B8791F]">Due today</span>;
+  if (days <= 7)  return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#FDF3E3] text-[#B8791F]">{days}d left</span>;
+  if (days <= 30) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#EBF3EF] text-[#2F6B52]">{days}d left</span>;
   return null;
 }
 
@@ -86,7 +86,7 @@ export default function Goals() {
     try {
       await api(`/api/goals/${g.id}`, { method: "PATCH", body: JSON.stringify({ status: completing ? "done" : "active" }) });
       if (completing) {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ["#0F766E", "#14B8A6", "#F59E0B"] });
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ["#0B2A4A", "#C8A464", "#2F6B52"] });
       }
       await refresh();
     } finally { setBusy(false); }
@@ -111,7 +111,7 @@ export default function Goals() {
       setContributingGoalId(null);
       setContributionAmount("");
       if (res.isComplete) {
-        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }, colors: ["#10B981", "#0F766E", "#F59E0B"] });
+        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }, colors: ["#C8A464", "#2F6B52", "#0B2A4A"] });
       }
       await refresh();
     } catch {
@@ -135,9 +135,9 @@ export default function Goals() {
         <div className="flex items-start gap-3">
           <button type="button" onClick={() => toggleDone(g)} disabled={busy || isSavings}
             aria-label={isDone ? "Mark active" : "Mark complete"}
-            className={cn("mt-0.5 shrink-0 text-stone-300 hover:text-teal-500 disabled:opacity-40 transition-colors", isSavings && "cursor-default")}>
+            className={cn("mt-0.5 shrink-0 text-stone-300 hover:text-[#2F6B52] disabled:opacity-40 transition-colors", isSavings && "cursor-default")}>
             {isDone
-              ? <CheckCircle2 size={20} className="text-teal-500" />
+              ? <CheckCircle2 size={20} className="text-[#2F6B52]" />
               : <Circle size={20} />}
           </button>
 
@@ -147,7 +147,7 @@ export default function Goals() {
                 {g.title}
               </span>
               {isSavings && !isDone && (
-                <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700">Savings</span>
+                <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#EBF3EF] text-[#2F6B52]">Savings</span>
               )}
               {g.due_date && days !== null && !isDone && <GoalBadge days={days} />}
             </div>
@@ -167,7 +167,7 @@ export default function Goals() {
                 </div>
                 <div className="h-2 rounded-full bg-stone-100 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    className="h-full rounded-full bg-[#2F6B52] transition-all duration-500"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -179,7 +179,7 @@ export default function Goals() {
                 {!isContributing ? (
                   <button type="button"
                     onClick={() => { setContributingGoalId(g.id); setContributionAmount(""); }}
-                    className="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+                    className="mt-2 text-xs font-semibold text-[#2F6B52] hover:text-[#2F6B52]/80 transition-colors">
                     + Add contribution
                   </button>
                 ) : (
@@ -187,7 +187,7 @@ export default function Goals() {
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
                       <input
-                        className="h-9 w-full rounded-xl border border-stone-200 bg-stone-50 pl-7 pr-3 text-sm font-mono outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all"
+                        className="h-9 w-full rounded-xl border border-stone-200 bg-stone-50 pl-7 pr-3 text-sm font-mono outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all"
                         placeholder="300.00"
                         inputMode="decimal"
                         value={contributionAmount}
@@ -198,7 +198,7 @@ export default function Goals() {
                     <button type="button"
                       onClick={() => addContribution(g.id)}
                       disabled={contributionBusy || !contributionAmount}
-                      className="h-9 rounded-xl bg-emerald-500 px-3 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 transition-all">
+                      className="h-9 rounded-xl bg-[#2F6B52] px-3 text-xs font-semibold text-white hover:bg-[#2F6B52]/90 disabled:opacity-60 transition-all">
                       Add
                     </button>
                     <button type="button"
@@ -213,14 +213,14 @@ export default function Goals() {
 
             {/* Savings goal reached */}
             {isSavings && isDone && (
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#EBF3EF] px-3 py-1 text-xs font-semibold text-[#2F6B52]">
                 🎉 Goal reached!
               </div>
             )}
           </div>
 
           <button onClick={() => remove(g.id)} disabled={busy}
-            className="shrink-0 rounded-xl p-2 text-stone-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-40 transition-all">
+            className="shrink-0 rounded-xl p-2 text-stone-300 hover:text-[#B8791F] hover:bg-[#FDF3E3] disabled:opacity-40 transition-all">
             <Trash2 size={14} />
           </button>
         </div>
@@ -267,7 +267,7 @@ export default function Goals() {
                   onClick={() => setGoalType("savings")}
                   className={cn("h-9 px-4 rounded-xl text-sm font-semibold transition-all border",
                     goalType === "savings"
-                      ? "bg-emerald-500 text-white border-emerald-500"
+                      ? "bg-[#2F6B52] text-white border-[#2F6B52]"
                       : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50")}>
                   Savings
                 </button>
@@ -307,7 +307,7 @@ export default function Goals() {
               <input className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)}
                 placeholder="Motivation, strategy, milestone…" />
             </label>
-            {msg && <div className="text-sm text-red-600">{msg}</div>}
+            {msg && <div className="text-sm text-[#B8791F]">{msg}</div>}
             <div className="flex gap-2 pt-1">
               <button type="submit" disabled={busy}
                 className="h-10 px-5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all"
@@ -330,7 +330,7 @@ export default function Goals() {
             <Target size={15} className="text-stone-400" />
             <div className="text-sm font-semibold text-stone-900">Active Goals</div>
           </div>
-          <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-teal-100 text-teal-700">{active.length}</span>
+          <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-[#EBF3EF] text-[#2F6B52]">{active.length}</span>
         </div>
         <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
           {active.length === 0 ? (
@@ -348,7 +348,7 @@ export default function Goals() {
         <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-teal-500" />
+              <CheckCircle2 size={15} className="text-[#2F6B52]" />
               <div className="text-sm font-semibold text-stone-500">Completed</div>
             </div>
             <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-stone-100 text-stone-500">{done.length}</span>
