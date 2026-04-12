@@ -251,7 +251,7 @@ export default function Budget() {
         {/* Category cards */}
         <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
           {/* Header row — desktop */}
-          <div className="hidden md:grid md:grid-cols-[1fr_100px_100px_110px_32px] gap-3 px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]"
+          <div className="hidden lg:grid lg:grid-cols-[1fr_100px_100px_110px_32px] gap-3 px-5 py-3 border-b text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]"
             style={{ borderColor: "var(--color-border)" }}>
             <div>Category</div>
             <div className="text-right">Planned</div>
@@ -296,7 +296,7 @@ export default function Budget() {
                       isSelected ? "bg-[#EBF3EF]/40" : "bg-white hover:bg-stone-50/60"
                     )}>
                     {/* Mobile */}
-                    <div className="md:hidden space-y-2">
+                    <div className="lg:hidden space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-stone-900 truncate max-w-[60%]">{row.name}</span>
                         <div className="flex items-center gap-2">
@@ -322,8 +322,8 @@ export default function Budget() {
                     </div>
 
                     {/* Desktop */}
-                    <div className="hidden md:contents">
-                      <div className="md:grid md:grid-cols-[1fr_100px_100px_110px_32px] gap-3 items-center">
+                    <div className="hidden lg:contents">
+                      <div className="lg:grid lg:grid-cols-[1fr_100px_100px_110px_32px] gap-3 items-center">
                         <div className="space-y-1.5">
                           <span className="text-sm font-medium text-stone-900">{row.name}</span>
                           <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">

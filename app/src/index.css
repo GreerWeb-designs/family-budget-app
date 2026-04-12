@@ -45,6 +45,18 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; padding: 0; }
 
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -101,10 +113,49 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* ── Mobile landscape ──────────────────────────────── */
+/* ── iOS safe area support ─────────────────────────── */
+.mobile-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mobile-tab-spacer {
+  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── Prevent input zoom on iOS ─────────────────────── */
+@media (max-width: 1024px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Mobile landscape: compact nav ─────────────────── */
 @media (max-height: 500px) and (orientation: landscape) {
-  nav.mobile-bottom-nav { display: none !important; }
-  .mobile-tab-spacer    { display: none !important; }
+  .mobile-bottom-nav {
+    padding-top: 2px;
+    padding-bottom: env(safe-area-inset-bottom, 2px);
+  }
+  .mobile-bottom-nav a {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .mobile-tab-spacer {
+    height: calc(3rem + env(safe-area-inset-bottom, 0px));
+  }
+  header.sticky {
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+  header.sticky h1 {
+    font-size: 0.85rem !important;
+  }
 }
 
 /* ── KeelWise FullCalendar theme ───────────────────── */

@@ -218,11 +218,11 @@ function AppShell({ children }: { children: ReactNode }) {
   const tbb = Number(totals?.toBeBudgeted ?? 0);
 
   return (
-    <div className="flex min-h-screen" style={{ background: "var(--color-bg)" }}>
+    <div className="flex min-h-screen overflow-x-hidden w-full" style={{ background: "var(--color-bg)" }}>
 
       {/* ── Desktop Sidebar ───────────────────────────── */}
       <aside
-        className="hidden md:flex md:w-60 md:flex-col md:shrink-0 fixed left-0 top-0 bottom-0 z-30 overflow-y-auto"
+        className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0 fixed left-0 top-0 bottom-0 z-30 overflow-y-auto"
         style={{ background: "var(--sidebar-bg)", borderRight: "1px solid var(--sidebar-border)" }}
       >
         {/* Brand */}
@@ -297,7 +297,7 @@ function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* ── Main area ─────────────────────────────────── */}
-      <div className="flex flex-1 flex-col md:ml-60 min-w-0">
+      <div className="flex flex-1 flex-col lg:ml-60 min-w-0 w-full">
 
         {/* Top bar */}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-white/90 backdrop-blur px-4 md:px-6"
@@ -364,12 +364,12 @@ function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 px-4 py-5 md:px-6 md:py-6 max-w-[1200px] w-full mx-auto">
+        <main className="flex-1 px-4 py-5 md:px-6 md:py-6 max-w-[1200px] w-full mx-auto min-w-0 overflow-x-hidden">
           {children}
         </main>
 
         {/* ── Mobile bottom tab bar ──────────────────── */}
-        <nav className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t bg-white/95 backdrop-blur-sm"
+        <nav className="mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t bg-white/95 backdrop-blur-sm"
           style={{ borderColor: "var(--color-border)" }}>
           {MOBILE_NAV.map(({ to, label, Icon }) => (
             <NavLink
@@ -392,7 +392,7 @@ function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="mobile-tab-spacer h-16 md:hidden" />
+        <div className="mobile-tab-spacer h-16 lg:hidden" />
       </div>
     </div>
   );
