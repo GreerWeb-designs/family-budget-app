@@ -49,6 +49,15 @@ export default function Budget() {
   const [busy, setBusy]       = useState(false);
   const [msg, setMsg]         = useState<string | null>(null);
 
+  // Transaction panel state
+  const [txDirection, setTxDirection] = useState<"out" | "in">("out");
+  const [txCategoryId, setTxCategoryId] = useState("");
+  const [txAmount, setTxAmount]   = useState("");
+  const [txDate, setTxDate]       = useState(() => new Date().toISOString().slice(0, 10));
+  const [txNote, setTxNote]       = useState("");
+  const [txBusy, setTxBusy]       = useState(false);
+  const [txMsg, setTxMsg]         = useState<string | null>(null);
+
   const isCurrentMonth = activeMonth === currentMonthKey();
   const activeMonthData = months.find((m) => m.month === activeMonth);
   const isReadOnly = !!activeMonthData?.closed_at;
@@ -61,11 +70,24 @@ export default function Budget() {
       api<AccountRes>("/api/account"),
       api<{ months: MonthEntry[] }>("/api/budget/months"),
     ]);
-    const nonIncome = (catRes.categories ?? []).filter((c) => c.id !== "income" && c.direction !== "inflow");
+    const uniqueCats = Array.from(
+      new Map((catRes.categories ?? []).map((c: Category) => [c.id, c])).values()
+    ) as Category[];
+    const nonIncome = uniqueCats.filter((c) => c.id !== "income" && c.direction !== "inflow");
+
+    const deduped = Object.values(
+      (sumRes.byCategory ?? []).reduce((acc: Record<string, SummaryRow>, row: SummaryRow) => {
+        if (!acc[row.id] || row.budgeted > acc[row.id].budgeted) acc[row.id] = row;
+        return acc;
+      }, {})
+    ) as SummaryRow[];
+    sumRes.byCategory = deduped;
+
     setCats(nonIncome); setSummary(sumRes); setTotals(totRes); setAccount(accRes);
     setMonths(monRes.months ?? []);
     setBankInput(String(accRes.bankBalance ?? 0));
     setCategoryId((prev) => { if (prev && nonIncome.some((c) => c.id === prev)) return prev; return nonIncome[0]?.id ?? ""; });
+    setTxCategoryId((prev) => { if (prev && nonIncome.some((c) => c.id === prev)) return prev; return nonIncome[0]?.id ?? ""; });
   }
 
   useEffect(() => {
@@ -122,6 +144,25 @@ export default function Budget() {
       if (categoryId === id) setCategoryId("");
       setMsg("Category deleted."); await refresh(activeMonth);
     } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setDeletingCategoryId(null); }
+  }
+
+  async function submitTransaction(e: React.FormEvent) {
+    e.preventDefault();
+    setTxMsg(null);
+    const n = Number(txAmount);
+    if (!txAmount || Number.isNaN(n)) { setTxMsg("Enter an amount."); return; }
+    if (!txCategoryId) { setTxMsg("Pick a category."); return; }
+    setTxBusy(true);
+    try {
+      await api("/api/spend", {
+        method: "POST",
+        body: JSON.stringify({ categoryId: txCategoryId, amount: n, date: txDate, note: txNote, direction: txDirection }),
+      });
+      setTxAmount(""); setTxNote("");
+      setTxMsg(txDirection === "in" ? "Income saved" : "Transaction saved");
+      await refresh(activeMonth);
+    } catch (err: any) { setTxMsg(err?.message || "Error saving."); }
+    finally { setTxBusy(false); }
   }
 
   async function handleCloseMonth() {
@@ -395,6 +436,86 @@ export default function Budget() {
           )}
         </div>
       </div>
+
+      {/* ── Log a Transaction (dark panel) ───────────── */}
+      <div className="rounded-2xl bg-slate-900 p-5 shadow-lg mt-4">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-sm font-semibold text-white">Log a Transaction</span>
+          <span className="text-xs text-slate-400 ml-auto">Quick entry</span>
+        </div>
+
+        {/* Direction toggle */}
+        <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800 p-1 mb-4">
+          <button type="button" onClick={() => {
+            setTxDirection("out");
+            setTxCategoryId(cats[0]?.id ?? "");
+          }}
+            className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
+              txDirection === "out" ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-white")}>
+            Out
+          </button>
+          <button type="button" onClick={() => {
+            setTxDirection("in");
+            const income = cats.find((c) => c.direction === "inflow");
+            if (income) setTxCategoryId(income.id);
+          }}
+            className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
+              txDirection === "in" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white")}>
+            In
+          </button>
+        </div>
+
+        <form onSubmit={submitTransaction} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Category</span>
+              <select
+                className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                value={txCategoryId}
+                onChange={(e) => setTxCategoryId(e.target.value)}
+                disabled={txDirection === "in"}>
+                {(txDirection === "in"
+                  ? cats.filter((c) => c.direction === "inflow")
+                  : cats.filter((c) => c.direction !== "inflow")
+                ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Amount</span>
+              <input
+                className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all tabular-nums"
+                value={txAmount} onChange={(e) => setTxAmount(e.target.value)}
+                placeholder="0.00" inputMode="decimal" />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Date</span>
+              <input type="date"
+                className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                value={txDate} onChange={(e) => setTxDate(e.target.value)} />
+            </label>
+          </div>
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Note (optional)</span>
+            <input
+              className="h-10 rounded-xl border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+              value={txNote} onChange={(e) => setTxNote(e.target.value)}
+              placeholder={txDirection === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
+          </label>
+          <div className="flex items-center gap-3 pt-1">
+            <button type="submit" disabled={txBusy}
+              className="h-10 w-full rounded-xl bg-emerald-500 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 transition-all">
+              {txBusy ? "Saving…" : txDirection === "in" ? "Add Income" : "Add Transaction"}
+            </button>
+          </div>
+          {txMsg && (
+            <div className={cn("text-sm text-center", txMsg.includes("Error") || txMsg.includes("error") ? "text-rose-400" : "text-emerald-400")}>
+              {txMsg}
+            </div>
+          )}
+        </form>
+      </div>
+
     </div>
   );
 }

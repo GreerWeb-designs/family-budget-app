@@ -190,7 +190,9 @@ export default function Home() {
       api<{ userId: string }>("/api/auth/me"),
       api<AccountRes>("/api/account"),
     ]);
-    const allCats = catRes.categories ?? [];
+    const allCats = Array.from(
+      new Map((catRes.categories ?? []).map((c: Category) => [c.id, c])).values()
+    ) as Category[];
     setCats(allCats);
     setSummary(sumRes);
     setSpends(spendRes.spends ?? []);
@@ -314,6 +316,76 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ── Log Transaction ───────────────────────────── */}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-sm font-semibold text-stone-900">Log Transaction</div>
+            <div className="text-xs text-stone-400 mt-0.5">
+              {direction === "out" ? "Outflow · reduces category balance" : "Income · increases To Be Budgeted"}
+            </div>
+          </div>
+          <div className="inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1">
+            <button type="button" onClick={() => setDirection("out")}
+              className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
+                direction === "out" ? "bg-red-500 text-white shadow-sm" : "text-stone-500 hover:text-stone-800")}>
+              Out
+            </button>
+            <button type="button" onClick={() => setDirection("in")}
+              className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
+                direction === "in" ? "text-white shadow-sm" : "text-stone-500 hover:text-stone-800")}
+              style={direction === "in" ? { background: "var(--color-primary)" } : {}}>
+              In
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={submitSpend} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Category</span>
+              <select className={selectCls} disabled={direction === "in"}
+                value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                {(direction === "in"
+                  ? cats.filter((c) => c.id === INCOME_ID)
+                  : cats.filter((c) => c.id !== INCOME_ID)
+                ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Amount</span>
+              <input className={inputCls + " tabular-nums"} value={amount}
+                onChange={(e) => setAmount(e.target.value)} placeholder="0.00" inputMode="decimal" />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Date</span>
+              <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
+            </label>
+          </div>
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Note (optional)</span>
+            <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)}
+              placeholder={direction === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
+          </label>
+          <div className="flex items-center gap-3 pt-1">
+            <button type="submit" disabled={busy}
+              className="h-10 px-5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
+              style={{ background: direction === "in" ? "var(--color-primary)" : "#EF4444" }}>
+              {busy ? "Saving…" : direction === "in" ? "Add Income" : "Add Transaction"}
+            </button>
+            <button type="button" disabled={busy || !lastSpendId} onClick={() => deleteSpend(lastSpendId!, true)}
+              className="h-10 px-4 rounded-xl border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-40 transition-all">
+              Undo last
+            </button>
+            {msg && (
+              <span className={cn("text-sm", msg.includes("Error") || msg.includes("error") ? "text-red-600" : "text-teal-700")}>
+                {msg}
+              </span>
+            )}
+          </div>
+        </form>
+      </Card>
 
       {/* ── Cards grid ────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -519,76 +591,6 @@ export default function Home() {
             );
           })}
         </div>
-      </Card>
-
-      {/* ── Log Transaction ───────────────────────────── */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-sm font-semibold text-stone-900">Log Transaction</div>
-            <div className="text-xs text-stone-400 mt-0.5">
-              {direction === "out" ? "Outflow · reduces category balance" : "Income · increases To Be Budgeted"}
-            </div>
-          </div>
-          <div className="inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1">
-            <button type="button" onClick={() => setDirection("out")}
-              className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "out" ? "bg-red-500 text-white shadow-sm" : "text-stone-500 hover:text-stone-800")}>
-              Out
-            </button>
-            <button type="button" onClick={() => setDirection("in")}
-              className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "in" ? "text-white shadow-sm" : "text-stone-500 hover:text-stone-800")}
-              style={direction === "in" ? { background: "var(--color-primary)" } : {}}>
-              In
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={submitSpend} className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Category</span>
-              <select className={selectCls} disabled={direction === "in"}
-                value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                {(direction === "in"
-                  ? cats.filter((c) => c.id === INCOME_ID)
-                  : cats.filter((c) => c.id !== INCOME_ID)
-                ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Amount</span>
-              <input className={inputCls + " tabular-nums"} value={amount}
-                onChange={(e) => setAmount(e.target.value)} placeholder="0.00" inputMode="decimal" />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Date</span>
-              <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
-            </label>
-          </div>
-          <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Note (optional)</span>
-            <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder={direction === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
-          </label>
-          <div className="flex items-center gap-3 pt-1">
-            <button type="submit" disabled={busy}
-              className="h-10 px-5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
-              style={{ background: direction === "in" ? "var(--color-primary)" : "#EF4444" }}>
-              {busy ? "Saving…" : direction === "in" ? "Add Income" : "Add Transaction"}
-            </button>
-            <button type="button" disabled={busy || !lastSpendId} onClick={() => deleteSpend(lastSpendId!, true)}
-              className="h-10 px-4 rounded-xl border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-40 transition-all">
-              Undo last
-            </button>
-            {msg && (
-              <span className={cn("text-sm", msg.includes("Error") || msg.includes("error") ? "text-red-600" : "text-teal-700")}>
-                {msg}
-              </span>
-            )}
-          </div>
-        </form>
       </Card>
 
       {/* ── Budget snapshot + total ────────────────────── */}

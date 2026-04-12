@@ -902,22 +902,24 @@ app.get("/api/spend/summary", requireUser, async (c) => {
 app.get("/api/goals", requireUser, async (c) => {
   const userId = c.get("userId");
   const rows = await c.env.DB.prepare(
-    `SELECT id, title, status, due_date, notes, created_at, updated_at
+    `SELECT id, title, status, due_date, notes, goal_type, target_amount, saved_amount, created_at, updated_at
      FROM goals WHERE user_id = ?
      ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, COALESCE(due_date, '9999-12-31') ASC, created_at DESC`
   )
     .bind(userId)
-    .all<{ id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null; created_at: string; updated_at: string }>();
+    .all<{ id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null; goal_type: string; target_amount: number; saved_amount: number; created_at: string; updated_at: string }>();
 
   return c.json({ goals: rows.results ?? [] });
 });
 
 app.post("/api/goals", requireUser, async (c) => {
   const userId = c.get("userId");
-  const body = await c.req.json<{ title?: string; dueDate?: string; notes?: string }>();
+  const body = await c.req.json<{ title?: string; dueDate?: string; notes?: string; goal_type?: string; target_amount?: number }>();
   const title = (body.title || "").trim();
   const dueDate = (body.dueDate || "").trim() || null;
   const notes = (body.notes || "").trim() || null;
+  const goalType = body.goal_type === "savings" ? "savings" : "personal";
+  const targetAmount = goalType === "savings" ? Number(body.target_amount ?? 0) : 0;
 
   if (!title) return c.json({ error: "Missing title" }, 400);
 
@@ -925,10 +927,10 @@ app.post("/api/goals", requireUser, async (c) => {
   const id = uid();
 
   await c.env.DB.prepare(
-    `INSERT INTO goals (id, user_id, title, status, due_date, notes, created_at, updated_at)
-     VALUES (?, ?, ?, 'active', ?, ?, ?, ?)`
+    `INSERT INTO goals (id, user_id, title, status, due_date, notes, goal_type, target_amount, saved_amount, created_at, updated_at)
+     VALUES (?, ?, ?, 'active', ?, ?, ?, ?, 0, ?, ?)`
   )
-    .bind(id, userId, title, dueDate, notes, now, now)
+    .bind(id, userId, title, dueDate, notes, goalType, targetAmount, now, now)
     .run();
 
   return c.json({ ok: true, id });
@@ -937,7 +939,7 @@ app.post("/api/goals", requireUser, async (c) => {
 app.patch("/api/goals/:id", requireUser, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id");
-  const body = await c.req.json<{ title?: string; dueDate?: string | null; notes?: string | null; status?: "active" | "done" }>();
+  const body = await c.req.json<{ title?: string; dueDate?: string | null; notes?: string | null; status?: "active" | "done"; goal_type?: string; target_amount?: number; saved_amount?: number }>();
 
   const existing = await c.env.DB.prepare(`SELECT id FROM goals WHERE id = ? AND user_id = ? LIMIT 1`)
     .bind(id, userId)
@@ -957,6 +959,9 @@ app.patch("/api/goals/:id", requireUser, async (c) => {
   if (body.dueDate !== undefined) { sets.push("due_date = ?"); binds.push(body.dueDate ? body.dueDate.trim() : null); }
   if (body.notes !== undefined) { sets.push("notes = ?"); binds.push(body.notes ? body.notes.trim() : null); }
   if (body.status !== undefined) { sets.push("status = ?"); binds.push(body.status); }
+  if (body.goal_type !== undefined) { sets.push("goal_type = ?"); binds.push(body.goal_type === "savings" ? "savings" : "personal"); }
+  if (body.target_amount !== undefined) { sets.push("target_amount = ?"); binds.push(Number(body.target_amount)); }
+  if (body.saved_amount !== undefined) { sets.push("saved_amount = ?"); binds.push(Number(body.saved_amount)); }
   sets.push("updated_at = ?"); binds.push(now);
 
   await c.env.DB.prepare(`UPDATE goals SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`)
@@ -964,6 +969,37 @@ app.patch("/api/goals/:id", requireUser, async (c) => {
     .run();
 
   return c.json({ ok: true });
+});
+
+app.post("/api/goals/:id/contribute", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const body = await c.req.json<{ amount?: number }>();
+  const amount = Number(body.amount);
+
+  if (Number.isNaN(amount) || amount <= 0) return c.json({ error: "Amount must be a positive number" }, 400);
+
+  const goal = await c.env.DB.prepare(
+    `SELECT id, target_amount, saved_amount FROM goals WHERE id = ? AND user_id = ? LIMIT 1`
+  ).bind(id, userId).first<{ id: string; target_amount: number; saved_amount: number }>();
+
+  if (!goal) return c.json({ error: "Not found" }, 404);
+
+  const newSaved = Math.min(Number(goal.saved_amount) + amount, Number(goal.target_amount));
+  const now = new Date().toISOString();
+
+  await c.env.DB.prepare(
+    `UPDATE goals SET saved_amount = ?, updated_at = ? WHERE id = ? AND user_id = ?`
+  ).bind(newSaved, now, id, userId).run();
+
+  const isComplete = newSaved >= Number(goal.target_amount);
+  if (isComplete) {
+    await c.env.DB.prepare(
+      `UPDATE goals SET status = 'done', updated_at = ? WHERE id = ? AND user_id = ?`
+    ).bind(now, id, userId).run();
+  }
+
+  return c.json({ ok: true, saved_amount: newSaved, isComplete });
 });
 
 app.delete("/api/goals/:id", requireUser, async (c) => {
