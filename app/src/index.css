@@ -1,47 +1,75 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter/index.css";
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
 
-/* ── KeelWise design tokens ─────────────────────────── */
-:root {
-  --keel-navy:      #0B2A4A;
-  --brass:          #C8A464;
-  --sand:           #F5F1EA;
-  --paper:          #FFFFFF;
-  --deep-ink:       #0B2A4A;
-  --slate:          #5C6B7A;
-  --harbor-green:   #2F6B52;
-  --tideline-amber: #B8791F;
-  --sand-border:    #E8E2D9;
+/* ── NestOtter design tokens ─────────────────────────── */
+@theme {
+  /* Brand — teal otter */
+  --color-teal-50:  #E8F1F1;
+  --color-teal-100: #C9DEDF;
+  --color-teal-300: #6FA3A5;
+  --color-teal-500: #2D6E70;
+  --color-teal-600: #245759;
+  --color-teal-700: #1B4243;
 
-  --color-primary:       #0B2A4A;
-  --color-primary-light: #0F3360;
-  --color-primary-dark:  #071E33;
-  --color-accent:        #C8A464;
-  --color-success:       #2F6B52;
-  --color-warning:       #B8791F;
-  --color-danger:        #B8791F;
+  /* Brand — rust otter */
+  --color-rust-50:  #FAEFE5;
+  --color-rust-100: #F2D9C2;
+  --color-rust-300: #D99A66;
+  --color-rust-500: #C17A3F;
+  --color-rust-600: #A3632F;
+  --color-rust-700: #7F4D25;
 
-  --color-bg:             #F5F1EA;
-  --color-surface:        #FFFFFF;
-  --color-border:         #E8E2D9;
-  --color-border-subtle:  #EDE8E0;
+  /* Brand — bark / deep accent */
+  --color-bark-500: #5C3A28;
+  --color-bark-700: #3D2619;
 
-  --color-text:           #0B2A4A;
-  --color-text-muted:     #5C6B7A;
-  --color-text-subtle:    #8A9BA8;
+  /* Neutrals — warm, not cold */
+  --color-cream-50:  #FAF6EE;
+  --color-cream-100: #F5F1E8;
+  --color-cream-200: #EDE7D8;
+  --color-ink-900:   #1C2A33;
+  --color-ink-700:   #3F5260;
+  --color-ink-500:   #6B7A85;
+  --color-ink-300:   #A8B3BB;
 
-  --sidebar-bg:           #0B2A4A;
-  --sidebar-border:       #143860;
-  --sidebar-text:         #C8D6E2;
-  --sidebar-text-muted:   #5C6B7A;
-  --sidebar-active-bg:    rgba(200, 164, 100, 0.12);
-  --sidebar-active-text:  #C8A464;
+  /* Semantic */
+  --color-success: #3E8E5A;
+  --color-warning: #D9A441;
+  --color-danger:  #C0574E;
 
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  --shadow-card-hover: 0 4px 16px 0 rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04);
+  /* Typography */
+  --font-sans:    'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+
+  /* Radius — soft, never sharp */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+
+  /* Shadows — soft, warm */
+  --shadow-card:  0 1px 2px rgba(28,42,51,0.04), 0 4px 16px rgba(28,42,51,0.06);
+  --shadow-float: 0 4px 12px rgba(28,42,51,0.08), 0 12px 32px rgba(28,42,51,0.08);
 }
 
-/* ── Base reset ────────────────────────────────────── */
+/* ── CSS vars for FullCalendar + legacy inline style refs ── */
+:root {
+  --color-primary:       #2D6E70;
+  --color-primary-light: #6FA3A5;
+  --color-accent:        #C17A3F;
+  --color-bg:            #FAF6EE;
+  --color-surface:       #FFFDF8;
+  --color-border:        #EDE7D8;
+  --color-border-subtle: #F5F1E8;
+  --color-text:          #1C2A33;
+  --color-text-muted:    #6B7A85;
+  --color-text-subtle:   #A8B3BB;
+}
+
+/* ── Base reset ────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; padding: 0; }
 
@@ -61,14 +89,14 @@ body {
   font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: #FAF6EE;
+  color: #1C2A33;
   line-height: 1.6;
 }
 
-/* ── Typography ────────────────────────────────────── */
+/* ── Typography helpers ────────────────────────────────── */
 .font-display {
-  font-family: 'Inter Variable', 'Inter', sans-serif;
+  font-family: 'Fraunces', Georgia, serif;
   font-weight: 500;
 }
 
@@ -77,52 +105,31 @@ body {
   font-feature-settings: "tnum";
 }
 
-/* ── Global input styles ───────────────────────────── */
-input, select, textarea {
-  border-color: #E8E2D9;
-  background-color: #FFFFFF;
-  color: #0B2A4A;
-}
-input::placeholder, textarea::placeholder {
-  color: #5C6B7A;
-}
-input:focus, select:focus, textarea:focus {
-  border-color: #C8A464;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(200, 164, 100, 0.15);
-}
-
-/* ── Scrollbar ─────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #C8D6E2; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #8A9BA8; }
-
-/* ── Focus rings ───────────────────────────────────── */
+/* ── Focus rings ───────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--brass);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: 3px solid rgba(45, 110, 112, 0.4);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
-/* ── Reduced motion ────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+/* ── Global input styles ───────────────────────────────── */
+input, select, textarea {
+  border-color: #EDE7D8;
+  background-color: #FFFDF8;
+  color: #1C2A33;
 }
 
-/* ── iOS safe area support ─────────────────────────── */
-.mobile-bottom-nav {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+input::placeholder, textarea::placeholder {
+  color: #A8B3BB;
 }
 
-.mobile-tab-spacer {
-  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+input:focus, select:focus, textarea:focus {
+  border-color: #2D6E70;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 110, 112, 0.15);
 }
 
-/* ── Prevent input zoom on iOS ─────────────────────── */
+/* ── Prevent input zoom on iOS ─────────────────────────── */
 @media (max-width: 1024px) {
   input[type="text"],
   input[type="email"],
@@ -136,47 +143,73 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* ── Mobile landscape: compact nav ─────────────────── */
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C9DEDF; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #6FA3A5; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Reduced motion ────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── iOS safe area ─────────────────────────────────────── */
+.mobile-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mobile-tab-spacer {
+  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── Mobile landscape compact nav ──────────────────────── */
 @media (max-height: 500px) and (orientation: landscape) {
   .mobile-bottom-nav {
     padding-top: 2px;
     padding-bottom: env(safe-area-inset-bottom, 2px);
   }
-  .mobile-bottom-nav a {
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-  .mobile-tab-spacer {
-    height: calc(3rem + env(safe-area-inset-bottom, 0px));
-  }
-  header.sticky {
-    height: 40px !important;
-    min-height: 40px !important;
-  }
-  header.sticky h1 {
-    font-size: 0.85rem !important;
-  }
+  .mobile-bottom-nav a { padding-top: 4px; padding-bottom: 4px; }
+  .mobile-tab-spacer { height: calc(3rem + env(safe-area-inset-bottom, 0px)); }
+  header.sticky { height: 40px !important; min-height: 40px !important; }
 }
 
-/* ── KeelWise FullCalendar theme ───────────────────── */
+/* ── NestOtter FullCalendar theme ──────────────────────── */
 .fc { font-family: inherit; }
+
 .fc .fc-button {
-  background: #0B2A4A !important;
-  border-color: #0B2A4A !important;
+  background: #2D6E70 !important;
+  border-color: #2D6E70 !important;
   font-size: 0.8rem !important;
   padding: 0.35rem 0.8rem !important;
-  border-radius: 0.5rem !important;
+  border-radius: 10px !important;
 }
-.fc .fc-button:hover { background: #0F3360 !important; }
+
+.fc .fc-button:hover { background: #245759 !important; }
+
 .fc .fc-toolbar-title {
   font-size: 1rem !important;
   font-weight: 500;
-  color: #0B2A4A;
+  color: #1C2A33;
+  font-family: 'Fraunces', Georgia, serif;
 }
-.fc .fc-daygrid-event { border-radius: 4px; font-size: 0.72rem; }
-.fc .fc-day-today { background: #F5F1EA !important; }
-.fc .fc-day-today .fc-daygrid-day-number { color: #C8A464 !important; font-weight: 600; }
-.fc .fc-daygrid-day-number { color: #5C6B7A; }
+
+.fc .fc-daygrid-event {
+  border-radius: 6px;
+  font-size: 0.72rem;
+  background: #2D6E70;
+  border-color: #2D6E70;
+}
+
+.fc .fc-day-today { background: #E8F1F1 !important; }
+.fc .fc-day-today .fc-daygrid-day-number { color: #2D6E70 !important; font-weight: 600; }
+.fc .fc-daygrid-day-number { color: #6B7A85; }
 
 @media (max-width: 640px) {
   .fc .fc-toolbar { flex-direction: column; gap: 8px; }
@@ -190,13 +223,4 @@ input:focus, select:focus, textarea:focus {
 @media (max-height: 500px) and (orientation: landscape) {
   .fc .fc-daygrid-day { min-height: 32px; }
   .fc .fc-toolbar { margin-bottom: 4px !important; }
-}
-
-/* ── Hide scrollbar on sub-nav strip ─────────────────── */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }

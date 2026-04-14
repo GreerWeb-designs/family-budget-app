@@ -32,11 +32,11 @@ const FREQUENCIES = [
 ];
 
 const FREQ_COLORS: Record<string, string> = {
-  daily:       "bg-[#EBF3EF] text-[#2F6B52]",
-  weekly:      "bg-[#F5F1EA] text-[#5C6B7A]",
-  "bi-weekly": "bg-[#F5F1EA] text-[#5C6B7A]",
-  monthly:     "bg-[#FDF8F0] text-[#B8791F]",
-  "as-needed": "bg-[#F5F1EA] text-[#5C6B7A]",
+  daily:       "bg-teal-50 text-teal-600",
+  weekly:      "bg-cream-100 text-ink-500",
+  "bi-weekly": "bg-cream-100 text-ink-500",
+  monthly:     "bg-rust-50 text-rust-600",
+  "as-needed": "bg-cream-100 text-ink-500",
 };
 
 function dueDateLabel(dueDate: string | null, completed: number) {
@@ -59,7 +59,7 @@ function timeAgo(iso: string) {
 }
 
 const inputCls =
-  "h-10 rounded-xl border border-[#E8E2D9] bg-white px-3 text-sm text-[#0B2A4A] outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all placeholder:text-[#5C6B7A]";
+  "h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all placeholder:text-ink-400";
 
 type Filter = "all" | "pending" | "completed";
 
@@ -152,20 +152,20 @@ export default function Chores() {
   return (
     <div className="space-y-4">
       {msg && (
-        <div className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] px-4 py-2.5 text-sm text-[#B8791F]">{msg}</div>
+        <div className="rounded-xl border border-rust-600/30 bg-rust-50 px-4 py-2.5 text-sm text-rust-600">{msg}</div>
       )}
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#0B2A4A]">Chore list</h2>
-          <p className="text-xs text-[#5C6B7A]">Shared with your household</p>
+          <h2 className="text-lg font-medium text-ink-900" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>Chore list</h2>
+          <p className="text-xs text-ink-500">Shared with your household</p>
         </div>
         {canAddChores && (
           <button
             type="button"
             onClick={() => setShowForm((v) => !v)}
-            className="h-9 rounded-xl bg-[#0B2A4A] px-4 text-sm font-semibold text-white hover:bg-[#0F3360] transition-all"
+            className="h-9 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 transition-all"
           >
             {showForm ? "Cancel" : "+ Add chore"}
           </button>
@@ -174,11 +174,11 @@ export default function Chores() {
 
       {/* Add chore form */}
       {canAddChores && showForm && (
-        <div className="rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-cream-200 bg-white p-5" style={{ boxShadow: "var(--shadow-card)" }}>
           <form onSubmit={addChore} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">
                   What needs doing?
                 </label>
                 <input
@@ -192,7 +192,7 @@ export default function Chores() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">
                   Assign to
                 </label>
                 <select
@@ -208,7 +208,7 @@ export default function Chores() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">
                   Frequency
                 </label>
                 <select
@@ -223,7 +223,7 @@ export default function Chores() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">
                   Due date (optional)
                 </label>
                 <input
@@ -239,14 +239,14 @@ export default function Chores() {
               <button
                 type="submit"
                 disabled={saving || !title.trim()}
-                className="h-10 rounded-xl bg-[#0B2A4A] px-5 text-sm font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all"
+                className="h-10 rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all"
               >
                 {saving ? "Adding…" : "Add chore"}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setTitle(""); setAssignedTo(""); setFrequency("weekly"); setDueDate(""); }}
-                className="h-10 rounded-xl border border-[#E8E2D9] px-4 text-sm text-[#5C6B7A] hover:bg-[#F5F1EA] transition-all"
+                className="h-10 rounded-xl border border-cream-200 px-4 text-sm text-ink-500 hover:bg-cream-100 transition-all"
               >
                 Cancel
               </button>
@@ -256,7 +256,7 @@ export default function Chores() {
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-1 rounded-xl bg-[#F5F1EA] p-1 w-fit">
+      <div className="flex gap-1 rounded-xl bg-cream-100 p-1 w-fit">
         {filterTabs.map(({ key, label }) => (
           <button
             key={key}
@@ -265,8 +265,8 @@ export default function Chores() {
             className={cn(
               "rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
               filter === key
-                ? "bg-[#0B2A4A] text-white shadow-sm"
-                : "text-[#5C6B7A] hover:bg-[#E8E2D9]/60"
+                ? "bg-teal-700 text-white shadow-sm"
+                : "text-ink-500 hover:bg-cream-200/60"
             )}
           >
             {label}
@@ -278,13 +278,13 @@ export default function Chores() {
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-16 rounded-2xl bg-white border border-[#E8E2D9] animate-pulse" />
+            <div key={i} className="h-16 rounded-2xl bg-white border border-cream-200 animate-pulse" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="text-3xl mb-3">🧹</div>
-          <p className="text-sm text-[#5C6B7A]">
+          <p className="text-sm text-ink-500">
             {filter === "pending"
               ? "Everything's done. Nice work!"
               : filter === "completed"
@@ -301,9 +301,10 @@ export default function Chores() {
               <div
                 key={chore.id}
                 className={cn(
-                  "flex items-start gap-3 rounded-2xl border border-[#E8E2D9] bg-white p-4 shadow-sm transition-opacity",
+                  "flex items-start gap-3 rounded-2xl border border-cream-200 bg-white p-4 transition-opacity",
                   chore.completed && "opacity-60"
                 )}
+                style={{ boxShadow: "var(--shadow-card)" }}
               >
                 {/* Complete toggle */}
                 <button
@@ -312,8 +313,8 @@ export default function Chores() {
                   className={cn(
                     "mt-0.5 h-6 w-6 shrink-0 rounded-full border-2 flex items-center justify-center transition-all",
                     chore.completed
-                      ? "bg-[#2F6B52] border-[#2F6B52] text-white"
-                      : "border-[#E8E2D9] hover:border-[#2F6B52]"
+                      ? "bg-teal-500 border-teal-500 text-white"
+                      : "border-cream-200 hover:border-teal-500"
                   )}
                   aria-label={chore.completed ? "Mark incomplete" : "Mark complete"}
                 >
@@ -324,32 +325,28 @@ export default function Chores() {
                 <div className="flex-1 min-w-0">
                   <div className={cn(
                     "text-sm font-medium leading-snug",
-                    chore.completed ? "line-through text-[#5C6B7A]" : "text-[#0B2A4A]"
+                    chore.completed ? "line-through text-ink-500" : "text-ink-900"
                   )}>
                     {chore.title}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                    {/* Assigned to */}
-                    <span className="text-xs text-[#5C6B7A]">
+                    <span className="text-xs text-ink-500">
                       👤 {chore.assigned_to_name ?? "Anyone"}
                     </span>
 
-                    {/* Frequency badge */}
                     <span className={cn("text-[10px] font-medium rounded-full px-2 py-0.5", freqStyle)}>
                       {FREQUENCIES.find((f) => f.value === chore.frequency)?.label ?? chore.frequency}
                     </span>
 
-                    {/* Due date */}
                     {due && (
-                      <span className={cn("text-xs", due.overdue ? "text-[#B8791F]" : "text-[#5C6B7A]")}>
+                      <span className={cn("text-xs", due.overdue ? "text-rust-600" : "text-ink-500")}>
                         {due.text}
                       </span>
                     )}
 
-                    {/* Completed info */}
                     {chore.completed && chore.completed_at && (
-                      <span className="text-xs text-[#2F6B52]">
+                      <span className="text-xs text-teal-600">
                         Done · {timeAgo(chore.completed_at)}
                       </span>
                     )}
@@ -361,7 +358,7 @@ export default function Chores() {
                   <button
                     type="button"
                     onClick={() => deleteChore(chore.id, chore.title)}
-                    className="shrink-0 rounded-lg p-1.5 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-colors text-sm leading-none"
+                    className="shrink-0 rounded-lg p-1.5 text-ink-400 hover:text-rust-600 hover:bg-rust-50 transition-colors text-sm leading-none"
                   >
                     ×
                   </button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { inputCls, labelCls, AuthError, PrimaryBtn } from "./Login";
+import { BrandMark, Wordmark } from "../components/ui";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -28,35 +29,32 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--color-bg)" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#FAF6EE" }}>
       <div className="w-full max-w-100">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold mb-3"
-            style={{ background: "#C8A464", color: "#0B2A4A" }}>
-            KW
-          </div>
-          <div className="font-display text-xl font-semibold text-stone-900">Choose a new password</div>
+          <BrandMark size={48} className="mx-auto mb-3" />
+          <Wordmark size="md" />
+          <div className="text-sm text-ink-500 mt-1">Choose a new password</div>
         </div>
 
-        <div className="rounded-2xl bg-white border p-8 shadow-sm" style={{ borderColor: "var(--color-border)" }}>
+        <div className="rounded-2xl border p-8" style={{ background: "#FFFDF8", borderColor: "#C9DEDF" }}>
           {!token ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-[#FDF3E3] border border-[#B8791F]/30 px-4 py-3 text-sm text-[#B8791F]">
+              <div className="rounded-xl bg-rust-50 border border-rust-500/30 px-4 py-3 text-sm text-rust-600">
                 This reset link isn't valid. Please request a new one.
               </div>
               <Link to="/forgot-password"
-                className="block text-center text-sm font-semibold text-[#C8A464] hover:text-[#C8A464]/80 transition-colors">
+                className="block text-center text-sm font-semibold text-teal-500 hover:opacity-80 transition-colors">
                 Request a new link
               </Link>
             </div>
           ) : done ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-[#EBF3EF] border border-[#2F6B52]/30 px-4 py-3 text-sm text-[#2F6B52]">
-                Password updated successfully! You can now sign in with your new password.
+              <div className="rounded-xl bg-teal-50 border border-teal-500/30 px-4 py-3 text-sm text-teal-600">
+                Password updated! You can now sign in with your new password.
               </div>
               <Link to="/login"
-                className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ background: "var(--color-primary)" }}>
+                className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition-all bg-teal-500 hover:bg-teal-600">
                 Sign in now
               </Link>
             </div>
@@ -70,7 +68,7 @@ export default function ResetPassword() {
               <label className="block">
                 <span className={labelCls}>Confirm password</span>
                 <input
-                  className={inputCls + (confirm && confirm !== password ? " border-[#B8791F]/60" : "")}
+                  className={inputCls + (confirm && confirm !== password ? " border-rust-500/60" : "")}
                   type="password" placeholder="••••••••"
                   value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
               </label>

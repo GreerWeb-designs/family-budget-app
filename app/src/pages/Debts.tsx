@@ -48,8 +48,8 @@ const DEBT_TYPES = [
 ];
 
 const DEBT_TYPE_ICON: Record<string, string> = Object.fromEntries(DEBT_TYPES.map((t) => [t.value, t.icon]));
-const BAR_COLORS = ["#0B2A4A","#2F6B52","#C8A464","#5C6B7A","#B8791F","#1A4A7A","#4A8A6A","#D4AF74"];
-const inputCls = "h-10 w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm tabular-nums outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
+const BAR_COLORS = ["#1B4243","#2D6E70","#C17A3F","#6B7A85","#A3632F","#245759","#6FA3A5","#D99A66"];
+const inputCls = "h-10 w-full rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm tabular-nums outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all";
 
 /* ── Helpers ────────────────────────────────────────────── */
 function parseNum(s: string) {
@@ -188,8 +188,8 @@ function DebtTypePicker({ value, onChange }: { value: string; onChange: (v: stri
           className={cn(
             "flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-all shrink-0",
             value === t.value
-              ? "bg-[#0B2A4A] text-white shadow-sm"
-              : "bg-[#F5F1EA] text-[#5C6B7A] hover:bg-[#E8E2D9]"
+              ? "bg-teal-700 text-white shadow-sm"
+              : "bg-cream-100 text-ink-500 hover:bg-cream-200"
           )}
         >
           <span>{t.icon}</span>
@@ -258,8 +258,8 @@ export default function Debts() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="text-4xl mb-3">🔒</div>
-        <p className="text-sm font-medium text-[#0B2A4A] mb-1">Debts is restricted</p>
-        <p className="text-xs text-[#5C6B7A]">Ask your household admin to grant access.</p>
+        <p className="text-sm font-medium text-ink-900 mb-1">Debts is restricted</p>
+        <p className="text-xs text-ink-500">Ask your household admin to grant access.</p>
       </div>
     );
   }
@@ -366,23 +366,23 @@ export default function Debts() {
       {/* ── Stat cards ─────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">Total debt</div>
-          <div className="font-display text-2xl font-semibold text-[#B8791F] tabular-nums">{money(totalBalance)}</div>
-          <div className="text-xs text-stone-400 mt-0.5">{debts.length} debt{debts.length !== 1 ? "s" : ""}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">Total debt</div>
+          <div className="font-display text-2xl font-semibold text-rust-600 tabular-nums">{money(totalBalance)}</div>
+          <div className="text-xs text-ink-500 mt-0.5">{debts.length} debt{debts.length !== 1 ? "s" : ""}</div>
         </div>
 
         <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">Min / Month</div>
-          <div className="font-display text-2xl font-semibold text-stone-900 tabular-nums">{money(totalMinPayment)}</div>
-          <div className="text-xs text-stone-400 mt-0.5">combined minimums</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">Min / Month</div>
+          <div className="font-display text-2xl font-semibold text-ink-900 tabular-nums">{money(totalMinPayment)}</div>
+          <div className="text-xs text-ink-500 mt-0.5">combined minimums</div>
         </div>
 
         <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-2">Extra / Month</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-2">Extra / Month</div>
           <div className="flex gap-2">
             <div className="relative flex-1 min-w-0">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm pointer-events-none">$</span>
-              <input className="h-9 w-full rounded-xl border border-stone-200 bg-stone-50 pl-6 pr-2 text-sm tabular-nums outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all"
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm pointer-events-none">$</span>
+              <input className="h-9 w-full rounded-xl border border-cream-200 bg-cream-50 pl-6 pr-2 text-sm tabular-nums outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all"
                 value={extra} onChange={(e) => setExtra(e.target.value)} inputMode="decimal" placeholder="0.00" />
             </div>
             <button type="button" onClick={saveExtra} disabled={busy}
@@ -391,22 +391,22 @@ export default function Debts() {
               Save
             </button>
           </div>
-          {msg && <div className="mt-1.5 text-xs text-stone-500">{msg}</div>}
+          {msg && <div className="mt-1.5 text-xs text-ink-500">{msg}</div>}
         </div>
 
         <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-2">Strategy</div>
-          <div className="inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1 w-full">
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-2">Strategy</div>
+          <div className="inline-flex rounded-xl border border-cream-200 bg-cream-50 p-1 w-full">
             {(["snowball", "avalanche"] as Method[]).map((m) => (
               <button key={m} type="button" onClick={() => saveMethod(m)} disabled={savingMethod}
                 className={cn("flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all capitalize",
-                  method === m ? "text-white shadow-sm" : "text-stone-600 hover:text-stone-900")}
-                style={method === m ? { background: m === "snowball" ? "#0B2A4A" : "#C8A464", color: m === "avalanche" ? "#0B2A4A" : undefined } : {}}>
+                  method === m ? "text-white shadow-sm" : "text-ink-500 hover:text-ink-900")}
+                style={method === m ? { background: m === "snowball" ? "#1B4243" : "#C17A3F", color: m === "avalanche" ? "#1B4243" : undefined } : {}}>
                 {m}
               </button>
             ))}
           </div>
-          <div className="text-xs text-[#5C6B7A] mt-1.5">
+          <div className="text-xs text-ink-500 mt-1.5">
             {method === "snowball" ? "Snowball: lowest balance first" : "Avalanche: highest rate first"}
           </div>
         </div>
@@ -417,16 +417,16 @@ export default function Debts() {
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div>
             <div className="flex items-center gap-2">
-              <CreditCard size={15} className="text-stone-400" />
-              <div className="text-sm font-semibold text-[#0B2A4A]">Your debts</div>
+              <CreditCard size={15} className="text-ink-500" />
+              <div className="text-sm font-semibold text-ink-900">Your debts</div>
             </div>
-            <div className="text-xs text-stone-400 mt-0.5">
+            <div className="text-xs text-ink-500 mt-0.5">
               Sorted by {method === "snowball" ? "balance (lowest first)" : "interest rate (highest first)"}
             </div>
           </div>
           <button type="button" onClick={addDebt} disabled={busy}
             className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold text-white disabled:opacity-60 transition-all"
-            style={{ background: "#0B2A4A" }}>
+            style={{ background: "#1B4243" }}>
             <PlusCircle size={12} />
             Add a debt
           </button>
@@ -435,9 +435,9 @@ export default function Debts() {
         <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
           {sortedDebts.length === 0 && (
             <div className="px-5 py-12 text-center">
-              <CreditCard size={28} className="mx-auto text-stone-200 mb-2" />
-              <div className="text-sm text-stone-400">No debts tracked yet.</div>
-              <div className="text-xs text-stone-300 mt-0.5">Add one to start your payoff plan.</div>
+              <CreditCard size={28} className="mx-auto text-cream-200 mb-2" />
+              <div className="text-sm text-ink-500">No debts tracked yet.</div>
+              <div className="text-xs text-cream-200 mt-0.5">Add one to start your payoff plan.</div>
             </div>
           )}
 
@@ -468,19 +468,19 @@ export default function Debts() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-[#0B2A4A] truncate">{row.name}</span>
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#F5F1EA] text-[#5C6B7A] border border-[#E8E2D9]">
+                      <span className="text-sm font-semibold text-ink-900 truncate">{row.name}</span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-cream-100 text-ink-500 border border-cream-200">
                         {DEBT_TYPES.find((t) => t.value === row.debtType)?.label ?? "Other"}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <span className="text-xs text-[#B8791F] font-semibold tabular-nums">{money(row.balance)}</span>
-                      <span className="text-xs text-stone-400">{row.apr}% APR</span>
-                      <span className="text-xs text-stone-400">{money(row.payment)}/mo</span>
-                      {strat?.payoffDate && <span className="text-xs text-[#2F6B52] font-medium">→ {strat.payoffDate}</span>}
+                      <span className="text-xs text-rust-600 font-semibold tabular-nums">{money(row.balance)}</span>
+                      <span className="text-xs text-ink-500">{row.apr}% APR</span>
+                      <span className="text-xs text-ink-500">{money(row.payment)}/mo</span>
+                      {strat?.payoffDate && <span className="text-xs text-teal-600 font-medium">→ {strat.payoffDate}</span>}
                     </div>
                   </div>
-                  {isOpen ? <ChevronUp size={14} className="text-stone-400 shrink-0" /> : <ChevronDown size={14} className="text-stone-400 shrink-0" />}
+                  {isOpen ? <ChevronUp size={14} className="text-ink-500 shrink-0" /> : <ChevronDown size={14} className="text-ink-500 shrink-0" />}
                 </button>
 
                 {/* ── Expanded form ── */}
@@ -490,15 +490,15 @@ export default function Debts() {
 
                       {/* Debt type picker */}
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-2">Debt type</div>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-2">Debt type</div>
                         <DebtTypePicker value={d.debtType} onChange={(v) => setDraft(row.id, { debtType: v })} />
                       </div>
 
                       {/* Name */}
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">Name</div>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">Name</div>
                         <input
-                          className="h-10 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-900 outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all"
+                          className="h-10 w-full rounded-xl border border-cream-200 bg-white px-3 text-sm font-semibold text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all"
                           value={d.name} onChange={(e) => setDraft(row.id, { name: e.target.value })} placeholder="Debt name"
                         />
                       </div>
@@ -506,39 +506,39 @@ export default function Debts() {
                       {/* Core fields */}
                       <div className="grid gap-3 sm:grid-cols-4">
                         <label className="grid gap-1">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Balance</span>
+                          <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Balance</span>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm pointer-events-none">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm pointer-events-none">$</span>
                             <input className={inputCls + " pl-7"} value={d.balance} onChange={(e) => setDraft(row.id, { balance: e.target.value })} inputMode="decimal" placeholder="0.00" />
                           </div>
                         </label>
                         <label className="grid gap-1">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">
                             {isMortgage ? "Total Payment" : "Min Payment"}
                           </span>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm pointer-events-none">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm pointer-events-none">$</span>
                             <input className={inputCls + " pl-7"} value={d.payment} onChange={(e) => setDraft(row.id, { payment: e.target.value })} inputMode="decimal" placeholder="0.00" />
                           </div>
                         </label>
                         <label className="grid gap-1">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">APR %</span>
+                          <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">APR %</span>
                           <div className="relative">
                             <input className={inputCls + " pr-7"} value={d.apr} onChange={(e) => setDraft(row.id, { apr: e.target.value })} inputMode="decimal" placeholder="0.0" />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs pointer-events-none">%</span>
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 text-xs pointer-events-none">%</span>
                           </div>
                         </label>
                         <label className="grid gap-1">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Payments Left</span>
+                          <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Payments Left</span>
                           <input className={inputCls} value={d.paymentsRemaining} onChange={(e) => setDraft(row.id, { paymentsRemaining: e.target.value })} inputMode="numeric" placeholder="0" />
                         </label>
                       </div>
 
                       {/* Mortgage-specific fields */}
                       {isMortgage && (
-                        <div className="rounded-xl border border-[#C8A464]/30 bg-[#FDF8F0] p-4 space-y-3">
-                          <div className="text-xs font-semibold text-[#B8791F] uppercase tracking-wider">🏠 Mortgage details</div>
-                          <p className="text-xs text-[#5C6B7A]">
+                        <div className="rounded-xl border border-rust-500/30 bg-rust-50 p-4 space-y-3">
+                          <div className="text-xs font-semibold text-rust-600 uppercase tracking-wider">🏠 Mortgage details</div>
+                          <p className="text-xs text-ink-500">
                             Only P&amp;I reduces your balance. Escrow (taxes + insurance) doesn't count toward payoff.
                           </p>
 
@@ -549,43 +549,43 @@ export default function Debts() {
                               onClick={() => setDraft(row.id, { includesEscrow: !d.includesEscrow })}
                               className={cn(
                                 "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                                d.includesEscrow ? "bg-[#2F6B52]" : "bg-stone-200"
+                                d.includesEscrow ? "bg-teal-600" : "bg-cream-200"
                               )}
                             >
                               <span className={cn("inline-block h-4 w-4 rounded-full bg-white shadow transition-transform", d.includesEscrow ? "translate-x-4" : "translate-x-0")} />
                             </button>
-                            <span className="text-xs text-[#0B2A4A] font-medium">My payment includes escrow (taxes &amp; insurance)</span>
+                            <span className="text-xs text-ink-900 font-medium">My payment includes escrow (taxes &amp; insurance)</span>
                           </label>
 
                           {d.includesEscrow && (
                             <div className="grid gap-3 sm:grid-cols-2">
                               <label className="grid gap-1">
-                                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">P&amp;I portion</span>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">P&amp;I portion</span>
                                 <div className="relative">
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm pointer-events-none">$</span>
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm pointer-events-none">$</span>
                                   <input className={inputCls + " pl-7"} value={d.principalAndInterest}
                                     onChange={(e) => setDraft(row.id, { principalAndInterest: e.target.value })}
                                     inputMode="decimal" placeholder="e.g. 1450.00" />
                                 </div>
-                                <span className="text-[10px] text-stone-400">Principal &amp; Interest only (not escrow)</span>
+                                <span className="text-[10px] text-ink-500">Principal &amp; Interest only (not escrow)</span>
                               </label>
                               <label className="grid gap-1">
-                                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Escrow amount</span>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Escrow amount</span>
                                 <div className="relative">
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm pointer-events-none">$</span>
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm pointer-events-none">$</span>
                                   <input className={inputCls + " pl-7"} value={d.escrowAmount}
                                     onChange={(e) => setDraft(row.id, { escrowAmount: e.target.value })}
                                     inputMode="decimal" placeholder="e.g. 450.00" />
                                 </div>
-                                <span className="text-[10px] text-stone-400">Taxes + insurance portion</span>
+                                <span className="text-[10px] text-ink-500">Taxes + insurance portion</span>
                               </label>
                             </div>
                           )}
 
                           {/* Show computed P&I if not explicitly set */}
                           {!d.includesEscrow && row.apr > 0 && row.paymentsRemaining > 0 && (
-                            <div className="text-xs text-[#5C6B7A]">
-                              Simulating with calculated P&amp;I: <span className="font-semibold text-[#0B2A4A]">{money(simPmt)}/mo</span>
+                            <div className="text-xs text-ink-500">
+                              Simulating with calculated P&amp;I: <span className="font-semibold text-ink-900">{money(simPmt)}/mo</span>
                               <span className="text-[10px] ml-1">(from balance × rate / amortization formula)</span>
                             </div>
                           )}
@@ -595,7 +595,7 @@ export default function Debts() {
                       {/* Actions row */}
                       <div className="flex items-center justify-between pt-1">
                         <button type="button" disabled={busy} onClick={() => removeDebt(row.id)}
-                          className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-[#E8E2D9] text-xs text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] hover:border-[#B8791F]/30 disabled:opacity-60 transition-all">
+                          className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-cream-200 text-xs text-ink-500 hover:text-rust-600 hover:bg-rust-50 hover:border-rust-600/30 disabled:opacity-60 transition-all">
                           <Trash2 size={13} />
                           Delete
                         </button>
@@ -609,37 +609,37 @@ export default function Debts() {
 
                     {/* ── Mini sim results ── */}
                     <div className="grid gap-2 sm:grid-cols-2 mt-4">
-                      <div className="rounded-xl border border-stone-100 bg-stone-50 p-3">
-                        <div className="text-xs font-semibold text-stone-500 mb-2">Minimum only</div>
+                      <div className="rounded-xl border border-cream-100 bg-cream-50 p-3">
+                        <div className="text-xs font-semibold text-ink-500 mb-2">Minimum only</div>
                         {base?.warning && !base?.payoffDate ? (
-                          <div className="text-xs text-[#B8791F]">{base.warning}</div>
+                          <div className="text-xs text-rust-600">{base.warning}</div>
                         ) : (
                           <div className="space-y-1">
                             {([["Payoff", base?.payoffDate ?? "—"], ["Months", String(base?.months ?? "—")], ["Interest", money(base?.totalInterest ?? 0)]] as [string, string][]).map(([lbl, val]) => (
                               <div key={lbl} className="flex justify-between text-xs">
-                                <span className="text-stone-400">{lbl}</span>
-                                <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-[#B8791F]" : "text-[#0B2A4A]")}>{val}</span>
+                                <span className="text-ink-500">{lbl}</span>
+                                <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-rust-600" : "text-ink-900")}>{val}</span>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
                       <div className="rounded-xl border p-3" style={{ borderColor: "rgba(47,107,82,0.25)", background: "rgba(47,107,82,0.04)" }}>
-                        <div className="text-xs font-semibold mb-2 text-[#2F6B52]">With your strategy</div>
+                        <div className="text-xs font-semibold mb-2 text-teal-600">With your strategy</div>
                         {strat?.warning && !strat?.payoffDate ? (
-                          <div className="text-xs text-[#B8791F]">{strat.warning}</div>
+                          <div className="text-xs text-rust-600">{strat.warning}</div>
                         ) : (
                           <>
                             <div className="space-y-1">
                               {([["Payoff", strat?.payoffDate ?? "—"], ["Months", String(strat?.months ?? "—")], ["Interest", money(strat?.totalInterest ?? 0)]] as [string, string][]).map(([lbl, val]) => (
                                 <div key={lbl} className="flex justify-between text-xs">
-                                  <span className="text-[#5C6B7A]">{lbl}</span>
-                                  <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>{val}</span>
+                                  <span className="text-ink-500">{lbl}</span>
+                                  <span className={cn("font-semibold tabular-nums", lbl === "Interest" ? "text-teal-600" : "text-ink-900")}>{val}</span>
                                 </div>
                               ))}
                             </div>
                             {base?.months != null && strat?.months != null && base.months > strat.months && (
-                              <div className="mt-2 pt-2 border-t border-[#2F6B52]/20 text-xs font-semibold text-[#2F6B52]">
+                              <div className="mt-2 pt-2 border-t border-teal-600/20 text-xs font-semibold text-teal-600">
                                 {base.months - strat.months} mo sooner · saves {money((base.totalInterest ?? 0) - (strat.totalInterest ?? 0))}
                               </div>
                             )}
@@ -659,35 +659,35 @@ export default function Debts() {
       {sortedDebts.length > 0 && (
         <div className="rounded-2xl border bg-white p-5" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center gap-2 mb-1">
-            <TrendingDown size={15} className="text-stone-400" />
-            <div className="text-sm font-semibold text-stone-900">Payoff Timeline</div>
+            <TrendingDown size={15} className="text-ink-500" />
+            <div className="text-sm font-semibold text-ink-900">Payoff Timeline</div>
           </div>
-          <div className="text-xs text-stone-400 mb-5">
+          <div className="text-xs text-ink-500 mb-5">
             {method === "snowball" ? "Snowball" : "Avalanche"} strategy with ${extraSaved}/mo extra
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 mb-6">
             {[
-              { label: "Baseline (min only)", months: baseline.totalMonths, color: "text-stone-900", bg: "bg-stone-50", border: "border-stone-100" },
-              { label: "With your strategy", months: withStrategy.totalMonths, color: "text-[#2F6B52]", bg: "bg-[#EBF3EF]/50", border: "border-[#2F6B52]/20" },
+              { label: "Baseline (min only)", months: baseline.totalMonths, color: "text-ink-900", bg: "bg-cream-50", border: "border-cream-100" },
+              { label: "With your strategy", months: withStrategy.totalMonths, color: "text-teal-600", bg: "bg-teal-50/50", border: "border-teal-600/20" },
             ].map(({ label, months, color, bg, border }) => (
               <div key={label} className={cn("rounded-xl border p-3", bg, border)}>
-                <div className="text-xs text-stone-400 mb-1">{label}</div>
+                <div className="text-xs text-ink-500 mb-1">{label}</div>
                 <div className={cn("text-sm font-semibold tabular-nums", color)}>
                   {months ? `${months} months` : "—"}
                 </div>
-                {months ? <div className="text-xs text-stone-400 mt-0.5">{fmtDate(addMonths(new Date(), months))}</div> : null}
+                {months ? <div className="text-xs text-ink-500 mt-0.5">{fmtDate(addMonths(new Date(), months))}</div> : null}
               </div>
             ))}
-            <div className="rounded-xl border border-[#2F6B52]/20 bg-[#EBF3EF]/50 p-3">
-              <div className="text-xs text-[#5C6B7A] mb-1">You save</div>
+            <div className="rounded-xl border border-teal-600/20 bg-teal-50/50 p-3">
+              <div className="text-xs text-ink-500 mb-1">You save</div>
               {baseline.totalMonths && withStrategy.totalMonths && baseline.totalMonths > withStrategy.totalMonths ? (
                 <>
-                  <div className="text-sm font-semibold text-[#2F6B52] tabular-nums">{baseline.totalMonths - withStrategy.totalMonths} months</div>
-                  <div className="text-xs text-[#2F6B52] mt-0.5">{money(baseline.totalInterest - withStrategy.totalInterest)} interest</div>
+                  <div className="text-sm font-semibold text-teal-600 tabular-nums">{baseline.totalMonths - withStrategy.totalMonths} months</div>
+                  <div className="text-xs text-teal-600 mt-0.5">{money(baseline.totalInterest - withStrategy.totalInterest)} interest</div>
                 </>
               ) : (
-                <div className="text-xs text-stone-400 mt-1">Add extra payment to see savings</div>
+                <div className="text-xs text-ink-500 mt-1">Add extra payment to see savings</div>
               )}
             </div>
           </div>
@@ -699,14 +699,14 @@ export default function Debts() {
               return (
                 <div key={d.id}>
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-stone-600 font-medium truncate max-w-[55%]">
+                    <span className="text-ink-500 font-medium truncate max-w-[55%]">
                       {DEBT_TYPE_ICON[d.debtType] ?? ""} {d.name}
                     </span>
-                    <span className="text-stone-400 tabular-nums shrink-0 ml-2">
+                    <span className="text-ink-500 tabular-nums shrink-0 ml-2">
                       {stratMonths ? `${stratMonths} mo · ${fmtDate(addMonths(new Date(), stratMonths))}` : "—"}
                     </span>
                   </div>
-                  <div className="h-2.5 w-full rounded-full bg-stone-100 overflow-hidden">
+                  <div className="h-2.5 w-full rounded-full bg-cream-100 overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: BAR_COLORS[i % BAR_COLORS.length] }} />
                   </div>
                 </div>
@@ -715,16 +715,16 @@ export default function Debts() {
             {baseline.totalMonths && withStrategy.totalMonths && baseline.totalMonths > withStrategy.totalMonths && (
               <div className="pt-3 border-t" style={{ borderColor: "var(--color-border)" }}>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-stone-400 italic">Baseline (no extra)</span>
-                  <span className="text-stone-400 tabular-nums">{baseline.totalMonths} mo · {fmtDate(addMonths(new Date(), baseline.totalMonths))}</span>
+                  <span className="text-ink-500 italic">Baseline (no extra)</span>
+                  <span className="text-ink-500 tabular-nums">{baseline.totalMonths} mo · {fmtDate(addMonths(new Date(), baseline.totalMonths))}</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-stone-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-stone-300" style={{ width: `${Math.min(100, (baseline.totalMonths / maxTimelineMonths) * 100)}%` }} />
+                <div className="h-2 w-full rounded-full bg-cream-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-cream-200" style={{ width: `${Math.min(100, (baseline.totalMonths / maxTimelineMonths) * 100)}%` }} />
                 </div>
               </div>
             )}
           </div>
-          <div className="mt-4 text-xs text-[#5C6B7A]">
+          <div className="mt-4 text-xs text-ink-500">
             Estimates use monthly compounding (APR ÷ 12).
             {debts.some((d) => d.debtType === "mortgage") && " Mortgage simulation uses P&I only — escrow excluded."}
           </div>

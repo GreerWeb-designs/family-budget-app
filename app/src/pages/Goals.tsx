@@ -17,7 +17,7 @@ type Goal = {
   saved_amount: number;
 };
 
-const inputCls = "h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all w-full";
+const inputCls = "h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all w-full";
 
 function daysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -25,16 +25,16 @@ function daysUntil(dateStr: string): number {
   return Math.round((due.getTime() - today.getTime()) / 86400000);
 }
 
-function GoalBadge({ days }: { days: number }) {
-  if (days < 0) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-stone-100 text-stone-400">Overdue</span>;
-  if (days === 0) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#FDF3E3] text-[#B8791F]">Due today</span>;
-  if (days <= 7)  return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#FDF3E3] text-[#B8791F]">{days}d left</span>;
-  if (days <= 30) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#EBF3EF] text-[#2F6B52]">{days}d left</span>;
-  return null;
-}
-
 function money(n: number) {
   return n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 2 });
+}
+
+function GoalBadge({ days }: { days: number }) {
+  if (days < 0) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-cream-100 text-ink-400">Overdue</span>;
+  if (days === 0) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-rust-50 text-rust-600">Due today</span>;
+  if (days <= 7)  return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-rust-50 text-rust-600">{days}d left</span>;
+  if (days <= 30) return <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-teal-50 text-teal-600">{days}d left</span>;
+  return null;
 }
 
 export default function Goals() {
@@ -57,12 +57,13 @@ export default function Goals() {
     const r = await api<{ goals: Goal[] }>("/api/goals");
     setGoals(r.goals);
   }
+
   if (!canAccess(user, "can_see_goals")) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="text-4xl mb-3">🔒</div>
-        <p className="text-sm font-medium text-[#0B2A4A] mb-1">Goals is restricted</p>
-        <p className="text-xs text-[#5C6B7A]">Ask your household admin to grant access.</p>
+        <p className="text-sm font-medium text-ink-900 mb-1">Goals is restricted</p>
+        <p className="text-xs text-ink-500">Ask your household admin to grant access.</p>
       </div>
     );
   }
@@ -99,7 +100,7 @@ export default function Goals() {
     try {
       await api(`/api/goals/${g.id}`, { method: "PATCH", body: JSON.stringify({ status: completing ? "done" : "active" }) });
       if (completing) {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ["#0B2A4A", "#C8A464", "#2F6B52"] });
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ["#1B4243", "#C17A3F", "#2D6E70"] });
       }
       await refresh();
     } finally { setBusy(false); }
@@ -124,7 +125,7 @@ export default function Goals() {
       setContributingGoalId(null);
       setContributionAmount("");
       if (res.isComplete) {
-        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }, colors: ["#C8A464", "#2F6B52", "#0B2A4A"] });
+        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }, colors: ["#C17A3F", "#2D6E70", "#1B4243"] });
       }
       await refresh();
     } catch {
@@ -144,27 +145,27 @@ export default function Goals() {
     const isContributing = contributingGoalId === g.id;
 
     return (
-      <div className={cn("px-5 py-4 hover:bg-stone-50/60 transition-colors", isDone && "opacity-60")}>
+      <div className={cn("px-5 py-4 hover:bg-cream-50/60 transition-colors", isDone && "opacity-60")}>
         <div className="flex items-start gap-3">
           <button type="button" onClick={() => toggleDone(g)} disabled={busy || isSavings}
             aria-label={isDone ? "Mark active" : "Mark complete"}
-            className={cn("mt-0.5 shrink-0 text-stone-300 hover:text-[#2F6B52] disabled:opacity-40 transition-colors", isSavings && "cursor-default")}>
+            className={cn("mt-0.5 shrink-0 text-ink-300 hover:text-teal-600 disabled:opacity-40 transition-colors", isSavings && "cursor-default")}>
             {isDone
-              ? <CheckCircle2 size={20} className="text-[#2F6B52]" />
+              ? <CheckCircle2 size={20} className="text-teal-600" />
               : <Circle size={20} />}
           </button>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <span className={cn("text-sm font-medium text-stone-900", isDone && "line-through text-stone-400")}>
+              <span className={cn("text-sm font-medium text-ink-900", isDone && "line-through text-ink-400")}>
                 {g.title}
               </span>
               {isSavings && !isDone && (
-                <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#EBF3EF] text-[#2F6B52]">Savings</span>
+                <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-teal-50 text-teal-600">Savings</span>
               )}
               {g.due_date && days !== null && !isDone && <GoalBadge days={days} />}
             </div>
-            <div className="text-xs text-stone-400">
+            <div className="text-xs text-ink-400">
               {g.due_date
                 ? `Due ${new Date(`${g.due_date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
                 : "No due date"}
@@ -174,17 +175,17 @@ export default function Goals() {
             {/* Savings progress */}
             {isSavings && !isDone && target > 0 && (
               <div className="mt-3">
-                <div className="flex justify-between text-xs text-stone-500 mb-1">
+                <div className="flex justify-between text-xs text-ink-500 mb-1">
                   <span>Saved: {money(saved)}</span>
                   <span>Goal: {money(target)}</span>
                 </div>
-                <div className="h-2 rounded-full bg-stone-100 overflow-hidden">
+                <div className="h-2 rounded-full bg-cream-200 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#2F6B52] transition-all duration-500"
+                    className="h-full rounded-full bg-teal-500 transition-all duration-500"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <div className="text-xs text-stone-400 mt-1">
+                <div className="text-xs text-ink-400 mt-1">
                   {Math.round(pct)}% complete · {money(target - saved)} remaining
                 </div>
 
@@ -192,15 +193,15 @@ export default function Goals() {
                 {!isContributing ? (
                   <button type="button"
                     onClick={() => { setContributingGoalId(g.id); setContributionAmount(""); }}
-                    className="mt-2 text-xs font-semibold text-[#2F6B52] hover:text-[#2F6B52]/80 transition-colors">
+                    className="mt-2 text-xs font-semibold text-teal-600 hover:text-teal-700 transition-colors">
                     + Add contribution
                   </button>
                 ) : (
                   <div className="mt-2 flex gap-2">
                     <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-sm">$</span>
                       <input
-                        className="h-9 w-full rounded-xl border border-stone-200 bg-stone-50 pl-7 pr-3 text-sm font-mono outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all"
+                        className="h-9 w-full rounded-xl border border-cream-200 bg-cream-50 pl-7 pr-3 text-sm font-mono outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all"
                         placeholder="300.00"
                         inputMode="decimal"
                         value={contributionAmount}
@@ -211,12 +212,12 @@ export default function Goals() {
                     <button type="button"
                       onClick={() => addContribution(g.id)}
                       disabled={contributionBusy || !contributionAmount}
-                      className="h-9 rounded-xl bg-[#2F6B52] px-3 text-xs font-semibold text-white hover:bg-[#2F6B52]/90 disabled:opacity-60 transition-all">
+                      className="h-9 rounded-xl bg-teal-500 px-3 text-xs font-semibold text-white hover:bg-teal-600 disabled:opacity-60 transition-all">
                       Add
                     </button>
                     <button type="button"
                       onClick={() => { setContributingGoalId(null); setContributionAmount(""); }}
-                      className="h-9 rounded-xl border border-stone-200 px-3 text-xs text-stone-500 hover:bg-stone-50 transition-all">
+                      className="h-9 rounded-xl border border-cream-200 px-3 text-xs text-ink-500 hover:bg-cream-100 transition-all">
                       Cancel
                     </button>
                   </div>
@@ -226,14 +227,14 @@ export default function Goals() {
 
             {/* Savings goal reached */}
             {isSavings && isDone && (
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#EBF3EF] px-3 py-1 text-xs font-semibold text-[#2F6B52]">
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-600">
                 🎉 Goal reached!
               </div>
             )}
           </div>
 
           <button onClick={() => remove(g.id)} disabled={busy}
-            className="shrink-0 rounded-xl p-2 text-stone-300 hover:text-[#B8791F] hover:bg-[#FDF3E3] disabled:opacity-40 transition-all">
+            className="shrink-0 rounded-xl p-2 text-ink-300 hover:text-rust-600 hover:bg-rust-50 disabled:opacity-40 transition-all">
             <Trash2 size={14} />
           </button>
         </div>
@@ -247,12 +248,11 @@ export default function Goals() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-display text-xl font-semibold text-stone-900">Goals</div>
-          <div className="text-xs text-stone-400 mt-0.5">{active.length} active · {done.length} completed</div>
+          <div className="text-xl font-medium text-ink-900" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>Goals</div>
+          <div className="text-xs text-ink-400 mt-0.5">{active.length} active · {done.length} completed</div>
         </div>
         <button type="button" onClick={() => setShowForm((v) => !v)}
-          className="flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all"
-          style={{ background: "var(--color-primary)" }}>
+          className="flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all bg-teal-500 hover:bg-teal-600">
           <PlusCircle size={14} />
           New goal
         </button>
@@ -261,27 +261,27 @@ export default function Goals() {
       {/* Add form */}
       {showForm && (
         <div className="rounded-2xl border bg-white p-5" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-          <div className="text-sm font-semibold text-stone-900 mb-4">New Goal</div>
+          <div className="text-sm font-semibold text-ink-900 mb-4">New Goal</div>
           <form onSubmit={addGoal} className="space-y-3">
 
             {/* Goal type selector */}
             <div className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Goal Type</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Goal Type</span>
               <div className="inline-flex gap-2">
                 <button type="button"
                   onClick={() => setGoalType("personal")}
                   className={cn("h-9 px-4 rounded-xl text-sm font-semibold transition-all border",
                     goalType === "personal"
-                      ? "bg-stone-900 text-white border-stone-900"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50")}>
+                      ? "bg-teal-700 text-white border-teal-700"
+                      : "bg-white text-ink-600 border-cream-200 hover:bg-cream-50")}>
                   Personal
                 </button>
                 <button type="button"
                   onClick={() => setGoalType("savings")}
                   className={cn("h-9 px-4 rounded-xl text-sm font-semibold transition-all border",
                     goalType === "savings"
-                      ? "bg-[#2F6B52] text-white border-[#2F6B52]"
-                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50")}>
+                      ? "bg-teal-500 text-white border-teal-500"
+                      : "bg-white text-ink-600 border-cream-200 hover:bg-cream-50")}>
                   Savings
                 </button>
               </div>
@@ -289,21 +289,21 @@ export default function Goals() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Goal title</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Goal title</span>
                 <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)}
                   placeholder="Emergency fund, pay off card…" autoFocus />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Due date (optional)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Due date (optional)</span>
                 <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               </label>
             </div>
 
             {goalType === "savings" && (
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Target Amount</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Target Amount</span>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-sm">$</span>
                   <input
                     className={inputCls + " pl-7"}
                     value={targetAmount}
@@ -316,19 +316,18 @@ export default function Goals() {
             )}
 
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Notes (optional)</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Notes (optional)</span>
               <input className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)}
                 placeholder="Motivation, strategy, milestone…" />
             </label>
-            {msg && <div className="text-sm text-[#B8791F]">{msg}</div>}
+            {msg && <div className="text-sm text-rust-600">{msg}</div>}
             <div className="flex gap-2 pt-1">
               <button type="submit" disabled={busy}
-                className="h-10 px-5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all"
-                style={{ background: "var(--color-primary)" }}>
+                className="h-10 px-5 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all bg-teal-500 hover:bg-teal-600">
                 {busy ? "Saving…" : "Save goal"}
               </button>
               <button type="button" onClick={() => setShowForm(false)}
-                className="h-10 px-4 rounded-xl border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-all">
+                className="h-10 px-4 rounded-xl border border-cream-200 text-sm font-medium text-ink-600 hover:bg-cream-50 transition-all">
                 Cancel
               </button>
             </div>
@@ -340,17 +339,17 @@ export default function Goals() {
       <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div className="flex items-center gap-2">
-            <Target size={15} className="text-stone-400" />
-            <div className="text-sm font-semibold text-stone-900">Active Goals</div>
+            <Target size={15} className="text-ink-400" />
+            <div className="text-sm font-semibold text-ink-900">Active Goals</div>
           </div>
-          <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-[#EBF3EF] text-[#2F6B52]">{active.length}</span>
+          <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-teal-50 text-teal-600">{active.length}</span>
         </div>
         <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
           {active.length === 0 ? (
             <div className="px-5 py-12 text-center">
-              <Target size={28} className="mx-auto text-stone-200 mb-2" />
-              <div className="text-sm text-stone-400">No active goals yet.</div>
-              <div className="text-xs text-stone-300 mt-0.5">Add one above to get started.</div>
+              <Target size={28} className="mx-auto text-ink-200 mb-2" />
+              <div className="text-sm text-ink-400">No active goals yet.</div>
+              <div className="text-xs text-ink-300 mt-0.5">Add one above to get started.</div>
             </div>
           ) : active.map((g) => <GoalCard key={g.id} g={g} />)}
         </div>
@@ -361,10 +360,10 @@ export default function Goals() {
         <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-[#2F6B52]" />
-              <div className="text-sm font-semibold text-stone-500">Completed</div>
+              <CheckCircle2 size={15} className="text-teal-600" />
+              <div className="text-sm font-semibold text-ink-500">Completed</div>
             </div>
-            <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-stone-100 text-stone-500">{done.length}</span>
+            <span className="text-xs font-semibold rounded-full px-2.5 py-0.5 bg-cream-100 text-ink-500">{done.length}</span>
           </div>
           <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
             {done.map((g) => <GoalCard key={g.id} g={g} />)}

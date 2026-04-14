@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
+import { BrandMark, Wordmark } from "../components/ui";
 
 export default function JoinHousehold() {
   const { code } = useParams<{ code: string }>();
@@ -42,25 +43,22 @@ export default function JoinHousehold() {
   }, [code, nav]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--sidebar-bg)" }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#1B4243" }}>
       <div className="w-full max-w-sm">
 
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold mb-3"
-            style={{ background: "#C8A464", color: "#0B2A4A" }}>
-            KW
-          </div>
-          <div className="font-display text-xl font-semibold text-white">KeelWise</div>
-          <div className="text-sm text-stone-500 mt-0.5">Household invite</div>
+          <BrandMark size={48} className="mx-auto mb-3" />
+          <Wordmark size="md" className="text-white" />
+          <div className="text-sm text-teal-300 mt-1">Household invite</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow-xl" style={{ border: "1px solid var(--sidebar-border)" }}>
+        <div className="rounded-2xl bg-white p-6" style={{ border: "1px solid #C9DEDF", boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}>
 
           {(status === "checking" || status === "joining") && (
             <div className="text-center py-6 space-y-4">
-              <Loader2 size={32} className="mx-auto text-[#C8A464] animate-spin" />
-              <p className="text-sm text-stone-600">
+              <Loader2 size={32} className="mx-auto text-teal-500 animate-spin" />
+              <p className="text-sm text-ink-500">
                 {status === "checking" ? "Checking your account…" : "Joining household…"}
               </p>
             </div>
@@ -68,10 +66,10 @@ export default function JoinHousehold() {
 
           {status === "success" && (
             <div className="text-center py-6 space-y-4">
-              <CheckCircle2 size={40} className="mx-auto text-[#2F6B52]" />
+              <CheckCircle2 size={40} className="mx-auto text-teal-600" />
               <div>
-                <p className="text-base font-semibold text-stone-900">You've joined "{householdName}"!</p>
-                <p className="text-sm text-stone-400 mt-1">Redirecting to your dashboard…</p>
+                <p className="text-base font-semibold text-ink-900">You've joined "{householdName}"!</p>
+                <p className="text-sm text-ink-400 mt-1">Redirecting to your dashboard…</p>
               </div>
             </div>
           )}
@@ -81,23 +79,23 @@ export default function JoinHousehold() {
               <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                 You need an account to join this household.
               </div>
-              <p className="text-xs text-stone-500 text-center">
-                Invite code: <span className="font-display font-semibold text-stone-800 tracking-wider">{code}</span>
+              <p className="text-xs text-ink-500 text-center">
+                Invite code: <span className="font-semibold text-ink-900 tracking-wider"
+                  style={{ fontFamily: "'Fraunces', Georgia, serif" }}>{code}</span>
               </p>
               <div className="flex flex-col gap-2">
                 <Link to="/signup"
-                  className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition-all"
-                  style={{ background: "var(--color-primary)" }}>
+                  className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition-all bg-teal-500 hover:bg-teal-600">
                   Create an account
                 </Link>
                 <Link to="/login"
-                  className="flex h-11 w-full items-center justify-center rounded-xl border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-all">
+                  className="flex h-11 w-full items-center justify-center rounded-xl border border-cream-200 text-sm font-medium text-ink-700 hover:bg-cream-50 transition-all">
                   Sign in
                 </Link>
               </div>
-              <p className="text-xs text-stone-400 text-center">
+              <p className="text-xs text-ink-400 text-center">
                 After signing in, go to{" "}
-                <Link to="/settings" className="font-semibold text-[#C8A464] hover:text-[#C8A464]/80">
+                <Link to="/settings" className="font-semibold text-teal-500 hover:text-teal-600">
                   Settings → Household
                 </Link>{" "}
                 and enter the code.
@@ -107,12 +105,12 @@ export default function JoinHousehold() {
 
           {status === "error" && (
             <div className="space-y-4">
-              <div className="flex gap-3 rounded-xl bg-[#FDF3E3] border border-[#B8791F]/30 px-4 py-3">
-                <AlertCircle size={16} className="text-[#B8791F] shrink-0 mt-0.5" />
-                <p className="text-sm text-[#B8791F]">{errorMsg}</p>
+              <div className="flex gap-3 rounded-xl bg-rust-50 border border-rust-600/30 px-4 py-3">
+                <AlertCircle size={16} className="text-rust-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-rust-600">{errorMsg}</p>
               </div>
               <Link to="/settings"
-                className="block text-center text-sm text-stone-500 hover:text-stone-700 transition-colors">
+                className="block text-center text-sm text-ink-500 hover:text-ink-700 transition-colors">
                 ← Back to Settings
               </Link>
             </div>

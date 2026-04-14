@@ -79,7 +79,7 @@ export default function Calendar() {
     }));
     const mealEvents: FCEvent[] = meals.map((m) => ({
       id: `meal:${m.id}`, title: `🍽️ ${m.recipe_title}`, start: m.planned_date, allDay: true,
-      backgroundColor: "#FDF8F0", borderColor: "#C8A464", textColor: "#B8791F",
+      backgroundColor: "#FAEFE5", borderColor: "#C17A3F", textColor: "#A3632F",
       extendedProps: { kind: "meal", mealType: m.meal_type, recipeId: m.recipe_id },
     }));
     return [...bills, ...events, ...mealEvents];
@@ -136,7 +136,7 @@ export default function Calendar() {
   const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !busy && onClose()} />
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+      <div className="relative w-full max-w-lg rounded-2xl border border-cream-200 bg-white p-5 shadow-2xl">
         {children}
       </div>
     </div>
@@ -146,47 +146,47 @@ export default function Calendar() {
     <div className="space-y-4">
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">{canAddCalendar ? "Click a day to add an event · " : ""}Click an event to view</p>
+        <p className="text-xs text-ink-500">{canAddCalendar ? "Click a day to add an event · " : ""}Click an event to view</p>
         {canAddCalendar && (
           <button type="button" onClick={() => openAdd(new Date(), true)}
-            className="h-9 rounded-xl px-4 text-xs font-semibold text-white transition-all" style={{ background: "#0B2A4A" }}>
+            className="h-9 rounded-xl px-4 text-xs font-semibold text-white transition-all" style={{ background: "#1B4243" }}>
             + Add Event
           </button>
         )}
       </div>
 
-      {msg && <div className="rounded-xl border bg-[#FDF3E3] border-[#B8791F]/30 px-4 py-2.5 text-sm text-[#B8791F]">{msg}</div>}
+      {msg && <div className="rounded-xl border bg-rust-50 border-rust-600/30 px-4 py-2.5 text-sm text-rust-600">{msg}</div>}
 
       {/* Mobile: list view */}
       {isMobile ? (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 px-4 py-3 flex items-center justify-between">
-            <div className="text-sm font-semibold text-slate-900">This Month</div>
+        <div className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-hidden">
+          <div className="border-b border-cream-100 px-4 py-3 flex items-center justify-between">
+            <div className="text-sm font-semibold text-ink-900">This Month</div>
             <div className="flex gap-2">
               <span className="text-xs rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5">📄 Bills</span>
               <span className="text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5">📅 Events</span>
-              <span className="text-xs rounded-full bg-[#FDF8F0] text-[#B8791F] border border-[#C8A464]/30 px-2 py-0.5">🍽️ Meals</span>
+              <span className="text-xs rounded-full bg-rust-50 text-rust-600 border border-rust-500/30 px-2 py-0.5">🍽️ Meals</span>
             </div>
           </div>
-          <div className="divide-y divide-slate-100">
-            {listItems.length === 0 && <div className="px-4 py-8 text-sm text-slate-400 text-center">Nothing this month.</div>}
+          <div className="divide-y divide-cream-100">
+            {listItems.length === 0 && <div className="px-4 py-8 text-sm text-ink-500 text-center">Nothing this month.</div>}
             {listItems.map((item, i) => (
               <div key={`${item.type}-${item.id}-${i}`} className="flex items-center gap-3 px-4 py-3">
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm ${item.type === "bill" ? "bg-amber-100" : item.type === "meal" ? "bg-[#FDF8F0]" : "bg-blue-100"}`}>
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm ${item.type === "bill" ? "bg-amber-100" : item.type === "meal" ? "bg-rust-50" : "bg-blue-100"}`}>
                   {item.type === "bill" ? "📄" : item.type === "meal" ? "🍽️" : "📅"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-900 truncate">{item.label}</div>
-                  <div className="text-xs text-slate-400">{prettyDate(item.date)}</div>
+                  <div className="text-sm font-medium text-ink-900 truncate">{item.label}</div>
+                  <div className="text-xs text-ink-500">{prettyDate(item.date)}</div>
                 </div>
-                {item.type === "bill" && <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${item.mode === "auto" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>{item.mode === "auto" ? "Auto" : "Manual"}</span>}
+                {item.type === "bill" && <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${item.mode === "auto" ? "bg-teal-50 text-teal-600" : "bg-rust-50 text-rust-600"}`}>{item.mode === "auto" ? "Auto" : "Manual"}</span>}
               </div>
             ))}
           </div>
         </div>
       ) : (
         /* Desktop: FullCalendar */
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-cream-200 bg-white p-4 shadow-sm overflow-hidden">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
@@ -213,8 +213,8 @@ export default function Calendar() {
         <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800">
           <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />Family events
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C8A464]/30 bg-[#FDF8F0] px-3 py-1 text-xs font-medium text-[#B8791F]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#C8A464]" />Meal plans
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-rust-500/30 bg-rust-50 px-3 py-1 text-xs font-medium text-rust-600">
+          <span className="h-1.5 w-1.5 rounded-full bg-rust-500" />Meal plans
         </span>
       </div>
 
@@ -223,47 +223,47 @@ export default function Calendar() {
         <Modal onClose={() => setAddOpen(false)}>
           <div className="flex items-start justify-between mb-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Add Event</div>
-              <div className="text-xs text-slate-400 mt-0.5">Shows in blue on the calendar</div>
+              <div className="text-sm font-semibold text-ink-900">Add Event</div>
+              <div className="text-xs text-ink-500 mt-0.5">Shows in blue on the calendar</div>
             </div>
             <button type="button" onClick={() => setAddOpen(false)} disabled={busy}
-              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+              className="rounded-xl border border-cream-200 px-3 py-1.5 text-xs font-semibold text-ink-500 hover:bg-cream-50">
               Close
             </button>
           </div>
           <form onSubmit={saveEvent} className="space-y-3">
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Title</span>
-              <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Title</span>
+              <input className="h-11 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                 value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Soccer, dentist, trip…" autoFocus />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Start</span>
-                <input type="datetime-local" className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Start</span>
+                <input type="datetime-local" className="h-11 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                   value={startAt} onChange={(e) => setStartAt(e.target.value)} />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">End (optional)</span>
-                <input type="datetime-local" className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">End (optional)</span>
+                <input type="datetime-local" className="h-11 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                   value={endAt} onChange={(e) => setEndAt(e.target.value)} />
               </label>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Location</span>
-                <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Location</span>
+                <input className="h-11 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                   value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Notes</span>
-                <input className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all"
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Notes</span>
+                <input className="h-11 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                   value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
               </label>
             </div>
-            {msg && <div className="text-sm text-[#B8791F]">{msg}</div>}
+            {msg && <div className="text-sm text-rust-600">{msg}</div>}
             <button disabled={busy}
-              className="h-11 w-full rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all" style={{ background: "#0B2A4A" }}>
+              className="h-11 w-full rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all" style={{ background: "#1B4243" }}>
               {busy ? "Saving…" : "Save Event"}
             </button>
           </form>
@@ -275,27 +275,27 @@ export default function Calendar() {
         <Modal onClose={() => setViewOpen(false)}>
           <div className="flex items-start justify-between mb-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <div className="text-xs font-semibold uppercase tracking-wider text-ink-500">
                 {selected.kind === "bill" ? "Bill reminder" : selected.kind === "meal" ? "Meal plan" : "Family event"}
               </div>
-              <div className="text-lg font-semibold text-slate-900 mt-1">{selected.title.replace(/^🍽️ /, "")}</div>
+              <div className="text-lg font-semibold text-ink-900 mt-1">{selected.title.replace(/^🍽️ /, "")}</div>
               {selected.kind === "meal" && selected.mealType && (
-                <span className="text-xs font-medium capitalize rounded-full px-2.5 py-0.5 bg-[#FDF8F0] text-[#B8791F] border border-[#C8A464]/30 mt-1 inline-block">
+                <span className="text-xs font-medium capitalize rounded-full px-2.5 py-0.5 bg-rust-50 text-rust-600 border border-rust-500/30 mt-1 inline-block">
                   {selected.mealType}
                 </span>
               )}
             </div>
-            <button type="button" onClick={() => setViewOpen(false)} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <button type="button" onClick={() => setViewOpen(false)} className="rounded-xl border border-cream-200 px-3 py-1.5 text-xs font-semibold text-ink-500 hover:bg-cream-50">
               Close
             </button>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex gap-2">
-              <span className="text-slate-400 w-14 shrink-0">Date</span>
-              <span className="text-slate-900">{selected.kind === "bill" || selected.kind === "meal" ? prettyDate(selected.start) : prettyDT(selected.start)}</span>
+              <span className="text-ink-500 w-14 shrink-0">Date</span>
+              <span className="text-ink-900">{selected.kind === "bill" || selected.kind === "meal" ? prettyDate(selected.start) : prettyDT(selected.start)}</span>
             </div>
-            {selected.end && selected.kind === "family" && <div className="flex gap-2"><span className="text-slate-400 w-14 shrink-0">End</span><span className="text-slate-900">{prettyDT(selected.end)}</span></div>}
-            {selected.location && <div className="flex gap-2"><span className="text-slate-400 w-14 shrink-0">Where</span><span className="text-slate-900">{selected.location}</span></div>}
+            {selected.end && selected.kind === "family" && <div className="flex gap-2"><span className="text-ink-500 w-14 shrink-0">End</span><span className="text-ink-900">{prettyDT(selected.end)}</span></div>}
+            {selected.location && <div className="flex gap-2"><span className="text-ink-500 w-14 shrink-0">Where</span><span className="text-ink-900">{selected.location}</span></div>}
           </div>
           {selected.kind === "bill" && (
             <div className="mt-4 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-800">
@@ -305,12 +305,12 @@ export default function Calendar() {
           <div className="mt-5 flex gap-2 justify-end">
             {(selected.kind === "family" || selected.kind === "meal") && (
               <button type="button" disabled={busy} onClick={deleteSelected}
-                className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] px-4 py-2 text-sm font-semibold text-[#B8791F] hover:bg-[#FDF3E3]/70 disabled:opacity-60 transition-all">
+                className="rounded-xl border border-rust-600/30 bg-rust-50 px-4 py-2 text-sm font-semibold text-rust-600 hover:bg-rust-50/70 disabled:opacity-60 transition-all">
                 {selected.kind === "meal" ? "Remove from plan" : "Delete event"}
               </button>
             )}
             <button type="button" onClick={() => setViewOpen(false)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all">
+              className="rounded-xl border border-cream-200 px-4 py-2 text-sm font-semibold text-ink-500 hover:bg-cream-50 transition-all">
               Done
             </button>
           </div>

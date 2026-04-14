@@ -2,18 +2,19 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { inputCls, labelCls, AuthError, PrimaryBtn } from "./Login";
+import { BrandMark, Wordmark } from "../components/ui";
 
 function passwordStrength(pw: string): { label: string; color: string; pct: number } {
   if (pw.length === 0) return { label: "", color: "", pct: 0 };
   let score = 0;
-  if (pw.length >= 8)          score++;
-  if (pw.length >= 12)         score++;
-  if (/[A-Z]/.test(pw))       score++;
-  if (/[0-9]/.test(pw))       score++;
+  if (pw.length >= 8)           score++;
+  if (pw.length >= 12)          score++;
+  if (/[A-Z]/.test(pw))        score++;
+  if (/[0-9]/.test(pw))        score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return { label: "Weak",   color: "#B8791F", pct: 33 };
-  if (score <= 3) return { label: "Fair",   color: "#C8A464", pct: 66 };
-  return              { label: "Strong", color: "#2F6B52", pct: 100 };
+  if (score <= 1) return { label: "Weak",   color: "#A3632F", pct: 33 };
+  if (score <= 3) return { label: "Fair",   color: "#D99A66", pct: 66 };
+  return              { label: "Strong", color: "#2D6E70", pct: 100 };
 }
 
 export default function Signup() {
@@ -42,19 +43,20 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#0B2A4A" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#FAF6EE" }}>
       <div className="w-full max-w-100">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold mb-3"
-            style={{ background: "#C8A464", color: "#0B2A4A" }}>
-            KW
-          </div>
-          <div className="text-xl font-medium text-white">Take the helm.</div>
-          <div className="text-sm text-[#5C6B7A] mt-0.5">Built for people who are tired of drifting.</div>
+          <BrandMark size={48} className="mx-auto mb-3" />
+          <Wordmark size="md" />
+          <div className="text-sm text-ink-500 mt-1">Build your nest egg together.</div>
         </div>
 
-        <div className="rounded-2xl border p-8" style={{ background: "#0F3360", borderColor: "rgba(200,164,100,0.2)" }}>
+        <div className="rounded-2xl border p-8" style={{ background: "#FFFDF8", borderColor: "#C9DEDF" }}>
+          <h2 className="text-2xl font-medium text-ink-900 mb-6"
+            style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
+            Create your account
+          </h2>
           <form onSubmit={onSubmit} className="space-y-4">
             <label className="block">
               <span className={labelCls}>Full name</span>
@@ -74,7 +76,7 @@ export default function Signup() {
                 value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
               {password.length > 0 && (
                 <div className="mt-2">
-                  <div className="h-1 w-full rounded-full overflow-hidden" style={{ background: "#143860" }}>
+                  <div className="h-1 w-full rounded-full overflow-hidden bg-cream-200">
                     <div className="h-full rounded-full transition-all duration-300"
                       style={{ width: `${strength.pct}%`, background: strength.color }} />
                   </div>
@@ -86,7 +88,7 @@ export default function Signup() {
             <label className="block">
               <span className={labelCls}>Confirm password</span>
               <input
-                className={inputCls + (confirm && confirm !== password ? " border-[#B8791F]/60" : "")}
+                className={inputCls + (confirm && confirm !== password ? " border-rust-500/60" : "")}
                 type="password" placeholder="••••••••"
                 value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
             </label>
@@ -95,9 +97,9 @@ export default function Signup() {
             <PrimaryBtn busy={busy} label="Create account" loadingLabel="Creating account…" />
           </form>
 
-          <p className="mt-5 text-center text-xs text-[#5C6B7A]">
+          <p className="mt-5 text-center text-xs text-ink-500">
             Already have an account?{" "}
-            <Link to="/login" className="font-semibold text-[#C8A464] hover:opacity-80 transition-opacity">
+            <Link to="/login" className="font-semibold text-teal-500 hover:opacity-80 transition-opacity">
               Sign in
             </Link>
           </p>

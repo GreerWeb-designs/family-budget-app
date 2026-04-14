@@ -29,8 +29,8 @@ const RECIPE_TYPES = [
   { value: "snack",      label: "Snack",         emoji: "🍎" },
 ];
 const TYPE_STRIP: Record<string, string> = {
-  main: "#0B2A4A", soup_salad: "#2F6B52",
-  dessert: "#C8A464", appetizer: "#B8791F", snack: "#5C6B7A",
+  main: "#1B4243", soup_salad: "#2D6E70",
+  dessert: "#C17A3F", appetizer: "#A3632F", snack: "#6B7A85",
 };
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -46,7 +46,7 @@ function totalTime(prep: number | null, cook: number | null) {
 }
 
 const inputCls =
-  "h-10 rounded-xl border border-[#E8E2D9] bg-white px-3 text-sm text-[#0B2A4A] outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all placeholder:text-[#5C6B7A]";
+  "h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all placeholder:text-ink-400";
 
 /* ── Main component ──────────────────────────────────── */
 export default function Recipes() {
@@ -91,7 +91,7 @@ export default function Recipes() {
   if (detailLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-6 w-6 rounded-full border-2 border-[#C8A464]/30 border-t-[#C8A464] animate-spin" />
+        <div className="h-6 w-6 rounded-full border-2 border-teal-500/30 border-t-teal-500 animate-spin" />
       </div>
     );
   }
@@ -113,8 +113,8 @@ export default function Recipes() {
     <div className="space-y-4">
       {msg && (
         <div className={cn("rounded-xl border px-4 py-2.5 text-sm",
-          msg.includes("✓") ? "bg-[#EBF3EF] border-[#2F6B52]/30 text-[#2F6B52]"
-            : "bg-[#FDF3E3] border-[#B8791F]/30 text-[#B8791F]")}>
+          msg.includes("✓") ? "bg-teal-50 border-teal-600/30 text-teal-600"
+            : "bg-rust-50 border-rust-600/30 text-rust-600")}>
           {msg}
         </div>
       )}
@@ -122,13 +122,13 @@ export default function Recipes() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#0B2A4A]">Recipe book</h2>
-          <p className="text-xs text-[#5C6B7A]">Shared with your household</p>
+          <h2 className="text-lg font-semibold text-ink-900">Recipe book</h2>
+          <p className="text-xs text-ink-500">Shared with your household</p>
         </div>
         <button
           type="button"
           onClick={() => { setEditingId(null); setShowForm(true); setMsg(null); }}
-          className="h-9 rounded-xl bg-[#0B2A4A] px-4 text-sm font-semibold text-white hover:bg-[#0F3360] transition-all"
+          className="h-9 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 transition-all"
         >
           + Add recipe
         </button>
@@ -144,8 +144,8 @@ export default function Recipes() {
             className={cn(
               "h-8 rounded-full px-3 text-xs font-medium transition-all",
               filter === t.value
-                ? "bg-[#0B2A4A] text-white"
-                : "bg-white border border-[#E8E2D9] text-[#5C6B7A] hover:border-[#C8A464]"
+                ? "bg-teal-700 text-white"
+                : "bg-white border border-cream-200 text-ink-500 hover:border-teal-500"
             )}
           >
             {t.emoji ? `${t.emoji} ` : ""}{t.label}
@@ -157,14 +157,14 @@ export default function Recipes() {
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 rounded-2xl border border-[#E8E2D9] bg-white animate-pulse" />
+            <div key={i} className="h-32 rounded-2xl border border-cream-200 bg-white animate-pulse" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="text-4xl mb-3">📖</div>
-          <p className="text-sm font-medium text-[#0B2A4A] mb-1">No recipes yet</p>
-          <p className="text-xs text-[#5C6B7A]">Add your first recipe above.</p>
+          <p className="text-sm font-medium text-ink-900 mb-1">No recipes yet</p>
+          <p className="text-xs text-ink-500">Add your first recipe above.</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -175,27 +175,27 @@ export default function Recipes() {
               <div
                 key={r.id}
                 onClick={() => openDetail(r.id)}
-                className="group relative rounded-2xl border border-[#E8E2D9] bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+                className="group relative rounded-2xl border border-cream-200 bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
               >
                 <div className="h-1" style={{ background: TYPE_STRIP[r.type] ?? "#5C6B7A" }} />
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="text-base font-medium text-[#0B2A4A] leading-snug">{r.title}</span>
+                    <span className="text-base font-medium text-ink-900 leading-snug">{r.title}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-[10px] rounded-full px-2 py-0.5 bg-[#F5F1EA] text-[#5C6B7A] font-medium">{t.emoji} {t.label}</span>
+                      <span className="text-[10px] rounded-full px-2 py-0.5 bg-cream-100 text-ink-500 font-medium">{t.emoji} {t.label}</span>
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); deleteRecipe(r.id, r.title); }}
-                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-all"
+                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-ink-500 hover:text-rust-600 hover:bg-rust-50 transition-all"
                       >
                         ×
                       </button>
                     </div>
                   </div>
                   {r.description && (
-                    <p className="text-xs text-[#5C6B7A] line-clamp-2 mb-2">{r.description}</p>
+                    <p className="text-xs text-ink-500 line-clamp-2 mb-2">{r.description}</p>
                   )}
-                  <div className="flex gap-3 text-xs text-[#5C6B7A] mt-2">
+                  <div className="flex gap-3 text-xs text-ink-500 mt-2">
                     {r.ingredient_count > 0 && <span>🧂 {r.ingredient_count} ingredient{r.ingredient_count !== 1 ? "s" : ""}</span>}
                     {time && <span>⏱ {time}</span>}
                     {r.servings && <span>👥 {r.servings} serving{r.servings !== 1 ? "s" : ""}</span>}
@@ -300,16 +300,16 @@ function RecipeFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#E8E2D9] bg-white shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#E8E2D9] bg-white px-5 py-4">
-          <h2 className="text-base font-semibold text-[#0B2A4A]">{editingId ? "Edit recipe" : "New recipe"}</h2>
-          <button type="button" onClick={onClose} className="rounded-xl border border-[#E8E2D9] px-3 py-1.5 text-xs font-semibold text-[#5C6B7A] hover:bg-[#F5F1EA]">
+      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-cream-200 bg-white shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cream-200 bg-white px-5 py-4">
+          <h2 className="text-base font-semibold text-ink-900">{editingId ? "Edit recipe" : "New recipe"}</h2>
+          <button type="button" onClick={onClose} className="rounded-xl border border-cream-200 px-3 py-1.5 text-xs font-semibold text-ink-500 hover:bg-cream-100">
             ×
           </button>
         </div>
 
         <form onSubmit={submit} className="p-5 space-y-5">
-          {err && <div className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] px-4 py-2.5 text-sm text-[#B8791F]">{err}</div>}
+          {err && <div className="rounded-xl border border-rust-600/30 bg-rust-50 px-4 py-2.5 text-sm text-rust-600">{err}</div>}
 
           {/* Basics */}
           <div className="space-y-3">
@@ -327,7 +327,7 @@ function RecipeFormModal({
                   onClick={() => setType(t.value)}
                   className={cn(
                     "h-8 rounded-full px-3 text-xs font-medium transition-all",
-                    type === t.value ? "bg-[#0B2A4A] text-white" : "bg-[#F5F1EA] text-[#5C6B7A] hover:bg-[#E8E2D9]"
+                    type === t.value ? "bg-teal-700 text-white" : "bg-cream-100 text-ink-500 hover:bg-[#E8E2D9]"
                   )}
                 >
                   {t.emoji} {t.label}
@@ -338,7 +338,7 @@ function RecipeFormModal({
               value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description..."
               rows={2}
-              className="w-full rounded-xl border border-[#E8E2D9] bg-white px-3 py-2.5 text-sm text-[#0B2A4A] outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all resize-none placeholder:text-[#5C6B7A]"
+              className="w-full rounded-xl border border-cream-200 bg-white px-3 py-2.5 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all resize-none placeholder:text-ink-500"
             />
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -347,7 +347,7 @@ function RecipeFormModal({
                 { label: "Servings", val: servings, set: setServings },
               ].map(({ label, val, set }) => (
                 <div key={label}>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">{label}</label>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1">{label}</label>
                   <input
                     type="number" min="0" value={val} onChange={(e) => set(e.target.value)}
                     className={cn(inputCls, "w-full text-center")}
@@ -360,9 +360,9 @@ function RecipeFormModal({
           {/* Ingredients */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Ingredients</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Ingredients</span>
               <button type="button" onClick={addIngredient}
-                className="text-xs font-medium text-[#C8A464] hover:text-[#B8791F] transition-colors">
+                className="text-xs font-medium text-rust-500 hover:text-rust-600 transition-colors">
                 + Add
               </button>
             </div>
@@ -384,7 +384,7 @@ function RecipeFormModal({
                   />
                   {ingredients.length > 1 && (
                     <button type="button" onClick={() => removeIngredient(i)}
-                      className="shrink-0 text-[#5C6B7A] hover:text-[#B8791F] transition-colors text-lg leading-none px-1">
+                      className="shrink-0 text-ink-500 hover:text-rust-600 transition-colors text-lg leading-none px-1">
                       ×
                     </button>
                   )}
@@ -395,24 +395,24 @@ function RecipeFormModal({
 
           {/* Directions */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-2">
               Directions
             </label>
             <textarea
               value={directions} onChange={(e) => setDirections(e.target.value)}
               placeholder="Step-by-step instructions..."
               rows={8}
-              className="w-full rounded-xl border border-[#E8E2D9] bg-white px-3 py-2.5 font-mono text-sm text-[#0B2A4A] outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all resize-none placeholder:text-[#5C6B7A]"
+              className="w-full rounded-xl border border-cream-200 bg-white px-3 py-2.5 font-mono text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all resize-none placeholder:text-ink-500"
             />
           </div>
 
           <div className="flex gap-2 pt-1">
             <button type="submit" disabled={saving}
-              className="h-10 flex-1 rounded-xl bg-[#0B2A4A] text-sm font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all">
+              className="h-10 flex-1 rounded-xl bg-teal-700 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all">
               {saving ? "Saving…" : "Save recipe"}
             </button>
             <button type="button" onClick={onClose}
-              className="h-10 rounded-xl border border-[#E8E2D9] px-5 text-sm text-[#5C6B7A] hover:bg-[#F5F1EA] transition-all">
+              className="h-10 rounded-xl border border-cream-200 px-5 text-sm text-ink-500 hover:bg-cream-100 transition-all">
               Cancel
             </button>
           </div>
@@ -516,8 +516,8 @@ function DetailView({
     <div className="space-y-4">
       {msg && (
         <div className={cn("rounded-xl border px-4 py-2.5 text-sm",
-          msg.includes("✓") ? "bg-[#EBF3EF] border-[#2F6B52]/30 text-[#2F6B52]"
-            : "bg-[#FDF3E3] border-[#B8791F]/30 text-[#B8791F]")}>
+          msg.includes("✓") ? "bg-teal-50 border-teal-600/30 text-teal-600"
+            : "bg-rust-50 border-rust-600/30 text-rust-600")}>
           {msg}
         </div>
       )}
@@ -525,33 +525,33 @@ function DetailView({
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <button type="button" onClick={onBack}
-          className="text-sm font-medium text-[#5C6B7A] hover:text-[#0B2A4A] transition-colors">
+          className="text-sm font-medium text-ink-500 hover:text-ink-900 transition-colors">
           ← Recipes
         </button>
         <div className="flex gap-2">
           <button type="button" onClick={onEdit}
-            className="h-8 rounded-xl border border-[#E8E2D9] px-3 text-xs font-medium text-[#5C6B7A] hover:bg-[#F5F1EA] transition-all">
+            className="h-8 rounded-xl border border-cream-200 px-3 text-xs font-medium text-ink-500 hover:bg-cream-100 transition-all">
             ✏️ Edit
           </button>
           <button type="button" onClick={onDelete}
-            className="h-8 rounded-xl border border-[#B8791F]/30 px-3 text-xs font-medium text-[#B8791F] hover:bg-[#FDF3E3] transition-all">
+            className="h-8 rounded-xl border border-rust-600/30 px-3 text-xs font-medium text-rust-600 hover:bg-rust-50 transition-all">
             Delete
           </button>
         </div>
       </div>
 
       {/* Title + meta */}
-      <div className="rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3 flex-wrap">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-medium text-[#0B2A4A] leading-tight">{detail.title}</h1>
+            <h1 className="text-2xl font-medium text-ink-900 leading-tight">{detail.title}</h1>
             {detail.description && (
-              <p className="text-sm text-[#5C6B7A] mt-1">{detail.description}</p>
+              <p className="text-sm text-ink-500 mt-1">{detail.description}</p>
             )}
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 mt-3 text-xs text-[#5C6B7A]">
-          <span className="rounded-full bg-[#F5F1EA] px-2.5 py-1 font-medium">{t.emoji} {t.label}</span>
+        <div className="flex flex-wrap gap-3 mt-3 text-xs text-ink-500">
+          <span className="rounded-full bg-cream-100 px-2.5 py-1 font-medium">{t.emoji} {t.label}</span>
           {time && <span>⏱ {time}</span>}
           {detail.prep_time && <span>🔪 Prep {detail.prep_time} min</span>}
           {detail.cook_time && <span>🔥 Cook {detail.cook_time} min</span>}
@@ -561,8 +561,8 @@ function DetailView({
 
       {groceryMsg && (
         <div className={cn("rounded-xl border px-4 py-2.5 text-sm",
-          groceryMsg.includes("✓") ? "bg-[#EBF3EF] border-[#2F6B52]/30 text-[#2F6B52]"
-            : "bg-[#FDF3E3] border-[#B8791F]/30 text-[#B8791F]")}>
+          groceryMsg.includes("✓") ? "bg-teal-50 border-teal-600/30 text-teal-600"
+            : "bg-rust-50 border-rust-600/30 text-rust-600")}>
           {groceryMsg}
         </div>
       )}
@@ -570,16 +570,16 @@ function DetailView({
       {/* Ingredients + Directions */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Ingredients */}
-        <div className="rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-[#0B2A4A]">Ingredients</h3>
+            <h3 className="text-sm font-semibold text-ink-900">Ingredients</h3>
             {detail.ingredients.length > 0 && (
-              <span className="text-xs text-[#5C6B7A]">Check to add to grocery</span>
+              <span className="text-xs text-ink-500">Check to add to grocery</span>
             )}
           </div>
 
           {detail.ingredients.length === 0 ? (
-            <p className="text-sm text-[#5C6B7A] italic">No ingredients listed.</p>
+            <p className="text-sm text-ink-500 italic">No ingredients listed.</p>
           ) : (
             <div className="space-y-2 mb-4">
               {detail.ingredients.map((ing, i) => (
@@ -589,15 +589,15 @@ function DetailView({
                     className={cn(
                       "h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center transition-all cursor-pointer",
                       checkedIngredients.has(i)
-                        ? "bg-[#2F6B52] border-[#2F6B52]"
-                        : "border-[#E8E2D9] group-hover:border-[#C8A464]"
+                        ? "bg-teal-600 border-teal-600"
+                        : "border-cream-200 group-hover:border-teal-500"
                     )}
                   >
                     {checkedIngredients.has(i) && (
                       <span className="text-white text-[9px] leading-none font-bold">✓</span>
                     )}
                   </div>
-                  <span className={cn("text-sm", checkedIngredients.has(i) ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>
+                  <span className={cn("text-sm", checkedIngredients.has(i) ? "text-teal-600" : "text-ink-900")}>
                     {[ing.quantity, ing.unit, ing.name].filter(Boolean).join(" ")}
                   </span>
                 </label>
@@ -611,15 +611,15 @@ function DetailView({
               <button
                 type="button"
                 onClick={() => setGroceryPopover((v) => !v)}
-                className="h-9 rounded-xl bg-[#2F6B52] px-4 text-xs font-semibold text-white hover:bg-[#2F6B52]/90 transition-all"
+                className="h-9 rounded-xl bg-teal-600 px-4 text-xs font-semibold text-white hover:bg-teal-700 transition-all"
               >
                 🛒 Add {checkedIngredients.size} to grocery list
               </button>
               {groceryPopover && (
-                <div className="absolute left-0 top-full mt-2 z-20 w-64 rounded-xl border border-[#E8E2D9] bg-white shadow-lg p-3">
-                  <p className="text-xs font-semibold text-[#5C6B7A] mb-2 uppercase tracking-wider">Add to which list?</p>
+                <div className="absolute left-0 top-full mt-2 z-20 w-64 rounded-xl border border-cream-200 bg-white shadow-lg p-3">
+                  <p className="text-xs font-semibold text-ink-500 mb-2 uppercase tracking-wider">Add to which list?</p>
                   {groceryLists.length === 0 ? (
-                    <p className="text-xs text-[#5C6B7A]">No grocery lists yet. Create one first.</p>
+                    <p className="text-xs text-ink-500">No grocery lists yet. Create one first.</p>
                   ) : (
                     <>
                       <select
@@ -635,7 +635,7 @@ function DetailView({
                         type="button"
                         onClick={addToGrocery}
                         disabled={addingToGrocery || !selectedListId}
-                        className="h-9 w-full rounded-xl bg-[#0B2A4A] text-xs font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all"
+                        className="h-9 w-full rounded-xl bg-teal-700 text-xs font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all"
                       >
                         {addingToGrocery ? "Adding…" : "Confirm"}
                       </button>
@@ -648,22 +648,22 @@ function DetailView({
         </div>
 
         {/* Directions */}
-        <div className="rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-[#0B2A4A] mb-3">Directions</h3>
+        <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-ink-900 mb-3">Directions</h3>
           {detail.directions ? (
-            <p className="text-sm text-[#0B2A4A] leading-relaxed whitespace-pre-wrap">{detail.directions}</p>
+            <p className="text-sm text-ink-900 leading-relaxed whitespace-pre-wrap">{detail.directions}</p>
           ) : (
-            <p className="text-sm text-[#5C6B7A] italic">No directions added yet.</p>
+            <p className="text-sm text-ink-500 italic">No directions added yet.</p>
           )}
         </div>
       </div>
 
       {/* Plan this meal */}
-      <div className="rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-[#0B2A4A] mb-3">Plan this meal</h3>
+      <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-ink-900 mb-3">Plan this meal</h3>
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">Date</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1">Date</label>
             <input
               type="date"
               value={planDate}
@@ -672,7 +672,7 @@ function DetailView({
             />
           </div>
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1">Meal type</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-ink-500 mb-1">Meal type</label>
             <div className="flex gap-1">
               {MEAL_TYPES.map((mt) => (
                 <button
@@ -681,8 +681,8 @@ function DetailView({
                   className={cn(
                     "h-10 rounded-xl px-3 text-xs font-medium capitalize transition-all",
                     planMealType === mt
-                      ? "bg-[#C8A464] text-[#0B2A4A] font-semibold"
-                      : "border border-[#E8E2D9] text-[#5C6B7A] hover:bg-[#F5F1EA]"
+                      ? "bg-teal-500 text-white font-semibold"
+                      : "border border-cream-200 text-ink-500 hover:bg-cream-100"
                   )}
                 >
                   {mt}
@@ -694,13 +694,13 @@ function DetailView({
             type="button"
             onClick={addToMealPlan}
             disabled={planBusy || !planDate}
-            className="h-10 rounded-xl bg-[#C8A464] px-4 text-sm font-semibold text-[#0B2A4A] hover:opacity-90 disabled:opacity-50 transition-all"
+            className="h-10 rounded-xl bg-teal-500 px-4 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all"
           >
             {planBusy ? "Adding…" : "Add to plan"}
           </button>
         </div>
         {planMsg && (
-          <p className={cn("text-sm mt-2", planMsg.includes("✓") ? "text-[#2F6B52]" : "text-[#B8791F]")}>
+          <p className={cn("text-sm mt-2", planMsg.includes("✓") ? "text-teal-600" : "text-rust-600")}>
             {planMsg}
           </p>
         )}

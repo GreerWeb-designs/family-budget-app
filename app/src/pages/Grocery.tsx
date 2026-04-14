@@ -23,7 +23,7 @@ type GroceryItem = {
 };
 
 const inputCls =
-  "h-10 rounded-xl border border-[#E8E2D9] bg-white px-3 text-sm text-[#0B2A4A] outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all placeholder:text-[#5C6B7A]";
+  "h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all placeholder:text-ink-400";
 
 export default function Grocery() {
   const { user } = useUser();
@@ -145,7 +145,7 @@ export default function Grocery() {
     return (
       <div className="space-y-4">
         {msg && (
-          <div className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] px-4 py-2.5 text-sm text-[#B8791F]">{msg}</div>
+          <div className="rounded-xl border border-rust-600/30 bg-rust-50 px-4 py-2.5 text-sm text-rust-600">{msg}</div>
         )}
 
         {/* Header */}
@@ -153,7 +153,7 @@ export default function Grocery() {
           <button
             type="button"
             onClick={() => { setActiveListId(null); setItems([]); setMsg(null); }}
-            className="flex items-center gap-1.5 text-sm font-medium text-[#5C6B7A] hover:text-[#0B2A4A] transition-colors"
+            className="flex items-center gap-1.5 text-sm font-medium text-ink-500 hover:text-ink-900 transition-colors"
           >
             ← Lists
           </button>
@@ -162,7 +162,7 @@ export default function Grocery() {
               <button
                 type="button"
                 onClick={clearChecked}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#B8791F] hover:bg-[#FDF3E3] transition-colors"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-rust-600 hover:bg-rust-50 transition-colors"
               >
                 Clear checked ({checked.length})
               </button>
@@ -170,9 +170,9 @@ export default function Grocery() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-[#0B2A4A] mb-1">{activeList.name}</h2>
-          <p className="text-xs text-[#5C6B7A] mb-4">
+        <div className="rounded-2xl border border-cream-200 bg-white p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+          <h2 className="text-base font-semibold text-ink-900 mb-1">{activeList.name}</h2>
+          <p className="text-xs text-ink-500 mb-4">
             {activeList.checked_items} of {activeList.total_items} items checked
           </p>
 
@@ -196,7 +196,7 @@ export default function Grocery() {
               type="button"
               onClick={addItem}
               disabled={addingItem || !newItemName.trim()}
-              className="h-10 rounded-xl bg-[#0B2A4A] px-4 text-sm font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all"
+              className="h-10 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all"
             >
               {addingItem ? "…" : "Add"}
             </button>
@@ -206,20 +206,20 @@ export default function Grocery() {
           {itemsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-10 rounded-xl bg-[#F5F1EA] animate-pulse" />
+                <div key={i} className="h-10 rounded-xl bg-cream-100 animate-pulse" />
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="py-10 text-center text-sm text-[#5C6B7A]">
+            <div className="py-10 text-center text-sm text-ink-500">
               No items yet — add something above.
             </div>
           ) : (
-            <div className="divide-y divide-[#F5F1EA]">
+            <div className="divide-y divide-cream-100">
               {unchecked.map((item) => (
                 <ItemRow key={item.id} item={item} onToggle={toggleCheck} onDelete={deleteItem} />
               ))}
               {checked.length > 0 && unchecked.length > 0 && (
-                <div className="py-2 text-[10px] font-semibold uppercase tracking-wider text-[#5C6B7A] opacity-60">
+                <div className="py-2 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
                   Checked
                 </div>
               )}
@@ -237,19 +237,19 @@ export default function Grocery() {
   return (
     <div className="space-y-4">
       {msg && (
-        <div className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] px-4 py-2.5 text-sm text-[#B8791F]">{msg}</div>
+        <div className="rounded-xl border border-rust-600/30 bg-rust-50 px-4 py-2.5 text-sm text-rust-600">{msg}</div>
       )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-[#0B2A4A]">Grocery lists</h2>
-          <p className="text-xs text-[#5C6B7A]">Shared with your household</p>
+          <h2 className="text-lg font-medium text-ink-900" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>Grocery lists</h2>
+          <p className="text-xs text-ink-500">Shared with your household</p>
         </div>
         <button
           type="button"
           onClick={() => setShowNewList((v) => !v)}
-          className="h-9 rounded-xl bg-[#0B2A4A] px-4 text-sm font-semibold text-white hover:bg-[#0F3360] transition-all"
+          className="h-9 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 transition-all"
         >
           + New list
         </button>
@@ -257,7 +257,7 @@ export default function Grocery() {
 
       {/* New list form */}
       {showNewList && (
-        <div className="rounded-2xl border border-[#E8E2D9] bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-cream-200 bg-white p-4" style={{ boxShadow: "var(--shadow-card)" }}>
           <div className="flex gap-2">
             <input
               autoFocus
@@ -267,21 +267,21 @@ export default function Grocery() {
                 if (e.key === "Enter") { e.preventDefault(); createList(); }
                 if (e.key === "Escape") { setShowNewList(false); setNewListName(""); }
               }}
-              placeholder='e.g. "Weekly Shop" or "Costco Run"'
+              placeholder='"Weekly Shop" or "Costco Run"'
               className={cn(inputCls, "flex-1 min-w-0")}
             />
             <button
               type="button"
               onClick={createList}
               disabled={addingList || !newListName.trim()}
-              className="h-10 rounded-xl bg-[#0B2A4A] px-4 text-sm font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all"
+              className="h-10 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all"
             >
               {addingList ? "…" : "Create"}
             </button>
             <button
               type="button"
               onClick={() => { setShowNewList(false); setNewListName(""); }}
-              className="h-10 w-10 rounded-xl border border-[#E8E2D9] text-[#5C6B7A] hover:bg-[#F5F1EA] flex items-center justify-center transition-all"
+              className="h-10 w-10 rounded-xl border border-cream-200 text-ink-500 hover:bg-cream-100 flex items-center justify-center transition-all"
             >
               ×
             </button>
@@ -293,14 +293,14 @@ export default function Grocery() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2].map((i) => (
-            <div key={i} className="h-24 rounded-2xl bg-white border border-[#E8E2D9] animate-pulse" />
+            <div key={i} className="h-24 rounded-2xl bg-white border border-cream-200 animate-pulse" />
           ))}
         </div>
       ) : lists.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="text-4xl mb-3">🛒</div>
-          <p className="text-sm font-medium text-[#0B2A4A] mb-1">No lists yet</p>
-          <p className="text-xs text-[#5C6B7A]">Create your first grocery list above.</p>
+          <p className="text-sm font-medium text-ink-900 mb-1">No lists yet</p>
+          <p className="text-xs text-ink-500">Create your first grocery list above.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -312,30 +312,31 @@ export default function Grocery() {
               <div
                 key={list.id}
                 onClick={() => { setActiveListId(list.id); setMsg(null); }}
-                className="group relative rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                className="group relative rounded-2xl border border-cream-200 bg-white p-5 cursor-pointer hover:shadow-md transition-shadow"
+                style={{ boxShadow: "var(--shadow-card)" }}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <div className="font-medium text-[#0B2A4A]">{list.name}</div>
-                    <div className="text-xs text-[#5C6B7A] mt-0.5">
+                    <div className="font-medium text-ink-900">{list.name}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">
                       {list.checked_items}/{list.total_items} items
                       {list.total_items > 0 && pct === 100 && (
-                        <span className="ml-1.5 text-[#2F6B52] font-medium">· Done!</span>
+                        <span className="ml-1.5 text-teal-600 font-medium">· Done!</span>
                       )}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); deleteList(list.id, list.name); }}
-                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-all"
+                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-ink-400 hover:text-rust-600 hover:bg-rust-50 transition-all"
                   >
                     ×
                   </button>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-[#E8E2D9]">
+                <div className="h-1.5 w-full rounded-full bg-cream-200">
                   <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, background: "#2F6B52" }}
+                    className="h-full rounded-full transition-all bg-teal-500"
+                    style={{ width: `${pct}%` }}
                   />
                 </div>
               </div>
@@ -365,8 +366,8 @@ function ItemRow({
         className={cn(
           "h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all",
           isDone
-            ? "bg-[#2F6B52] border-[#2F6B52] text-white"
-            : "border-[#E8E2D9] hover:border-[#2F6B52]"
+            ? "bg-teal-500 border-teal-500 text-white"
+            : "border-cream-200 hover:border-teal-500"
         )}
       >
         {isDone && <span className="text-[10px] leading-none font-bold">✓</span>}
@@ -374,22 +375,22 @@ function ItemRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className={cn("text-sm text-[#0B2A4A]", isDone && "line-through text-[#5C6B7A]")}>
+          <span className={cn("text-sm text-ink-900", isDone && "line-through text-ink-400")}>
             {item.name}
           </span>
           {item.quantity && (
-            <span className="text-xs text-[#5C6B7A]">× {item.quantity}</span>
+            <span className="text-xs text-ink-500">× {item.quantity}</span>
           )}
         </div>
         {item.added_by_name && (
-          <div className="text-[10px] text-[#8A9BA8]">Added by {item.added_by_name}</div>
+          <div className="text-[10px] text-ink-300">Added by {item.added_by_name}</div>
         )}
       </div>
 
       <button
         type="button"
         onClick={() => onDelete(item.id)}
-        className="shrink-0 rounded-lg p-1 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-colors text-sm leading-none"
+        className="shrink-0 rounded-lg p-1 text-ink-400 hover:text-rust-600 hover:bg-rust-50 transition-colors text-sm leading-none"
       >
         ×
       </button>

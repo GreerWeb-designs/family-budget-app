@@ -2,44 +2,34 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
+import { BrandMark, Wordmark } from "../components/ui";
 
 function AuthShell({ subtitle, children }: { subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex" style={{ background: "#0B2A4A" }}>
+    <div className="min-h-screen flex" style={{ background: "#FAF6EE" }}>
       {/* Left panel — desktop only */}
-      <div className="hidden lg:flex lg:w-105 lg:flex-col lg:justify-between lg:p-10 lg:shrink-0"
-        style={{ background: "#071E33", borderRight: "1px solid #143860" }}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl font-bold text-sm"
-            style={{ background: "#C8A464", color: "#0B2A4A" }}>
-            KW
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-white">KeelWise</div>
-            <div className="text-xs text-[#5C6B7A]">Steady money. Straight course.</div>
-          </div>
-        </div>
+      <div className="hidden lg:flex lg:w-104 lg:flex-col lg:justify-between lg:p-10 lg:shrink-0"
+        style={{ background: "#1B4243", borderRight: "1px solid #245759" }}>
+        <Wordmark size="md" className="text-white" />
         <div>
-          <p className="text-4xl font-medium text-white leading-tight mb-4">
-            Steady money.<br />Straight course.
+          <p className="text-4xl font-medium text-white leading-tight mb-4"
+            style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
+            Where your<br />nest egg grows.
           </p>
-          <p className="text-sm text-[#5C6B7A] leading-relaxed">
-            Built for households who want clarity, not complexity.
+          <p className="text-sm leading-relaxed" style={{ color: "#6FA3A5" }}>
+            A warm, clear home for your household budget.
           </p>
         </div>
-        <p className="text-xs text-[#5C6B7A]">Private household dashboard</p>
+        <p className="text-xs" style={{ color: "#6FA3A5" }}>Private household dashboard</p>
       </div>
 
       {/* Right panel — form */}
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-12">
         {/* Mobile logo */}
         <div className="lg:hidden mb-8 text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl font-bold mb-3"
-            style={{ background: "#C8A464", color: "#0B2A4A" }}>
-            KW
-          </div>
-          <div className="text-xl font-medium text-white">KeelWise</div>
-          <div className="text-sm text-[#5C6B7A] mt-0.5">{subtitle}</div>
+          <BrandMark size={48} className="mx-auto mb-3" />
+          <Wordmark size="md" />
+          <div className="text-sm text-ink-500 mt-1">{subtitle}</div>
         </div>
 
         <div className="w-full max-w-100">
@@ -52,16 +42,16 @@ function AuthShell({ subtitle, children }: { subtitle: string; children: React.R
 
 export const inputCls = cn(
   "w-full h-11 rounded-xl border px-3 text-sm outline-none transition-all",
-  "border-[#5C6B7A]/40 bg-[#0B2A4A] text-white placeholder-[#5C6B7A]",
-  "focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20"
+  "border-cream-200 bg-cream-50 text-ink-900 placeholder-ink-300",
+  "focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
 );
 
-export const labelCls = "text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-1.5 block";
+export const labelCls = "text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1.5 block";
 
 export function AuthError({ msg }: { msg: string | null }) {
   if (!msg) return null;
   return (
-    <div className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3]/10 px-3 py-2.5 text-sm text-[#B8791F]">
+    <div className="rounded-xl border border-rust-500/30 bg-rust-50 px-3 py-2.5 text-sm text-rust-600">
       {msg}
     </div>
   );
@@ -70,8 +60,8 @@ export function AuthError({ msg }: { msg: string | null }) {
 export function PrimaryBtn({ busy, label, loadingLabel }: { busy: boolean; label: string; loadingLabel: string }) {
   return (
     <button type="submit" disabled={busy}
-      className="w-full h-11 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 mt-1 hover:opacity-90"
-      style={{ background: busy ? "#B8974A" : "#C8A464", color: "#0B2A4A" }}>
+      className="w-full h-11 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 mt-1 hover:opacity-90 text-white"
+      style={{ background: busy ? "#245759" : "#2D6E70" }}>
       {busy ? loadingLabel : label}
     </button>
   );
@@ -98,9 +88,13 @@ export default function Login() {
 
   return (
     <AuthShell subtitle="Sign in to your account">
-      <div className="rounded-2xl border p-8" style={{ background: "#0F3360", borderColor: "rgba(200,164,100,0.2)" }}>
-        <h2 className="text-2xl font-medium text-white mb-1">Welcome back</h2>
-        <p className="text-sm text-[#5C6B7A] mb-6">Sign in to your household</p>
+      <div className="rounded-2xl border p-8"
+        style={{ background: "#FFFDF8", borderColor: "#C9DEDF" }}>
+        <h2 className="text-2xl font-medium text-ink-900 mb-1"
+          style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
+          Welcome back
+        </h2>
+        <p className="text-sm text-ink-500 mb-6">Sign in to your household</p>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <label className="block">
@@ -112,7 +106,7 @@ export default function Login() {
           <label className="block">
             <div className="flex items-center justify-between mb-1.5">
               <span className={labelCls} style={{ marginBottom: 0 }}>Password</span>
-              <Link to="/forgot-password" className="text-xs text-[#C8A464] hover:opacity-80 transition-opacity">
+              <Link to="/forgot-password" className="text-xs text-teal-500 hover:opacity-80 transition-opacity">
                 Forgot?
               </Link>
             </div>
@@ -124,9 +118,9 @@ export default function Login() {
           <PrimaryBtn busy={busy} label="Sign in" loadingLabel="Signing in…" />
         </form>
 
-        <p className="mt-5 text-center text-xs text-[#5C6B7A]">
+        <p className="mt-5 text-center text-xs text-ink-500">
           No account yet?{" "}
-          <Link to="/signup" className="font-semibold text-[#C8A464] hover:opacity-80 transition-opacity">
+          <Link to="/signup" className="font-semibold text-teal-500 hover:opacity-80 transition-opacity">
             Create one
           </Link>
         </p>

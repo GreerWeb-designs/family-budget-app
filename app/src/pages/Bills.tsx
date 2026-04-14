@@ -13,7 +13,7 @@ function ordinal(n: number) {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
 
-const inputCls = "h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
+const inputCls = "h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all";
 
 export default function Bills() {
   const { user } = useUser();
@@ -35,8 +35,8 @@ export default function Bills() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="text-4xl mb-3">🔒</div>
-        <p className="text-sm font-medium text-[#0B2A4A] mb-1">Bills is restricted</p>
-        <p className="text-xs text-[#5C6B7A]">Ask your household admin to grant access.</p>
+        <p className="text-sm font-medium text-ink-900 mb-1">Bills is restricted</p>
+        <p className="text-xs text-ink-500">Ask your household admin to grant access.</p>
       </div>
     );
   }
@@ -83,16 +83,17 @@ export default function Bills() {
           { label: "Manual pay",    value: money(totalMonthly - autoDraft), sub: `${bills.filter(b => b.mode === "manual").length} bills` },
         ].map(({ label, value, sub }) => (
           <div key={label} className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-            <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">{label}</div>
-            <div className="font-display text-2xl font-semibold text-stone-900 tabular-nums">{value}</div>
-            <div className="text-xs text-stone-400 mt-0.5">{sub}</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">{label}</div>
+            <div className="text-2xl font-semibold text-ink-900 tabular-nums"
+              style={{ fontFamily: "'Fraunces', Georgia, serif" }}>{value}</div>
+            <div className="text-xs text-ink-400 mt-0.5">{sub}</div>
           </div>
         ))}
       </div>
 
       {msg && (
         <div className={cn("rounded-xl border px-4 py-2.5 text-sm",
-          msg.includes("ailed") ? "bg-[#FDF3E3] border-[#B8791F]/30 text-[#B8791F]" : "bg-[#EBF3EF] border-[#2F6B52]/30 text-[#2F6B52]")}>
+          msg.includes("ailed") ? "bg-rust-50 border-rust-600/30 text-rust-600" : "bg-teal-50 border-teal-500/30 text-teal-600")}>
           {msg}
         </div>
       )}
@@ -101,12 +102,11 @@ export default function Bills() {
       <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div className="flex items-center gap-2">
-            <Receipt size={15} className="text-stone-400" />
-            <div className="text-sm font-semibold text-[#0B2A4A]">Monthly bills</div>
+            <Receipt size={15} className="text-ink-400" />
+            <div className="text-sm font-semibold text-ink-900">Monthly bills</div>
           </div>
           <button type="button" onClick={() => setShowForm((v) => !v)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold text-white transition-all"
-            style={{ background: "#0B2A4A" }}>
+            className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold text-white transition-all bg-teal-700 hover:bg-teal-600">
             <PlusCircle size={13} />
             Add a recurring bill
           </button>
@@ -114,25 +114,25 @@ export default function Bills() {
 
         {/* Add form (collapsible) */}
         {showForm && (
-          <div className="px-5 py-4 border-b bg-stone-50/50" style={{ borderColor: "var(--color-border)" }}>
+          <div className="px-5 py-4 border-b bg-cream-50/50" style={{ borderColor: "var(--color-border)" }}>
             <form onSubmit={addBill} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label className="grid gap-1 sm:col-span-2 lg:col-span-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Bill name</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Bill name</span>
                 <input className={inputCls + " bg-white"} value={name}
                   onChange={(e) => setName(e.target.value)} placeholder="Internet, mortgage…" />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Amount</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Amount</span>
                 <input className={inputCls + " bg-white tabular-nums"} value={amount}
                   onChange={(e) => setAmount(e.target.value)} placeholder="120.00" inputMode="decimal" />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Due day (1–31)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Due day (1–31)</span>
                 <input className={inputCls + " bg-white tabular-nums"} type="number" min={1} max={31}
                   value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} placeholder="15" />
               </label>
               <div className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Mode</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Mode</span>
                 <div className="flex gap-2">
                   <select className={inputCls + " bg-white flex-1"} value={mode}
                     onChange={(e) => setMode(e.target.value as "auto" | "manual")}>
@@ -140,8 +140,7 @@ export default function Bills() {
                     <option value="manual">Manual pay</option>
                   </select>
                   <button type="submit" disabled={busy}
-                    className="h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-60 transition-all"
-                    style={{ background: "#0B2A4A" }}>
+                    className="h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-60 transition-all bg-teal-700 hover:bg-teal-600">
                     Save
                   </button>
                 </div>
@@ -154,9 +153,9 @@ export default function Bills() {
         <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
           {sorted.length === 0 && (
             <div className="px-5 py-12 text-center">
-              <Receipt size={28} className="mx-auto text-stone-200 mb-2" />
-              <div className="text-sm text-stone-400">No recurring bills yet.</div>
-              <div className="text-xs text-stone-300 mt-0.5">Add one to track monthly obligations.</div>
+              <Receipt size={28} className="mx-auto text-ink-300 mb-2" />
+              <div className="text-sm text-ink-400">No recurring bills yet.</div>
+              <div className="text-xs text-ink-300 mt-0.5">Add one to track monthly obligations.</div>
             </div>
           )}
           {sorted.map((b) => {
@@ -166,32 +165,32 @@ export default function Bills() {
             const dueSoon = diff >= 0 && diff <= 3;
 
             return (
-              <div key={b.id} className="flex items-center gap-4 px-5 py-4 hover:bg-stone-50/60 transition-colors">
+              <div key={b.id} className="flex items-center gap-4 px-5 py-4 hover:bg-cream-50/60 transition-colors">
                 {/* Mode icon */}
                 <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                  isAuto ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#FDF8F0] text-[#B8791F]")}>
+                  isAuto ? "bg-teal-50 text-teal-600" : "bg-rust-50 text-rust-600")}>
                   {isAuto ? <Zap size={16} /> : <Hand size={16} />}
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <span className="text-sm font-semibold text-stone-900">{b.name}</span>
-                    <span className="font-semibold text-sm tabular-nums text-stone-700">{money(b.amount)}</span>
+                    <span className="text-sm font-semibold text-ink-900">{b.name}</span>
+                    <span className="font-semibold text-sm tabular-nums text-ink-700">{money(b.amount)}</span>
                     <span className={cn("text-[10px] font-semibold rounded-full px-2 py-0.5",
-                      isAuto ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#FDF8F0] text-[#B8791F]")}>
+                      isAuto ? "bg-teal-50 text-teal-600" : "bg-rust-50 text-rust-600")}>
                       {isAuto ? "Auto" : "Manual"}
                     </span>
                     {dueSoon && (
-                      <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-[#FDF3E3] text-[#B8791F]">
+                      <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-rust-50 text-rust-600">
                         {diff === 0 ? "Due today" : `in ${diff}d`}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-stone-400">Due the {ordinal(b.day_of_month)} of each month</div>
+                  <div className="text-xs text-ink-400">Due the {ordinal(b.day_of_month)} of each month</div>
                 </div>
 
                 <button onClick={() => remove(b.id)} disabled={busy}
-                  className="shrink-0 rounded-xl p-2 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] disabled:opacity-40 transition-all">
+                  className="shrink-0 rounded-xl p-2 text-ink-500 hover:text-rust-600 hover:bg-rust-50 disabled:opacity-40 transition-all">
                   <Trash2 size={15} />
                 </button>
               </div>

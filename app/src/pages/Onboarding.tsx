@@ -11,9 +11,9 @@ const QUIZ_KEY = "familybudget_quiz";
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const VALUE_CARDS = [
-  { Icon: HeartPulse, phrase: "Less Stress",  bg: "linear-gradient(135deg, #F5F1EA 0%, #EBF3EF 100%)", iconColor: "#2F6B52" },
-  { Icon: TrendingUp, phrase: "More Savings", bg: "linear-gradient(135deg, #F5F1EA 0%, #fef3c7 100%)", iconColor: "#C8A464" },
-  { Icon: Compass,    phrase: "More Control", bg: "linear-gradient(135deg, #EBF3EF 0%, #F5F1EA 100%)", iconColor: "#0B2A4A" },
+  { Icon: HeartPulse, phrase: "Less Stress",  bg: "linear-gradient(135deg, #F5F1E8 0%, #E8F1F1 100%)", iconColor: "#2D6E70" },
+  { Icon: TrendingUp, phrase: "More Savings", bg: "linear-gradient(135deg, #F5F1E8 0%, #FAEFE5 100%)", iconColor: "#C17A3F" },
+  { Icon: Compass,    phrase: "More Control", bg: "linear-gradient(135deg, #E8F1F1 0%, #F5F1E8 100%)", iconColor: "#1B4243" },
 ];
 
 const TOUR_CARDS = [
@@ -89,7 +89,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="min-h-screen flex flex-col md:items-center md:justify-center"
-      style={{ background: "linear-gradient(135deg, #f0fdfb 0%, #fffbeb 100%)" }}
+      style={{ background: "linear-gradient(135deg, #E8F1F1 0%, #FAF6EE 100%)" }}
     >
       <div className={cn(
         "relative flex flex-col bg-white w-full min-h-svh",
@@ -117,7 +117,7 @@ function TopBar({
           <button
             type="button"
             onClick={onBack}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-stone-400 hover:bg-stone-100 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-500 hover:bg-cream-100 transition-colors"
             aria-label="Go back"
           >
             <ArrowLeft size={18} />
@@ -182,10 +182,10 @@ function Step1ValueProp({ onComplete }: { onComplete: () => void }) {
           {VALUE_CARDS.map(({ Icon, phrase, iconColor }, i) => (
             <div
               key={i}
-              className="flex items-center gap-5 p-5 rounded-2xl bg-stone-50 border border-stone-100"
+              className="flex items-center gap-5 p-5 rounded-2xl bg-cream-50 border border-cream-100"
             >
               <Icon size={32} style={{ color: iconColor }} />
-              <span className="font-display text-2xl font-semibold text-stone-900">{phrase}</span>
+              <span className="font-display text-2xl font-semibold text-ink-900">{phrase}</span>
             </div>
           ))}
         </div>
@@ -214,7 +214,7 @@ function Step1ValueProp({ onComplete }: { onComplete: () => void }) {
       >
         <card.Icon size={48} style={{ color: card.iconColor }} strokeWidth={1.5} />
         <p
-          className="font-display text-5xl font-semibold text-stone-900 mt-6 tracking-tight"
+          className="font-display text-5xl font-semibold text-ink-900 mt-6 tracking-tight"
           style={{ textShadow: "0 1px 3px rgba(0,0,0,.06)" }}
         >
           {card.phrase}
@@ -227,7 +227,7 @@ function Step1ValueProp({ onComplete }: { onComplete: () => void }) {
               key={i}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-300",
-                i === current ? "w-6 bg-stone-700" : "w-1.5 bg-stone-300",
+                i === current ? "w-6 bg-teal-700" : "w-1.5 bg-cream-200",
               )}
             />
           ))}
@@ -294,19 +294,19 @@ function Step2Tour({
             onDragEnd={handleDragEnd}
             className="w-full cursor-grab active:cursor-grabbing"
           >
-            <div className="rounded-2xl border border-stone-100 bg-stone-50 p-6 text-center space-y-5">
+            <div className="rounded-2xl border border-cream-100 bg-cream-50 p-6 text-center space-y-5">
               {/* TODO: unDraw illustration — 400×260 — suggested keyword: "{card.keyword}"
                   Drop an <img src="..." alt="..." className="w-full h-auto rounded-xl" /> here */}
-              <div className="h-[200px] rounded-xl bg-stone-100 flex items-center justify-center border border-dashed border-stone-200">
-                <span className="text-xs text-stone-400 font-medium">
+              <div className="h-[200px] rounded-xl bg-cream-100 flex items-center justify-center border border-dashed border-cream-200">
+                <span className="text-xs text-ink-500 font-medium">
                   {/* TODO: replace with unDraw illustration — keyword: "{card.keyword}" — 400×260 */}
                   Illustration coming soon
                 </span>
               </div>
 
               <div>
-                <p className="font-display text-2xl font-semibold text-stone-900 mb-2">{card.headline}</p>
-                <p className="text-sm text-stone-500 leading-relaxed">{card.desc}</p>
+                <p className="font-display text-2xl font-semibold text-ink-900 mb-2">{card.headline}</p>
+                <p className="text-sm text-ink-500 leading-relaxed">{card.desc}</p>
               </div>
             </div>
           </motion.div>
@@ -322,7 +322,7 @@ function Step2Tour({
               onClick={() => { setPaused(true); setTourDir(i > idx ? 1 : -1); setIdx(i); }}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-300",
-                i === idx ? "w-6 bg-[#0B2A4A]" : "w-1.5 bg-stone-300",
+                i === idx ? "w-6 bg-teal-700" : "w-1.5 bg-ink-300",
               )}
             />
           ))}
@@ -361,7 +361,7 @@ function Step3Quiz({
   return (
     <div className="flex flex-col flex-1">
       {/* Progress bar */}
-      <div className="h-1 bg-stone-100 shrink-0">
+      <div className="h-1 bg-cream-100 shrink-0">
         <motion.div
           className="h-full rounded-full"
           style={{ background: "var(--color-primary)" }}
@@ -376,7 +376,7 @@ function Step3Quiz({
           <button
             type="button"
             onClick={onSkip}
-            className="text-xs font-medium text-stone-400 hover:text-stone-600 transition-colors"
+            className="text-xs font-medium text-ink-500 hover:text-ink-500 transition-colors"
           >
             Skip
           </button>
@@ -384,10 +384,10 @@ function Step3Quiz({
       />
 
       <div className="flex-1 flex flex-col px-5 py-2 overflow-y-auto">
-        <p className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-ink-500 mb-2">
           Question {quizIdx + 1} of {QUIZ_QUESTIONS.length}
         </p>
-        <p className="font-display text-xl font-semibold text-stone-900 mb-5 leading-snug">{q.q}</p>
+        <p className="font-display text-xl font-semibold text-ink-900 mb-5 leading-snug">{q.q}</p>
 
         <div className="space-y-2.5">
           {q.options.map(({ emoji, label }) => {
@@ -400,16 +400,16 @@ function Step3Quiz({
                 className={cn(
                   "w-full flex items-center gap-4 rounded-2xl border px-4 py-3.5 text-left transition-all",
                   isSelected
-                    ? "border-[#C8A464] bg-[#F5F1EA]/60 shadow-sm"
-                    : "border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50",
+                    ? "border-teal-500 bg-teal-50/60 shadow-sm"
+                    : "border-cream-200 bg-white hover:border-cream-300 hover:bg-cream-50",
                 )}
               >
                 <span className="text-2xl leading-none">{emoji}</span>
-                <span className={cn("flex-1 text-sm font-medium", isSelected ? "text-[#0B2A4A]" : "text-stone-800")}>
+                <span className={cn("flex-1 text-sm font-medium", isSelected ? "text-teal-700" : "text-ink-900")}>
                   {label}
                 </span>
                 {isSelected && (
-                  <div className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#C8A464]">
+                  <div className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-teal-500">
                     <Check size={11} className="text-white" strokeWidth={3} />
                   </div>
                 )}
@@ -438,17 +438,17 @@ function Step4Interlude({ onBack, onContinue }: { onBack: () => void; onContinue
       <div className="flex-1 flex flex-col items-center justify-center px-7 text-center">
         {/* TODO: unDraw illustration — 400×280 — suggested keyword: "together" or "people money"
             Drop an <img src="..." alt="..." className="w-full max-w-xs mx-auto mb-8" /> here */}
-        <div className="w-full max-w-xs mx-auto mb-8 h-[200px] rounded-2xl bg-gradient-to-br from-[#EBF3EF] to-[#F5F1EA] border border-dashed border-stone-200 flex items-center justify-center">
-          <span className="text-xs text-stone-400">
+        <div className="w-full max-w-xs mx-auto mb-8 h-[200px] rounded-2xl bg-gradient-to-br from-teal-50 to-cream-100 border border-dashed border-cream-200 flex items-center justify-center">
+          <span className="text-xs text-ink-500">
             {/* TODO: unDraw illustration — keyword: "together" — 400×280 */}
             Illustration coming soon
           </span>
         </div>
 
-        <p className="font-display text-2xl font-semibold text-stone-900 leading-snug mb-3">
+        <p className="font-display text-2xl font-semibold text-ink-900 leading-snug mb-3">
           You're not alone — and it gets better from here.
         </p>
-        <p className="text-sm text-stone-500 leading-relaxed max-w-[320px]">
+        <p className="text-sm text-ink-500 leading-relaxed max-w-[320px]">
           Most families feel overwhelmed before they start. The hardest part is showing up.
         </p>
       </div>
@@ -471,15 +471,15 @@ function Step5Commitment({ onBack, onContinue }: { onBack: () => void; onContinu
         {/* Brand mark */}
         <div
           className="flex h-16 w-16 items-center justify-center rounded-2xl font-bold text-xl text-white mb-8 shadow-lg"
-          style={{ background: "#C8A464", color: "#0B2A4A" }}
+          style={{ background: "#1B4243" }}
         >
-          KW
+          🦦
         </div>
 
-        <p className="font-display text-2xl font-semibold text-stone-900 leading-snug mb-3">
+        <p className="font-display text-2xl font-semibold text-ink-900 leading-snug mb-3">
           Ready to take control of your financial future?
         </p>
-        <p className="text-sm text-stone-500 leading-relaxed max-w-[280px]">
+        <p className="text-sm text-ink-500 leading-relaxed max-w-[280px]">
           It starts with one small step.
         </p>
       </div>
@@ -516,17 +516,17 @@ function Step6Balance({ onComplete }: { onComplete: (amount: number | null) => P
           type="button"
           onClick={() => submit(true)}
           disabled={busy}
-          className="text-xs font-medium text-stone-400 hover:text-stone-600 transition-colors"
+          className="text-xs font-medium text-ink-500 hover:text-ink-500 transition-colors"
         >
           Skip for now
         </button>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-7 text-center">
-        <p className="font-display text-2xl font-semibold text-stone-900 mb-2">
+        <p className="font-display text-2xl font-semibold text-ink-900 mb-2">
           What's your current balance?
         </p>
-        <p className="text-sm text-stone-500 mb-8">
+        <p className="text-sm text-ink-500 mb-8">
           We'll use this as your starting point.
         </p>
 
@@ -545,11 +545,11 @@ function Step6Balance({ onComplete }: { onComplete: (amount: number | null) => P
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0.00"
-            className="w-full pl-10 pr-4 py-4 font-display text-3xl font-semibold text-stone-900 tabular-nums text-center border-2 border-stone-200 rounded-2xl outline-none focus:border-[#C8A464] transition-colors"
+            className="w-full pl-10 pr-4 py-4 font-display text-3xl font-semibold text-ink-900 tabular-nums text-center border-2 border-cream-200 rounded-2xl outline-none focus:border-teal-500 transition-colors"
           />
         </div>
 
-        <p className="text-xs text-stone-400 mt-4 max-w-[260px] leading-relaxed">
+        <p className="text-xs text-ink-500 mt-4 max-w-[260px] leading-relaxed">
           Not sure of your exact balance? You can add it later — even a rough estimate works.
         </p>
       </div>

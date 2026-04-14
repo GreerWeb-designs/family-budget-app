@@ -36,7 +36,7 @@ function UserAvatar({ name, size = 6 }: { name: string; size?: number }) {
   const initials = name.trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className={cn(`h-${size} w-${size} rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold`)}
-      style={{ background: "#C8A464", color: "#0B2A4A" }}>
+      style={{ background: "#2D6E70", color: "#FFFDF8" }}>
       {initials}
     </div>
   );
@@ -56,10 +56,10 @@ function CardHeader({ title, sub, icon: Icon }: { title: string; sub?: string; i
   return (
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center gap-2">
-        {Icon && <Icon size={15} className="text-stone-400 shrink-0" />}
+        {Icon && <Icon size={15} className="text-ink-500 shrink-0" />}
         <div>
-          <div className="text-sm font-semibold text-stone-900">{title}</div>
-          {sub && <div className="text-xs text-stone-400 mt-0.5">{sub}</div>}
+          <div className="text-sm font-semibold text-ink-900">{title}</div>
+          {sub && <div className="text-xs text-ink-500 mt-0.5">{sub}</div>}
         </div>
       </div>
     </div>
@@ -67,7 +67,7 @@ function CardHeader({ title, sub, icon: Icon }: { title: string; sub?: string; i
 }
 
 /* ── Input / select styling ─────────────────────────── */
-const inputCls = "h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all w-full";
+const inputCls = "h-10 rounded-xl border border-cream-200 bg-white px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all w-full";
 const selectCls = inputCls;
 
 /* ── Pill for category snapshot ─────────────────────── */
@@ -77,8 +77,8 @@ function AvailPill({ val }: { val: number | null | undefined }) {
   return (
     <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums border",
       over
-        ? "bg-[#FDF3E3] text-[#B8791F] border-[#B8791F]/30"
-        : "bg-[#EBF3EF] text-[#2F6B52] border-[#2F6B52]/30")}>
+        ? "bg-rust-50 text-rust-600 border-rust-600/30"
+        : "bg-teal-50 text-teal-600 border-teal-600/30")}>
       {over ? `Over ${money(Math.abs(val))}` : `Left ${money(val)}`}
     </span>
   );
@@ -180,15 +180,15 @@ export default function Home() {
     if (loading) return { text: "", cls: "" };
     if (toBeBudgeted === 0) return {
       text: "Every dollar has a job. Well done.",
-      cls: "text-[#2F6B52]",
+      cls: "text-teal-600",
     };
     if (toBeBudgeted > 0) return {
       text: `You have ${money(toBeBudgeted)} left to assign. Give it a purpose.`,
-      cls: "text-[#5C6B7A]",
+      cls: "text-ink-500",
     };
     return {
       text: `You've assigned ${money(Math.abs(toBeBudgeted))} more than you have. Trim a category.`,
-      cls: "text-[#B8791F]",
+      cls: "text-rust-600",
     };
   }, [toBeBudgeted, loading]);
 
@@ -306,7 +306,7 @@ export default function Home() {
   }
 
   const barData = [
-    { name: "Income",   value: totalIncome,  color: "#2F6B52" },
+    { name: "Income",   value: totalIncome,  color: "#2D6E70" },
     { name: "Spending", value: totalSpending, color: "#F59E0B" },
   ];
 
@@ -330,9 +330,9 @@ export default function Home() {
       <div className="rounded-2xl border bg-white p-6 md:p-8" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-1">Bank Balance</div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-1">Bank Balance</div>
             <div className={cn("font-display text-5xl md:text-6xl font-semibold tabular-nums leading-none",
-              bankBalance < 0 ? "text-[#B8791F]" : "text-stone-900")}>
+              bankBalance < 0 ? "text-rust-600" : "text-ink-900")}>
               {money(bankBalance)}
             </div>
             {!loading && summaryLine.text && (
@@ -341,8 +341,8 @@ export default function Home() {
           </div>
           {/* Month progress */}
           <div className="shrink-0 text-right">
-            <div className="text-xs text-stone-400 mb-1.5">Month {monthPct}% done · Day {dayOfMonth} of {daysInMonth}</div>
-            <div className="w-40 h-1.5 rounded-full bg-stone-100 overflow-hidden">
+            <div className="text-xs text-ink-500 mb-1.5">Month {monthPct}% done · Day {dayOfMonth} of {daysInMonth}</div>
+            <div className="w-40 h-1.5 rounded-full bg-cream-100 overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${monthPct}%`, background: "var(--color-primary)" }} />
             </div>
           </div>
@@ -353,21 +353,21 @@ export default function Home() {
       {canSeeTransactions && <Card>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="text-sm font-semibold text-[#0B2A4A]">Record a transaction</div>
-            <div className="text-xs text-[#5C6B7A] mt-0.5">
+            <div className="text-sm font-semibold text-ink-900">Record a transaction</div>
+            <div className="text-xs text-ink-500 mt-0.5">
               {direction === "out" ? "Outflow · reduces category balance" : "Income · increases ready to assign"}
             </div>
           </div>
-          <div className="inline-flex rounded-xl border border-[#E8E2D9] bg-[#F5F1EA] p-1">
+          <div className="inline-flex rounded-xl border border-cream-200 bg-cream-100 p-1">
             <button type="button" onClick={() => setDirection("out")}
               className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "out" ? "bg-[#B8791F] text-white shadow-sm" : "text-[#5C6B7A] hover:text-[#0B2A4A]")}>
+                direction === "out" ? "bg-rust-600 text-white shadow-sm" : "text-ink-500 hover:text-ink-900")}>
               Outflow
             </button>
             <button type="button" onClick={() => setDirection("in")}
               className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "in" ? "text-white shadow-sm" : "text-[#5C6B7A] hover:text-[#0B2A4A]")}
-              style={direction === "in" ? { background: "#2F6B52" } : {}}>
+                direction === "in" ? "text-white shadow-sm" : "text-ink-500 hover:text-ink-900")}
+              style={direction === "in" ? { background: "#2D6E70" } : {}}>
               Income
             </button>
           </div>
@@ -376,7 +376,7 @@ export default function Home() {
         <form onSubmit={submitSpend} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Where did it go?</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Where did it go?</span>
               <select className={selectCls} disabled={direction === "in"}
                 value={showNewCatInput ? "__new__" : categoryId}
                 onChange={(e) => {
@@ -406,51 +406,51 @@ export default function Home() {
                       if (e.key === "Escape") { setShowNewCatInput(false); setNewCatInputValue(""); }
                     }}
                     placeholder="Category name"
-                    className="h-10 flex-1 min-w-0 rounded-xl border border-[#E8E2D9] bg-[#F5F1EA] px-3 text-sm text-[#0B2A4A] outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all placeholder-[#5C6B7A]"
+                    className="h-10 flex-1 min-w-0 rounded-xl border border-cream-200 bg-cream-100 px-3 text-sm text-ink-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder-[#5C6B7A]"
                   />
                   <button
                     type="button"
                     onClick={handleCreateCategoryInline}
                     disabled={addingCat || !newCatInputValue.trim()}
-                    className="h-10 rounded-xl bg-[#0B2A4A] px-3 text-xs font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all">
+                    className="h-10 rounded-xl bg-teal-700 px-3 text-xs font-semibold text-white hover:bg-teal-900 disabled:opacity-50 transition-all">
                     {addingCat ? "…" : "Add"}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setShowNewCatInput(false); setNewCatInputValue(""); }}
-                    className="h-10 w-10 rounded-xl border border-[#E8E2D9] text-[#5C6B7A] hover:bg-[#F5F1EA] text-sm transition-all flex items-center justify-center">
+                    className="h-10 w-10 rounded-xl border border-cream-200 text-ink-500 hover:bg-cream-100 text-sm transition-all flex items-center justify-center">
                     ×
                   </button>
                 </div>
               )}
             </div>
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Amount</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Amount</span>
               <input className={inputCls + " tabular-nums"} value={amount}
                 onChange={(e) => setAmount(e.target.value)} placeholder="0.00" inputMode="decimal" />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Date</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Date</span>
               <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
           </div>
           <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Note (optional)</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Note (optional)</span>
             <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)}
               placeholder={direction === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
           </label>
           <div className="flex items-center gap-3 pt-1">
             <button type="submit" disabled={busy}
               className="h-10 px-5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
-              style={{ background: direction === "in" ? "#2F6B52" : "#0B2A4A" }}>
+              style={{ background: direction === "in" ? "#2D6E70" : "#1B4243" }}>
               {busy ? "Saving…" : direction === "in" ? "Add income" : "Record"}
             </button>
             <button type="button" disabled={busy || !lastSpendId} onClick={() => deleteSpend(lastSpendId!, true)}
-              className="h-10 px-4 rounded-xl border border-[#E8E2D9] text-sm font-medium text-[#5C6B7A] hover:bg-[#F5F1EA] disabled:opacity-40 transition-all">
+              className="h-10 px-4 rounded-xl border border-cream-200 text-sm font-medium text-ink-500 hover:bg-cream-100 disabled:opacity-40 transition-all">
               Undo
             </button>
             {msg && (
-              <span className={cn("text-sm", msg.includes("Error") || msg.includes("error") ? "text-[#B8791F]" : "text-[#2F6B52]")}>
+              <span className={cn("text-sm", msg.includes("Error") || msg.includes("error") ? "text-rust-600" : "text-teal-600")}>
                 {msg}
               </span>
             )}
@@ -480,9 +480,9 @@ export default function Home() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-2 flex gap-4 text-xs text-[#5C6B7A]">
-            <div><span className="font-semibold text-[#2F6B52]">{money(totalIncome)}</span> in</div>
-            <div><span className="font-semibold text-[#B8791F]">{money(totalSpending)}</span> spent</div>
+          <div className="mt-2 flex gap-4 text-xs text-ink-500">
+            <div><span className="font-semibold text-teal-600">{money(totalIncome)}</span> in</div>
+            <div><span className="font-semibold text-rust-600">{money(totalSpending)}</span> spent</div>
           </div>
         </Card>
 
@@ -490,7 +490,7 @@ export default function Home() {
         <Card>
           <CardHeader title="Recent activity" sub="Last 5 transactions" icon={Clock} />
           {sortedSpends.length === 0 ? (
-            <div className="text-sm text-stone-400 py-4 text-center">No transactions yet.</div>
+            <div className="text-sm text-ink-500 py-4 text-center">No transactions yet.</div>
           ) : (
             <div className="space-y-2">
               {sortedSpends.slice(0, 5).map((row) => {
@@ -499,14 +499,14 @@ export default function Home() {
                 return (
                   <div key={row.id} className="flex items-center gap-3">
                     <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
-                      isIncome ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#F5F1EA] text-[#5C6B7A]")}>
+                      isIncome ? "bg-teal-50 text-teal-600" : "bg-cream-100 text-ink-500")}>
                       {isIncome ? <Plus size={12} /> : <Minus size={12} />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-[#0B2A4A] truncate">{catName}{row.note ? ` · ${row.note}` : ""}</div>
-                      <div className="text-[10px] text-[#5C6B7A]">{row.date}</div>
+                      <div className="text-xs font-medium text-ink-900 truncate">{catName}{row.note ? ` · ${row.note}` : ""}</div>
+                      <div className="text-[10px] text-ink-500">{row.date}</div>
                     </div>
-                    <div className={cn("text-xs font-semibold tabular-nums shrink-0", isIncome ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>
+                    <div className={cn("text-xs font-semibold tabular-nums shrink-0", isIncome ? "text-teal-600" : "text-ink-900")}>
                       {isIncome ? "+" : "-"}{money(row.amount)}
                     </div>
                   </div>
@@ -519,20 +519,20 @@ export default function Home() {
 
       {/* ── Upcoming (combined) ───────────────────────── */}
       <Card>
-        <div className="text-sm font-semibold text-stone-900 mb-4">Upcoming</div>
+        <div className="text-sm font-semibold text-ink-900 mb-4">Upcoming</div>
 
         {/* Bills */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <Receipt size={13} className="text-stone-400" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Bills</span>
+              <Receipt size={13} className="text-ink-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">Bills</span>
             </div>
-            <span className="text-xs text-stone-400">3 days</span>
+            <span className="text-xs text-ink-500">3 days</span>
           </div>
           <div className="space-y-2">
             {!upcoming || upcoming.bills.length === 0 ? (
-              <p className="text-sm text-[#5C6B7A]">Clear skies — no bills due soon.</p>
+              <p className="text-sm text-ink-500">Clear skies — no bills due soon.</p>
             ) : upcoming.bills.map((bill) => {
               const diff    = bill.day_of_month - new Date().getDate();
               const isAuto  = bill.mode === "auto";
@@ -556,47 +556,47 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="border-b border-stone-100 mb-4" />
+        <div className="border-b border-cream-100 mb-4" />
 
         {/* Events */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <Calendar size={13} className="text-stone-400" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#5C6B7A]">Upcoming events</span>
+              <Calendar size={13} className="text-ink-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">Upcoming events</span>
             </div>
-            <span className="text-xs text-stone-400">7 days</span>
+            <span className="text-xs text-ink-500">7 days</span>
           </div>
           <div className="space-y-2">
             {!upcoming || upcoming.events.length === 0 ? (
-              <p className="text-sm text-[#5C6B7A]">Nothing on the horizon.</p>
+              <p className="text-sm text-ink-500">Nothing on the horizon.</p>
             ) : upcoming.events.map((ev) => {
               const d = new Date(ev.start_at);
               const pretty = d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
               return (
-                <div key={ev.id} className="rounded-xl border border-stone-100 bg-stone-50 px-3 py-2">
-                  <div className="text-sm font-medium text-stone-800">{ev.title}</div>
-                  <div className="text-xs text-stone-400 mt-0.5">{pretty}{ev.location ? ` · ${ev.location}` : ""}</div>
+                <div key={ev.id} className="rounded-xl border border-cream-100 bg-cream-50 px-3 py-2">
+                  <div className="text-sm font-medium text-ink-900">{ev.title}</div>
+                  <div className="text-xs text-ink-500 mt-0.5">{pretty}{ev.location ? ` · ${ev.location}` : ""}</div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="border-b border-stone-100 mb-4" />
+        <div className="border-b border-cream-100 mb-4" />
 
         {/* Goals */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <Target size={13} className="text-stone-400" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#5C6B7A]">Goals due soon</span>
+              <Target size={13} className="text-ink-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">Goals due soon</span>
             </div>
-            <span className="text-xs text-stone-400">30 days</span>
+            <span className="text-xs text-ink-500">30 days</span>
           </div>
           <div className="space-y-2">
             {upcomingGoals.length === 0 ? (
-              <p className="text-sm text-[#5C6B7A]">No goals on the near horizon.</p>
+              <p className="text-sm text-ink-500">No goals on the near horizon.</p>
             ) : upcomingGoals.map((g) => {
               const today    = new Date(); today.setHours(0, 0, 0, 0);
               const due      = new Date(`${g.due_date!}T00:00:00`);
@@ -604,9 +604,9 @@ export default function Home() {
               const urgent   = daysLeft <= 7;
               return (
                 <div key={g.id} className={cn("rounded-xl border px-3 py-2",
-                  urgent ? "bg-[#FDF3E3] border-[#B8791F]/20" : "bg-[#EBF3EF]/70 border-[#2F6B52]/20")}>
-                  <div className={cn("text-sm font-medium truncate", urgent ? "text-[#B8791F]" : "text-[#2F6B52]")}>{g.title}</div>
-                  <div className={cn("text-xs mt-0.5", urgent ? "text-[#B8791F]" : "text-[#2F6B52]")}>
+                  urgent ? "bg-rust-50 border-rust-600/20" : "bg-teal-50/70 border-teal-600/20")}>
+                  <div className={cn("text-sm font-medium truncate", urgent ? "text-rust-600" : "text-teal-600")}>{g.title}</div>
+                  <div className={cn("text-xs mt-0.5", urgent ? "text-rust-600" : "text-teal-600")}>
                     {daysLeft === 0 ? "Due today" : daysLeft === 1 ? "Due tomorrow" : `${daysLeft} days left`}
                   </div>
                 </div>
@@ -615,24 +615,24 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="border-b border-stone-100 mb-4 mt-4" />
+        <div className="border-b border-cream-100 mb-4 mt-4" />
 
         {/* Dinner plans */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#5C6B7A]">🍽️ Dinner plans</span>
-            <span className="text-xs text-stone-400">7 days</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">🍽️ Dinner plans</span>
+            <span className="text-xs text-ink-500">7 days</span>
           </div>
           <div className="space-y-1.5">
             {upcomingMeals.length === 0 ? (
-              <p className="text-sm text-[#5C6B7A]">Nothing planned yet.</p>
+              <p className="text-sm text-ink-500">Nothing planned yet.</p>
             ) : upcomingMeals.map((meal) => {
               const date = new Date(`${meal.planned_date}T00:00:00`);
               const label = date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
               return (
-                <div key={meal.id} className="rounded-xl bg-[#FDF8F0] border border-[#C8A464]/20 px-3 py-2 text-sm">
-                  <span className="font-medium text-[#0B2A4A]">{meal.recipe_title}</span>
-                  <span className="text-[#5C6B7A] text-xs ml-2">{label}</span>
+                <div key={meal.id} className="rounded-xl bg-rust-50 border border-rust-500/20 px-3 py-2 text-sm">
+                  <span className="font-medium text-ink-900">{meal.recipe_title}</span>
+                  <span className="text-ink-500 text-xs ml-2">{label}</span>
                 </div>
               );
             })}
@@ -647,18 +647,18 @@ export default function Home() {
           <div className="flex gap-2 mb-4">
             <div className="relative flex-1">
               <textarea
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/15 focus:border-[#C8A464] transition-all resize-none text-stone-900 placeholder-stone-400"
+                className="w-full rounded-xl border border-cream-200 bg-cream-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500 transition-all resize-none text-ink-900 placeholder-ink-300"
                 rows={2} maxLength={500}
                 placeholder="Leave a note for the family…"
                 value={noteInput}
                 onChange={(e) => setNoteInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postNote(); }}
               />
-              <span className="absolute bottom-2 right-3 text-[10px] text-stone-300">{noteInput.length}/500</span>
+              <span className="absolute bottom-2 right-3 text-[10px] text-ink-500/40">{noteInput.length}/500</span>
             </div>
             <button type="button" onClick={postNote} disabled={!noteInput.trim()}
               className="self-end h-10 px-4 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all flex items-center gap-1.5"
-              style={{ background: "#0B2A4A" }}>
+              style={{ background: "#1B4243" }}>
               <Send size={13} />
               <span className="hidden sm:inline">Send</span>
             </button>
@@ -666,26 +666,26 @@ export default function Home() {
         )}
         <div className="space-y-2">
           {notes.length === 0 ? (
-            <p className="text-sm text-[#5C6B7A] text-center py-4">No notes yet. Be the first to leave one.</p>
+            <p className="text-sm text-ink-500 text-center py-4">No notes yet. Be the first to leave one.</p>
           ) : notes.map((note) => {
             const authorDisplay = note.author_name || (note.user_id === myUserId ? "You" : "Family member");
             return (
-              <div key={note.id} className="rounded-xl border border-[#E8E2D9] bg-[#F5F1EA] p-3">
+              <div key={note.id} className="rounded-xl border border-cream-200 bg-cream-100 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <UserAvatar name={authorDisplay} size={6} />
-                    <span className="text-xs font-semibold text-[#0B2A4A]">{authorDisplay}</span>
-                    <span className="text-[#5C6B7A] text-xs">·</span>
-                    <span className="text-xs text-[#5C6B7A]">{timeAgo(note.created_at)}</span>
+                    <span className="text-xs font-semibold text-ink-900">{authorDisplay}</span>
+                    <span className="text-ink-500 text-xs">·</span>
+                    <span className="text-xs text-ink-500">{timeAgo(note.created_at)}</span>
                   </div>
                   {canPostNotes && (
                     <button type="button" onClick={() => deleteNote(note.id)}
-                      className="text-stone-300 hover:text-[#B8791F] transition-colors p-1 rounded-lg hover:bg-[#FDF3E3]">
+                      className="text-ink-500/40 hover:text-rust-600 transition-colors p-1 rounded-lg hover:bg-rust-50">
                       <Trash2 size={12} />
                     </button>
                   )}
                 </div>
-                <p className="text-sm text-stone-700 leading-relaxed">{note.body}</p>
+                <p className="text-sm text-ink-900 leading-relaxed">{note.body}</p>
               </div>
             );
           })}
@@ -695,22 +695,22 @@ export default function Home() {
       {/* ── Budget snapshot + total ────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <div className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A] mb-3">Category detail</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-3">Category detail</div>
           {summary?.byCategory.find(c => c.id === categoryId) ? (() => {
             const cur = summary!.byCategory.find(c => c.id === categoryId)!;
             return (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-semibold text-stone-900">{cur.name}</span>
+                  <span className="text-sm font-semibold text-ink-900">{cur.name}</span>
                   <AvailPill val={cur.available} />
                 </div>
                 <div className="space-y-2 text-sm">
                   {([["Budgeted", cur.budgeted], ["Activity", cur.activity], ["Available", cur.available]] as [string, number][]).map(([lbl, val]) => (
                     <div key={lbl} className="flex justify-between">
-                      <span className="text-stone-500">{lbl}</span>
+                      <span className="text-ink-500">{lbl}</span>
                       <span className={cn("font-semibold tabular-nums",
-                        lbl === "Available" && val < 0 ? "text-[#B8791F]" :
-                        lbl === "Available" ? "text-[#2F6B52]" : "text-stone-900")}>
+                        lbl === "Available" && val < 0 ? "text-rust-600" :
+                        lbl === "Available" ? "text-teal-600" : "text-ink-900")}>
                         {money(val)}
                       </span>
                     </div>
@@ -718,14 +718,14 @@ export default function Home() {
                 </div>
               </>
             );
-          })() : <p className="text-sm text-stone-400 mt-2">Select a category above to view details.</p>}
+          })() : <p className="text-sm text-ink-500 mt-2">Select a category above to view details.</p>}
         </Card>
 
         <Card>
-          <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">Total Available</div>
-          <div className="text-xs text-stone-400 mb-4">Across all budget categories</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">Total Available</div>
+          <div className="text-xs text-ink-500 mb-4">Across all budget categories</div>
           <div className={cn("font-display text-4xl font-semibold tabular-nums",
-            totalAvailable < 0 ? "text-[#B8791F]" : "text-stone-900")}>
+            totalAvailable < 0 ? "text-rust-600" : "text-ink-900")}>
             {money(totalAvailable)}
           </div>
         </Card>
@@ -735,14 +735,14 @@ export default function Home() {
       {canSeeTransactions && <Card className="p-0! overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div>
-            <div className="text-sm font-semibold text-[#0B2A4A]">Recent transactions</div>
-            <div className="text-xs text-[#5C6B7A]">Most recent 200 entries</div>
+            <div className="text-sm font-semibold text-ink-900">Recent transactions</div>
+            <div className="text-xs text-ink-500">Most recent 200 entries</div>
           </div>
-          <div className="inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1">
+          <div className="inline-flex rounded-xl border border-cream-200 bg-cream-50 p-1">
             {(["date", "category"] as const).map((s) => (
               <button key={s} type="button" onClick={() => setSortBy(s)}
                 className={cn("rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all",
-                  sortBy === s ? "bg-stone-900 text-white" : "text-stone-500 hover:text-stone-900")}>
+                  sortBy === s ? "bg-ink-900 text-white" : "text-ink-500 hover:text-ink-900")}>
                 {s}
               </button>
             ))}
@@ -750,31 +750,31 @@ export default function Home() {
         </div>
         <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
           {sortedSpends.length === 0 && (
-            <div className="px-5 py-10 text-center text-sm text-[#5C6B7A]">Nothing recorded yet. Add your first transaction above.</div>
+            <div className="px-5 py-10 text-center text-sm text-ink-500">Nothing recorded yet. Add your first transaction above.</div>
           )}
           {sortedSpends.map((row) => {
             const catName  = catNameById[row.category_id] || row.category_id;
             const available = catAvailableById[row.category_id];
             const isIncome  = row.category_id === INCOME_ID || row.direction === "in";
             return (
-              <div key={row.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[#F5F1EA] transition-colors">
+              <div key={row.id} className="flex items-center gap-3 px-5 py-3 hover:bg-cream-100 transition-colors">
                 <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
-                  isIncome ? "bg-[#EBF3EF] text-[#2F6B52]" : "bg-[#F5F1EA] text-[#5C6B7A]")}>
+                  isIncome ? "bg-teal-50 text-teal-600" : "bg-cream-100 text-ink-500")}>
                   {isIncome ? <Plus size={13} /> : <Minus size={13} />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={cn("font-semibold text-sm tabular-nums", isIncome ? "text-[#2F6B52]" : "text-[#0B2A4A]")}>
+                    <span className={cn("font-semibold text-sm tabular-nums", isIncome ? "text-teal-600" : "text-ink-900")}>
                       {isIncome ? "+" : ""}{money(row.amount)}
                     </span>
                     <AvailPill val={available} />
                   </div>
-                  <div className="text-xs text-stone-400 mt-0.5 truncate">
+                  <div className="text-xs text-ink-500 mt-0.5 truncate">
                     {catName} · {row.date}{row.note ? ` · ${row.note}` : ""}
                   </div>
                 </div>
                 <button type="button" disabled={busy} onClick={() => deleteSpend(row.id)}
-                  className="shrink-0 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-500 hover:bg-stone-100 disabled:opacity-40 transition-all">
+                  className="shrink-0 rounded-lg border border-cream-200 px-2.5 py-1.5 text-xs font-medium text-ink-500 hover:bg-cream-100 disabled:opacity-40 transition-all">
                   Undo
                 </button>
               </div>
