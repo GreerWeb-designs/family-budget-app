@@ -2,8 +2,7 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "reac
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import {
-  LayoutDashboard, PieChart, Receipt, Target, CalendarDays,
-  CreditCard, Settings, LogOut, RefreshCw, ChevronDown,
+  Settings, LogOut, RefreshCw, ChevronDown, ChevronRight,
   Home as HomeIcon,
 } from "lucide-react";
 import { api } from "./lib/api";
@@ -22,6 +21,7 @@ import Debts from "./pages/Debts";
 import SettingsPage from "./pages/Settings";
 import JoinHousehold from "./pages/JoinHousehold";
 import Onboarding from "./pages/Onboarding";
+import Grocery from "./pages/Grocery";
 
 type Totals = {
   bankBalance: number;
@@ -89,65 +89,57 @@ function ProtectedOnboarding({ children }: { children: ReactElement }) {
   return children;
 }
 
-const NAV_ITEMS = [
-  { to: "/home",     label: "Overview",  Icon: LayoutDashboard },
-  { to: "/budget",   label: "Budget",    Icon: PieChart },
-  { to: "/bills",    label: "Bills",     Icon: Receipt },
-  { to: "/goals",    label: "Goals",     Icon: Target },
-  { to: "/calendar", label: "Calendar",  Icon: CalendarDays },
-  { to: "/debts",    label: "Debts",     Icon: CreditCard },
-  { to: "/settings", label: "Settings",  Icon: Settings },
+type NavChild = { to: string; label: string; icon: string };
+type NavGroup = { to: string; label: string; icon: string; exact?: boolean; children?: NavChild[] };
+
+const NAV_GROUPS: NavGroup[] = [
+  { to: "/home",          label: "Overview",  icon: "🏠", exact: true },
+  {
+    to: "/finances",      label: "Finances",  icon: "💰",
+    children: [
+      { to: "/budget",   label: "Budget",   icon: "📊" },
+      { to: "/bills",    label: "Bills",    icon: "📄" },
+      { to: "/debts",    label: "Debts",    icon: "💳" },
+    ],
+  },
+  {
+    to: "/household-hub", label: "Household", icon: "🏡",
+    children: [
+      { to: "/goals",    label: "Goals",    icon: "🎯" },
+      { to: "/calendar", label: "Calendar", icon: "📅" },
+      { to: "/grocery",  label: "Grocery",  icon: "🛒" },
+    ],
+  },
+  { to: "/settings",      label: "Settings",  icon: "⚙️", exact: true },
 ];
 
 const MOBILE_NAV = [
-  { to: "/home",     label: "Home",     Icon: HomeIcon },
-  { to: "/budget",   label: "Budget",   Icon: PieChart },
-  { to: "/bills",    label: "Bills",    Icon: Receipt },
-  { to: "/goals",    label: "Goals",    Icon: Target },
-  { to: "/calendar", label: "Cal",      Icon: CalendarDays },
-  { to: "/debts",    label: "Debts",    Icon: CreditCard },
-  { to: "/settings", label: "Settings", Icon: Settings },
+  { to: "/home",     label: "Overview",  icon: "🏠", activeFor: [] as string[] },
+  { to: "/budget",   label: "Finances",  icon: "💰", activeFor: ["/budget", "/bills", "/debts"] },
+  { to: "/goals",    label: "Household", icon: "🏡", activeFor: ["/goals", "/calendar", "/grocery"] },
+  { to: "/settings", label: "Settings",  icon: "⚙️", activeFor: [] as string[] },
 ];
-
-function SideLink({ to, label, Icon }: { to: string; label: string; Icon: React.FC<{ size?: number; className?: string }> }) {
-  return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        cn(
-          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
-          isActive
-            ? "font-semibold text-[#C8A464]"
-            : "text-[#8A9BA8] hover:text-[#C8A464] hover:bg-white/5"
-        )
-      }
-      style={({ isActive }) => isActive ? { background: "rgba(200, 164, 100, 0.12)" } : {}}
-    >
-      {({ isActive }) => (
-        <>
-          <Icon size={16} className={isActive ? "text-[#C8A464]" : "text-[#5C6B7A]"} />
-          <span>{label}</span>
-          {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#C8A464]" />}
-        </>
-      )}
-    </NavLink>
-  );
-}
 
 function PageTitle() {
   const { pathname } = useLocation();
-  const { title } = useMemo(() => {
-    if (pathname.startsWith("/budget"))   return { title: "Budget" };
-    if (pathname.startsWith("/bills"))    return { title: "Bills" };
-    if (pathname.startsWith("/calendar")) return { title: "Calendar" };
-    if (pathname.startsWith("/goals"))    return { title: "Goals" };
-    if (pathname.startsWith("/debts"))    return { title: "Debts" };
-    if (pathname.startsWith("/settings")) return { title: "Settings" };
-    return { title: "Overview" };
+  const { title, icon } = useMemo(() => {
+    if (pathname.startsWith("/budget"))    return { title: "Budget",    icon: "📊" };
+    if (pathname.startsWith("/bills"))     return { title: "Bills",     icon: "📄" };
+    if (pathname.startsWith("/debts"))     return { title: "Debts",     icon: "💳" };
+    if (pathname.startsWith("/goals"))     return { title: "Goals",     icon: "🎯" };
+    if (pathname.startsWith("/calendar"))  return { title: "Calendar",  icon: "📅" };
+    if (pathname.startsWith("/grocery"))   return { title: "Grocery",   icon: "🛒" };
+    if (pathname.startsWith("/settings"))  return { title: "Settings",  icon: "⚙️" };
+    if (pathname.startsWith("/finances"))  return { title: "Finances",  icon: "💰" };
+    if (pathname.startsWith("/household")) return { title: "Household", icon: "🏡" };
+    return { title: "Overview", icon: "🏠" };
   }, [pathname]);
 
   return (
-    <h1 className="text-lg font-medium text-[#0B2A4A]">{title}</h1>
+    <div className="flex items-center gap-2">
+      <span className="text-lg">{icon}</span>
+      <h1 className="text-base font-medium text-[#0B2A4A]">{title}</h1>
+    </div>
   );
 }
 
@@ -179,12 +171,24 @@ function TbbPill({ tbb, loading }: { tbb: number; loading: boolean }) {
 
 function AppShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
+  const location = useLocation();
   const [totals, setTotals]           = useState<Totals | null>(null);
   const [loadingTotals, setLoadingTotals] = useState(false);
   const [userName, setUserName]       = useState("");
   const [userEmail, setUserEmail]     = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const path = location.pathname;
+    if (["/budget", "/bills", "/debts"].some((p) => path.startsWith(p))) {
+      setExpandedGroups((prev) => [...new Set([...prev, "finances"])]);
+    }
+    if (["/goals", "/calendar", "/grocery"].some((p) => path.startsWith(p))) {
+      setExpandedGroups((prev) => [...new Set([...prev, "household"])]);
+    }
+  }, [location.pathname]);
 
   async function refreshTotals() {
     setLoadingTotals(true);
@@ -259,9 +263,94 @@ function AppShell({ children }: { children: ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 px-3">
-          {NAV_ITEMS.map((item) => (
-            <SideLink key={item.to} {...item} />
-          ))}
+          {NAV_GROUPS.map((group) => {
+            if (!group.children) {
+              // Simple link (Overview, Settings)
+              return (
+                <NavLink
+                  key={group.to}
+                  to={group.to}
+                  end={group.exact}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                      isActive
+                        ? "font-semibold text-[#C8A464]"
+                        : "text-[#8A9BA8] hover:text-[#C8A464] hover:bg-white/5"
+                    )
+                  }
+                  style={({ isActive }) => isActive ? { background: "rgba(200, 164, 100, 0.12)" } : {}}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className="text-base leading-none">{group.icon}</span>
+                      <span>{group.label}</span>
+                      {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#C8A464]" />}
+                    </>
+                  )}
+                </NavLink>
+              );
+            }
+
+            // Expandable group (Finances, Household)
+            const groupKey = group.label.toLowerCase();
+            const isExpanded = expandedGroups.includes(groupKey);
+            const hasActiveChild = group.children.some((c) =>
+              location.pathname.startsWith(c.to)
+            );
+
+            return (
+              <div key={group.to}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedGroups((prev) =>
+                      prev.includes(groupKey)
+                        ? prev.filter((g) => g !== groupKey)
+                        : [...prev, groupKey]
+                    )
+                  }
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                    hasActiveChild
+                      ? "text-white"
+                      : "text-[#8A9BA8] hover:text-[#C8A464] hover:bg-white/5"
+                  )}
+                  style={hasActiveChild ? { background: "rgba(200, 164, 100, 0.08)" } : {}}
+                >
+                  <span className="text-base leading-none">{group.icon}</span>
+                  <span>{group.label}</span>
+                  <span className="ml-auto text-[#5C6B7A]">
+                    {isExpanded
+                      ? <ChevronDown size={13} />
+                      : <ChevronRight size={13} />}
+                  </span>
+                </button>
+
+                {isExpanded && (
+                  <div className="mt-0.5 space-y-0.5 pl-4">
+                    {group.children.map((child) => (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150",
+                            isActive
+                              ? "text-white bg-white/10"
+                              : "text-[#5C6B7A] hover:text-[#C8A464] hover:bg-white/5"
+                          )
+                        }
+                      >
+                        <span className="text-sm leading-none">{child.icon}</span>
+                        <span>{child.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* User footer */}
@@ -371,25 +460,24 @@ function AppShell({ children }: { children: ReactNode }) {
         {/* ── Mobile bottom tab bar ──────────────────── */}
         <nav className="mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t bg-white/95 backdrop-blur-sm"
           style={{ borderColor: "var(--color-border)" }}>
-          {MOBILE_NAV.map(({ to, label, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                cn(
+          {MOBILE_NAV.map(({ to, label, icon, activeFor }) => {
+            const active =
+              location.pathname === to ||
+              (activeFor.length > 0 && activeFor.some((p) => location.pathname.startsWith(p)));
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                className={cn(
                   "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
-                  isActive ? "text-[#0B2A4A]" : "text-[#5C6B7A]"
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
-                  <span className={isActive ? "font-semibold" : ""}>{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+                  active ? "text-[#0B2A4A]" : "text-[#5C6B7A]"
+                )}
+              >
+                <span className={cn("text-xl leading-none", active ? "opacity-100" : "opacity-60")}>{icon}</span>
+                <span className={active ? "font-semibold" : ""}>{label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="mobile-tab-spacer h-16 lg:hidden" />
@@ -415,13 +503,16 @@ export default function App() {
       <Route path="/reset-password"  element={<ResetPassword />} />
       <Route path="/"                element={<Navigate to="/home" replace />} />
       <Route path="/onboarding"      element={<ProtectedOnboarding><Onboarding /></ProtectedOnboarding>} />
-      <Route path="/home"     element={<ProtectedLayout><Home /></ProtectedLayout>} />
-      <Route path="/budget"   element={<ProtectedLayout><Budget /></ProtectedLayout>} />
-      <Route path="/bills"    element={<ProtectedLayout><Bills /></ProtectedLayout>} />
-      <Route path="/goals"    element={<ProtectedLayout><Goals /></ProtectedLayout>} />
-      <Route path="/calendar" element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
-      <Route path="/debts"    element={<ProtectedLayout><Debts /></ProtectedLayout>} />
-      <Route path="/settings" element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
+      <Route path="/home"          element={<ProtectedLayout><Home /></ProtectedLayout>} />
+      <Route path="/finances"      element={<Navigate to="/budget" replace />} />
+      <Route path="/budget"        element={<ProtectedLayout><Budget /></ProtectedLayout>} />
+      <Route path="/bills"         element={<ProtectedLayout><Bills /></ProtectedLayout>} />
+      <Route path="/debts"         element={<ProtectedLayout><Debts /></ProtectedLayout>} />
+      <Route path="/household-hub" element={<Navigate to="/goals" replace />} />
+      <Route path="/goals"         element={<ProtectedLayout><Goals /></ProtectedLayout>} />
+      <Route path="/calendar"      element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
+      <Route path="/grocery"       element={<ProtectedLayout><Grocery /></ProtectedLayout>} />
+      <Route path="/settings"      element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
       <Route path="/join/:code" element={<JoinHousehold />} />
       <Route path="*"         element={<Navigate to="/home" replace />} />
     </Routes>
