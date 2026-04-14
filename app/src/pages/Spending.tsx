@@ -143,7 +143,7 @@ export default function Spending() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(v: number) => money(v)}
+                      formatter={(v) => money(Number(v))}
                       contentStyle={{ borderRadius: 12, border: "1px solid #EDE7D8", fontSize: 12 }}
                     />
                   </PieChart>
@@ -197,7 +197,7 @@ export default function Spending() {
                     axisLine={false} tickLine={false} width={40}
                   />
                   <Tooltip
-                    formatter={(v: number) => money(v)}
+                    formatter={(v) => money(Number(v))}
                     labelFormatter={(m) => monthLabel(m as string)}
                     contentStyle={{ borderRadius: 12, border: "1px solid #EDE7D8", fontSize: 12 }}
                   />
