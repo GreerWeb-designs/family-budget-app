@@ -1045,12 +1045,15 @@ app.delete("/api/goals/:id", requireUser, async (c) => {
 });
 
 // ---- DEBTS (personal — user_id scoped, unchanged) ----
-type DebtRow = { id: string; name: string; balance: number; apr: number; payment: number; payments_remaining: number; created_at: string; updated_at: string };
+type DebtRow = { id: string; name: string; balance: number; apr: number; payment: number; payments_remaining: number; debt_type: string; principal_and_interest: number | null; includes_escrow: number; escrow_amount: number | null; created_at: string; updated_at: string };
 
 app.get("/api/debts", requireUser, async (c) => {
   const userId = c.get("userId");
   const rows = await c.env.DB.prepare(
-    `SELECT id, name, balance, apr, min_payment AS payment, payments_remaining, created_at, updated_at FROM debts WHERE user_id = ? ORDER BY created_at DESC`
+    `SELECT id, name, balance, apr, min_payment AS payment, payments_remaining,
+     COALESCE(debt_type, 'other') AS debt_type,
+     principal_and_interest, COALESCE(includes_escrow, 0) AS includes_escrow, escrow_amount,
+     created_at, updated_at FROM debts WHERE user_id = ? ORDER BY created_at DESC`
   )
     .bind(userId)
     .all<DebtRow>();
@@ -1059,12 +1062,19 @@ app.get("/api/debts", requireUser, async (c) => {
 
 app.post("/api/debts", requireUser, async (c) => {
   const userId = c.get("userId");
-  const body = await c.req.json<{ name?: string; balance?: number; apr?: number; payment?: number; paymentsRemaining?: number }>();
+  const body = await c.req.json<{
+    name?: string; balance?: number; apr?: number; payment?: number; paymentsRemaining?: number;
+    debtType?: string; principalAndInterest?: number | null; includesEscrow?: boolean; escrowAmount?: number | null;
+  }>();
   const name = (body.name || "").trim();
   const balance = Number(body.balance);
   const apr = Number(body.apr);
   const payment = Number(body.payment);
   const paymentsRemaining = Number(body.paymentsRemaining ?? 0);
+  const debtType = body.debtType || "other";
+  const principalAndInterest = body.principalAndInterest != null ? Number(body.principalAndInterest) : null;
+  const includesEscrow = body.includesEscrow ? 1 : 0;
+  const escrowAmount = body.escrowAmount != null ? Number(body.escrowAmount) : null;
 
   if (!name || Number.isNaN(balance) || Number.isNaN(apr) || Number.isNaN(payment)) {
     return c.json({ error: "Bad payload" }, 400);
@@ -1073,9 +1083,10 @@ app.post("/api/debts", requireUser, async (c) => {
   const now = new Date().toISOString();
   const id = uid();
   await c.env.DB.prepare(
-    `INSERT INTO debts (id, user_id, name, balance, apr, min_payment, payments_remaining, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO debts (id, user_id, name, balance, apr, min_payment, payments_remaining, debt_type, principal_and_interest, includes_escrow, escrow_amount, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(id, userId, name, balance, apr, payment, paymentsRemaining, now, now)
+    .bind(id, userId, name, balance, apr, payment, paymentsRemaining, debtType, principalAndInterest, includesEscrow, escrowAmount, now, now)
     .run();
 
   return c.json({ ok: true, id });
@@ -1084,7 +1095,10 @@ app.post("/api/debts", requireUser, async (c) => {
 app.patch("/api/debts/:id", requireUser, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id");
-  const body = await c.req.json<{ name?: string; balance?: number; apr?: number; payment?: number; paymentsRemaining?: number }>();
+  const body = await c.req.json<{
+    name?: string; balance?: number; apr?: number; payment?: number; paymentsRemaining?: number;
+    debtType?: string; principalAndInterest?: number | null; includesEscrow?: boolean; escrowAmount?: number | null;
+  }>();
 
   const existing = await c.env.DB.prepare(`SELECT id FROM debts WHERE id = ? AND user_id = ? LIMIT 1`)
     .bind(id, userId).first<{ id: string }>();
@@ -1102,6 +1116,10 @@ app.patch("/api/debts/:id", requireUser, async (c) => {
   if (body.apr !== undefined) { const n = Number(body.apr); if (Number.isNaN(n)) return c.json({ error: "apr must be a number" }, 400); sets.push("apr = ?"); binds.push(n); }
   if (body.payment !== undefined) { const n = Number(body.payment); if (Number.isNaN(n)) return c.json({ error: "payment must be a number" }, 400); sets.push("min_payment = ?"); binds.push(n); }
   if (body.paymentsRemaining !== undefined) { const n = Number(body.paymentsRemaining); if (Number.isNaN(n)) return c.json({ error: "paymentsRemaining must be a number" }, 400); sets.push("payments_remaining = ?"); binds.push(n); }
+  if (body.debtType !== undefined) { sets.push("debt_type = ?"); binds.push(body.debtType || "other"); }
+  if (body.principalAndInterest !== undefined) { sets.push("principal_and_interest = ?"); binds.push(body.principalAndInterest != null ? Number(body.principalAndInterest) : null); }
+  if (body.includesEscrow !== undefined) { sets.push("includes_escrow = ?"); binds.push(body.includesEscrow ? 1 : 0); }
+  if (body.escrowAmount !== undefined) { sets.push("escrow_amount = ?"); binds.push(body.escrowAmount != null ? Number(body.escrowAmount) : null); }
 
   const now = new Date().toISOString();
   sets.push("updated_at = ?"); binds.push(now);
