@@ -128,6 +128,71 @@ const MOBILE_NAV = [
   { to: "/settings", label: "Settings",  icon: "⚙️", activeFor: [] as string[] },
 ];
 
+const SUB_NAV: Record<string, { to: string; label: string; icon: string }[]> = {
+  finances: [
+    { to: "/budget",   label: "Budget",    icon: "📊" },
+    { to: "/bills",    label: "Bills",     icon: "📄" },
+    { to: "/debts",    label: "Debts",     icon: "💳" },
+  ],
+  household: [
+    { to: "/goals",    label: "Goals",     icon: "🎯" },
+    { to: "/calendar", label: "Calendar",  icon: "📅" },
+    { to: "/recipes",  label: "Recipes",   icon: "📖" },
+    { to: "/meals",    label: "Meal plan", icon: "🍽️" },
+    { to: "/grocery",  label: "Grocery",   icon: "🛒" },
+    { to: "/chores",   label: "Chores",    icon: "🧹" },
+  ],
+};
+
+const ROUTE_GROUP: Record<string, string> = {
+  "/budget":   "finances",
+  "/bills":    "finances",
+  "/debts":    "finances",
+  "/goals":    "household",
+  "/calendar": "household",
+  "/recipes":  "household",
+  "/meals":    "household",
+  "/grocery":  "household",
+  "/chores":   "household",
+};
+
+function SubNav() {
+  const { pathname } = useLocation();
+  const groupKey = Object.entries(ROUTE_GROUP).find(([prefix]) =>
+    pathname === prefix || pathname.startsWith(prefix + "/")
+  )?.[1];
+  const tabs = groupKey ? SUB_NAV[groupKey] : null;
+  if (!tabs) return null;
+  return (
+    <div
+      className="sticky z-10 relative flex items-center border-b bg-white/95 backdrop-blur-sm overflow-x-auto scrollbar-hide"
+      style={{ top: "56px", borderColor: "var(--color-border)", scrollbarWidth: "none", msOverflowStyle: "none" }}
+    >
+      <div className="flex items-center gap-1 px-4 h-10 min-w-max">
+        {tabs.map(({ to, label, icon }) => {
+          const isActive = pathname === to || pathname.startsWith(to + "/");
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap",
+                isActive
+                  ? "bg-[#0B2A4A] text-white shadow-sm"
+                  : "text-[#5C6B7A] hover:bg-[#F5F1EA] hover:text-[#0B2A4A]"
+              )}
+            >
+              <span className="text-sm leading-none">{icon}</span>
+              <span>{label}</span>
+            </NavLink>
+          );
+        })}
+      </div>
+      <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+    </div>
+  );
+}
+
 function PageTitle() {
   const { pathname } = useLocation();
   const { title, icon } = useMemo(() => {
@@ -340,7 +405,7 @@ function AppShell({ children }: { children: ReactNode }) {
                       ? "text-white"
                       : "text-[#8A9BA8] hover:text-[#C8A464] hover:bg-white/5"
                   )}
-                  style={hasActiveChild ? { background: "rgba(200, 164, 100, 0.08)" } : {}}
+                  style={hasActiveChild ? { background: "rgba(200, 164, 100, 0.08)", borderLeft: "2px solid #C8A464", paddingLeft: "calc(0.75rem - 2px)" } : {}}
                 >
                   <span className="text-base leading-none">{g.icon}</span>
                   <span>{g.label}</span>
@@ -474,6 +539,9 @@ function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
+        {/* Sub-navigation strip */}
+        <SubNav />
+
         {/* Page content */}
         <main className="flex-1 px-4 py-5 md:px-6 md:py-6 max-w-[1200px] w-full mx-auto min-w-0 overflow-x-hidden">
           {children}
@@ -491,10 +559,13 @@ function AppShell({ children }: { children: ReactNode }) {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+                  "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-all relative",
                   active ? "text-[#0B2A4A]" : "text-[#5C6B7A]"
                 )}
               >
+                {active && (
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-[#C8A464]" />
+                )}
                 <span className={cn("text-xl leading-none", active ? "opacity-100" : "opacity-60")}>{icon}</span>
                 <span className={active ? "font-semibold" : ""}>{label}</span>
               </NavLink>
