@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { api } from "./lib/api";
 import { cn, money } from "./lib/utils";
+import { UserProvider, useUser } from "./lib/UserContext";
+import { canAccess, isDependent } from "./lib/permissions";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -181,13 +183,14 @@ function TbbPill({ tbb, loading }: { tbb: number; loading: boolean }) {
 function AppShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const location = useLocation();
+  const { user } = useUser();
   const [totals, setTotals]           = useState<Totals | null>(null);
   const [loadingTotals, setLoadingTotals] = useState(false);
-  const [userName, setUserName]       = useState("");
-  const [userEmail, setUserEmail]     = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const userName = user?.name ?? "";
+  const userEmail = user?.email ?? "";
 
   useEffect(() => {
     const path = location.pathname;
@@ -212,9 +215,6 @@ function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshTotals();
-    api<{ name: string; email: string }>("/api/auth/me")
-      .then((r) => { setUserName(r.name || ""); setUserEmail(r.email || ""); })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -277,13 +277,24 @@ function AppShell({ children }: { children: ReactNode }) {
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 px-3">
           {NAV_GROUPS.map((group) => {
-            if (!group.children) {
-              // Simple link (Overview, Settings)
+            // Filter children by permissions for dependent accounts
+            const visibleChildren = group.children?.filter((child) => {
+              if (child.to === "/budget") return canAccess(user, "can_see_budget");
+              if (child.to === "/bills")  return canAccess(user, "can_see_bills");
+              if (child.to === "/debts")  return canAccess(user, "can_see_debts");
+              if (child.to === "/goals")  return canAccess(user, "can_see_goals");
+              return true;
+            });
+            // Hide entire Finances group if dependent has no financial access
+            if (group.label === "Finances" && isDependent(user) && visibleChildren?.length === 0) return null;
+            const g = visibleChildren ? { ...group, children: visibleChildren } : group;
+
+            if (!g.children) {
               return (
                 <NavLink
-                  key={group.to}
-                  to={group.to}
-                  end={group.exact}
+                  key={g.to}
+                  to={g.to}
+                  end={g.exact}
                   className={({ isActive }) =>
                     cn(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
@@ -296,8 +307,8 @@ function AppShell({ children }: { children: ReactNode }) {
                 >
                   {({ isActive }) => (
                     <>
-                      <span className="text-base leading-none">{group.icon}</span>
-                      <span>{group.label}</span>
+                      <span className="text-base leading-none">{g.icon}</span>
+                      <span>{g.label}</span>
                       {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[#C8A464]" />}
                     </>
                   )}
@@ -306,20 +317,20 @@ function AppShell({ children }: { children: ReactNode }) {
             }
 
             // Expandable group (Finances, Household)
-            const groupKey = group.label.toLowerCase();
+            const groupKey = g.label.toLowerCase();
             const isExpanded = expandedGroups.includes(groupKey);
-            const hasActiveChild = group.children.some((c) =>
+            const hasActiveChild = g.children.some((c) =>
               location.pathname.startsWith(c.to)
             );
 
             return (
-              <div key={group.to}>
+              <div key={g.to}>
                 <button
                   type="button"
                   onClick={() =>
                     setExpandedGroups((prev) =>
                       prev.includes(groupKey)
-                        ? prev.filter((g) => g !== groupKey)
+                        ? prev.filter((x) => x !== groupKey)
                         : [...prev, groupKey]
                     )
                   }
@@ -331,18 +342,16 @@ function AppShell({ children }: { children: ReactNode }) {
                   )}
                   style={hasActiveChild ? { background: "rgba(200, 164, 100, 0.08)" } : {}}
                 >
-                  <span className="text-base leading-none">{group.icon}</span>
-                  <span>{group.label}</span>
+                  <span className="text-base leading-none">{g.icon}</span>
+                  <span>{g.label}</span>
                   <span className="ml-auto text-[#5C6B7A]">
-                    {isExpanded
-                      ? <ChevronDown size={13} />
-                      : <ChevronRight size={13} />}
+                    {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                   </span>
                 </button>
 
                 {isExpanded && (
                   <div className="mt-0.5 space-y-0.5 pl-4">
-                    {group.children.map((child) => (
+                    {g.children.map((child) => (
                       <NavLink
                         key={child.to}
                         to={child.to}
@@ -509,6 +518,7 @@ function ProtectedLayout({ children }: { children: ReactElement }) {
 
 export default function App() {
   return (
+    <UserProvider>
     <Routes>
       <Route path="/login"           element={<Login />} />
       <Route path="/signup"          element={<Signup />} />
@@ -532,5 +542,6 @@ export default function App() {
       <Route path="/join/:code" element={<JoinHousehold />} />
       <Route path="*"         element={<Navigate to="/home" replace />} />
     </Routes>
+    </UserProvider>
   );
 }

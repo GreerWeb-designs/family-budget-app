@@ -424,7 +424,7 @@ function RecipeFormModal({
 
 /* ── DetailView ──────────────────────────────────────── */
 function DetailView({
-  detail, onBack, onEdit, onDelete, onMealAdded, msg, setMsg,
+  detail, onBack, onEdit, onDelete, onMealAdded, msg, setMsg: _setMsg,
 }: {
   detail: RecipeDetail;
   onBack: () => void;

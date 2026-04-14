@@ -3,6 +3,8 @@ import { CheckCircle2, Circle, Trash2, Target, PlusCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 type Goal = {
   id: string;
@@ -36,6 +38,7 @@ function money(n: number) {
 }
 
 export default function Goals() {
+  const { user } = useUser();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -54,6 +57,16 @@ export default function Goals() {
     const r = await api<{ goals: Goal[] }>("/api/goals");
     setGoals(r.goals);
   }
+  if (!canAccess(user, "can_see_goals")) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-4xl mb-3">🔒</div>
+        <p className="text-sm font-medium text-[#0B2A4A] mb-1">Goals is restricted</p>
+        <p className="text-xs text-[#5C6B7A]">Ask your household admin to grant access.</p>
+      </div>
+    );
+  }
+
   useEffect(() => { refresh(); }, []);
 
   const active = useMemo(() => goals.filter((g) => g.status === "active"), [goals]);

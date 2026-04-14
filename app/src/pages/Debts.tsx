@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { PlusCircle, Trash2, CreditCard, TrendingDown } from "lucide-react";
 import { api } from "../lib/api";
 import { cn, money } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 type Debt     = { id: string; name: string; balance: number; apr: number; payment: number; paymentsRemaining: number; created_at: string; updated_at: string };
 type DebtApiRow = { id: string; name: string; balance: number; apr: number; payment: number; payments_remaining?: number; created_at: string; updated_at: string };
@@ -61,6 +63,7 @@ const BAR_COLORS = ["#0B2A4A","#2F6B52","#C8A464","#5C6B7A","#B8791F","#1A4A7A",
 const inputCls = "h-10 w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm tabular-nums outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
 
 export default function Debts() {
+  const { user } = useUser();
   const [busy, setBusy]         = useState(false);
   const [msg, setMsg]           = useState<string | null>(null);
   const [debts, setDebts]       = useState<Debt[]>([]);
@@ -91,6 +94,16 @@ export default function Debts() {
       setDrafts(nd);
     } catch (err: any) { setMsg(err?.message || "Error loading."); }
     finally { setBusy(false); }
+  }
+
+  if (!canAccess(user, "can_see_debts")) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-4xl mb-3">🔒</div>
+        <p className="text-sm font-medium text-[#0B2A4A] mb-1">Debts is restricted</p>
+        <p className="text-xs text-[#5C6B7A]">Ask your household admin to grant access.</p>
+      </div>
+    );
   }
 
   useEffect(() => { refresh(); }, []);

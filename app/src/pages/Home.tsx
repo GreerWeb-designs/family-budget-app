@@ -6,6 +6,8 @@ import {
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { api } from "../lib/api";
 import { cn, money } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 /* ── Types ──────────────────────────────────────────── */
 type Category   = { id: string; name: string; direction?: string };
@@ -86,6 +88,10 @@ function AvailPill({ val }: { val: number | null | undefined }) {
    Main component
 ═══════════════════════════════════════════════════════ */
 export default function Home() {
+  const { user } = useUser();
+  const canSeeTransactions = canAccess(user, "can_see_transactions");
+  const canViewNotes       = canAccess(user, "can_view_notes");
+  const canPostNotes       = canAccess(user, "can_post_notes");
   const [cats, setCats]         = useState<Category[]>([]);
   const INCOME_ID = useMemo(() => cats.find((c) => c.direction === "inflow")?.id ?? "income", [cats]);
   const [summary, setSummary]   = useState<SummaryRes | null>(null);
@@ -344,7 +350,7 @@ export default function Home() {
       </div>
 
       {/* ── Record a transaction ──────────────────────── */}
-      <Card>
+      {canSeeTransactions && <Card>
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="text-sm font-semibold text-[#0B2A4A]">Record a transaction</div>
@@ -450,7 +456,7 @@ export default function Home() {
             )}
           </div>
         </form>
-      </Card>
+      </Card>}
 
       {/* ── Cards grid ────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -635,27 +641,29 @@ export default function Home() {
       </Card>
 
       {/* ── Family Notes ──────────────────────────────── */}
-      <Card>
+      {canViewNotes && <Card>
         <CardHeader title="Crew notes" sub="Visible to your whole household" icon={MessageSquare} />
-        <div className="flex gap-2 mb-4">
-          <div className="relative flex-1">
-            <textarea
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/15 focus:border-[#C8A464] transition-all resize-none text-stone-900 placeholder-stone-400"
-              rows={2} maxLength={500}
-              placeholder="Leave a note for the family…"
-              value={noteInput}
-              onChange={(e) => setNoteInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postNote(); }}
-            />
-            <span className="absolute bottom-2 right-3 text-[10px] text-stone-300">{noteInput.length}/500</span>
+        {canPostNotes && (
+          <div className="flex gap-2 mb-4">
+            <div className="relative flex-1">
+              <textarea
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#C8A464]/15 focus:border-[#C8A464] transition-all resize-none text-stone-900 placeholder-stone-400"
+                rows={2} maxLength={500}
+                placeholder="Leave a note for the family…"
+                value={noteInput}
+                onChange={(e) => setNoteInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postNote(); }}
+              />
+              <span className="absolute bottom-2 right-3 text-[10px] text-stone-300">{noteInput.length}/500</span>
+            </div>
+            <button type="button" onClick={postNote} disabled={!noteInput.trim()}
+              className="self-end h-10 px-4 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all flex items-center gap-1.5"
+              style={{ background: "#0B2A4A" }}>
+              <Send size={13} />
+              <span className="hidden sm:inline">Send</span>
+            </button>
           </div>
-          <button type="button" onClick={postNote} disabled={!noteInput.trim()}
-            className="self-end h-10 px-4 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all flex items-center gap-1.5"
-            style={{ background: "#0B2A4A" }}>
-            <Send size={13} />
-            <span className="hidden sm:inline">Send</span>
-          </button>
-        </div>
+        )}
         <div className="space-y-2">
           {notes.length === 0 ? (
             <p className="text-sm text-[#5C6B7A] text-center py-4">No notes yet. Be the first to leave one.</p>
@@ -670,17 +678,19 @@ export default function Home() {
                     <span className="text-[#5C6B7A] text-xs">·</span>
                     <span className="text-xs text-[#5C6B7A]">{timeAgo(note.created_at)}</span>
                   </div>
-                  <button type="button" onClick={() => deleteNote(note.id)}
-                    className="text-stone-300 hover:text-[#B8791F] transition-colors p-1 rounded-lg hover:bg-[#FDF3E3]">
-                    <Trash2 size={12} />
-                  </button>
+                  {canPostNotes && (
+                    <button type="button" onClick={() => deleteNote(note.id)}
+                      className="text-stone-300 hover:text-[#B8791F] transition-colors p-1 rounded-lg hover:bg-[#FDF3E3]">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
                 <p className="text-sm text-stone-700 leading-relaxed">{note.body}</p>
               </div>
             );
           })}
         </div>
-      </Card>
+      </Card>}
 
       {/* ── Budget snapshot + total ────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -722,7 +732,7 @@ export default function Home() {
       </div>
 
       {/* ── Transaction History ───────────────────────── */}
-      <Card className="p-0! overflow-hidden">
+      {canSeeTransactions && <Card className="p-0! overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div>
             <div className="text-sm font-semibold text-[#0B2A4A]">Recent transactions</div>
@@ -771,7 +781,7 @@ export default function Home() {
             );
           })}
         </div>
-      </Card>
+      </Card>}
 
     </div>
   );

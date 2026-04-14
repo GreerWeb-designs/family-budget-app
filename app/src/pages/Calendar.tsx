@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -21,6 +23,8 @@ function prettyDT(iso: string) { return new Date(iso).toLocaleString(undefined, 
 function prettyDate(iso: string) { return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }); }
 
 export default function Calendar() {
+  const { user } = useUser();
+  const canAddCalendar = canAccess(user, "can_add_calendar");
   const [rangeData, setRangeData] = useState<RangeRes | null>(null);
   const [meals, setMeals] = useState<MealCalEvent[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
@@ -142,11 +146,13 @@ export default function Calendar() {
     <div className="space-y-4">
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">Click a day to add an event · Click an event to view</p>
-        <button type="button" onClick={() => openAdd(new Date(), true)}
-          className="h-9 rounded-xl px-4 text-xs font-semibold text-white transition-all" style={{ background: "#0B2A4A" }}>
-          + Add Event
-        </button>
+        <p className="text-xs text-slate-400">{canAddCalendar ? "Click a day to add an event · " : ""}Click an event to view</p>
+        {canAddCalendar && (
+          <button type="button" onClick={() => openAdd(new Date(), true)}
+            className="h-9 rounded-xl px-4 text-xs font-semibold text-white transition-all" style={{ background: "#0B2A4A" }}>
+            + Add Event
+          </button>
+        )}
       </div>
 
       {msg && <div className="rounded-xl border bg-[#FDF3E3] border-[#B8791F]/30 px-4 py-2.5 text-sm text-[#B8791F]">{msg}</div>}
@@ -213,7 +219,7 @@ export default function Calendar() {
       </div>
 
       {/* Add Event Modal */}
-      {addOpen && (
+      {canAddCalendar && addOpen && (
         <Modal onClose={() => setAddOpen(false)}>
           <div className="flex items-start justify-between mb-4">
             <div>

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Zap, Hand, Trash2, PlusCircle, Receipt } from "lucide-react";
 import { api } from "../lib/api";
 import { cn, money } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 type Bill = { id: string; name: string; amount: number; mode: "auto" | "manual"; day_of_month: number };
 
@@ -14,6 +16,7 @@ function ordinal(n: number) {
 const inputCls = "h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
 
 export default function Bills() {
+  const { user } = useUser();
   const [bills, setBills]         = useState<Bill[]>([]);
   const [name, setName]           = useState("");
   const [amount, setAmount]       = useState("");
@@ -26,6 +29,16 @@ export default function Bills() {
   async function refresh() {
     const r = await api<{ bills: Bill[] }>("/api/bills");
     setBills(r.bills ?? []);
+  }
+
+  if (!canAccess(user, "can_see_bills")) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-4xl mb-3">🔒</div>
+        <p className="text-sm font-medium text-[#0B2A4A] mb-1">Bills is restricted</p>
+        <p className="text-xs text-[#5C6B7A]">Ask your household admin to grant access.</p>
+      </div>
+    );
   }
 
   useEffect(() => { refresh(); }, []);

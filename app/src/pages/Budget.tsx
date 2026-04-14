@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { api } from "../lib/api";
 import { cn, money } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 type Category   = { id: string; name: string; direction?: string };
 type SummaryRow = { id: string; name: string; budgeted: number; activity: number; available: number };
@@ -32,6 +34,7 @@ function getPrevMonth(m: string) {
 const inputCls = "h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
 
 export default function Budget() {
+  const { user } = useUser();
   const [cats, setCats]           = useState<Category[]>([]);
   const [summary, setSummary]     = useState<SummaryRes | null>(null);
   const [totals, setTotals]       = useState<TotalsRes | null>(null);
@@ -89,6 +92,16 @@ export default function Budget() {
     setBankInput(String(accRes.bankBalance ?? 0));
     setCategoryId((prev) => { if (prev && nonIncome.some((c) => c.id === prev)) return prev; return nonIncome[0]?.id ?? ""; });
     setTxCategoryId((prev) => { if (prev && nonIncome.some((c) => c.id === prev)) return prev; return nonIncome[0]?.id ?? ""; });
+  }
+
+  if (!canAccess(user, "can_see_budget")) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-4xl mb-3">🔒</div>
+        <p className="text-sm font-medium text-[#0B2A4A] mb-1">Budget is restricted</p>
+        <p className="text-xs text-[#5C6B7A]">Ask your household admin to grant access.</p>
+      </div>
+    );
   }
 
   useEffect(() => {

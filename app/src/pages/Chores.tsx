@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 type Chore = {
   id: string;
@@ -62,6 +64,8 @@ const inputCls =
 type Filter = "all" | "pending" | "completed";
 
 export default function Chores() {
+  const { user } = useUser();
+  const canAddChores = canAccess(user, "can_add_chores");
   const [chores, setChores] = useState<Chore[]>([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,17 +161,19 @@ export default function Chores() {
           <h2 className="text-lg font-semibold text-[#0B2A4A]">Chore list</h2>
           <p className="text-xs text-[#5C6B7A]">Shared with your household</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm((v) => !v)}
-          className="h-9 rounded-xl bg-[#0B2A4A] px-4 text-sm font-semibold text-white hover:bg-[#0F3360] transition-all"
-        >
-          {showForm ? "Cancel" : "+ Add chore"}
-        </button>
+        {canAddChores && (
+          <button
+            type="button"
+            onClick={() => setShowForm((v) => !v)}
+            className="h-9 rounded-xl bg-[#0B2A4A] px-4 text-sm font-semibold text-white hover:bg-[#0F3360] transition-all"
+          >
+            {showForm ? "Cancel" : "+ Add chore"}
+          </button>
+        )}
       </div>
 
       {/* Add chore form */}
-      {showForm && (
+      {canAddChores && showForm && (
         <div className="rounded-2xl border border-[#E8E2D9] bg-white p-5 shadow-sm">
           <form onSubmit={addChore} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -351,13 +357,15 @@ export default function Chores() {
                 </div>
 
                 {/* Delete */}
-                <button
-                  type="button"
-                  onClick={() => deleteChore(chore.id, chore.title)}
-                  className="shrink-0 rounded-lg p-1.5 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-colors text-sm leading-none"
-                >
-                  ×
-                </button>
+                {canAddChores && (
+                  <button
+                    type="button"
+                    onClick={() => deleteChore(chore.id, chore.title)}
+                    className="shrink-0 rounded-lg p-1.5 text-[#5C6B7A] hover:text-[#B8791F] hover:bg-[#FDF3E3] transition-colors text-sm leading-none"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             );
           })}

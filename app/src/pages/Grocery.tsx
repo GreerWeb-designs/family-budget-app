@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 type GroceryList = {
   id: string;
@@ -24,6 +26,8 @@ const inputCls =
   "h-10 rounded-xl border border-[#E8E2D9] bg-white px-3 text-sm text-[#0B2A4A] outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/20 transition-all placeholder:text-[#5C6B7A]";
 
 export default function Grocery() {
+  const { user } = useUser();
+  const canAddGrocery = canAccess(user, "can_add_grocery");
   const [lists, setLists] = useState<GroceryList[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeListId, setActiveListId] = useState<string | null>(null);
@@ -173,7 +177,7 @@ export default function Grocery() {
           </p>
 
           {/* Quick add */}
-          <div className="flex gap-2 mb-5">
+          {canAddGrocery && <div className="flex gap-2 mb-5">
             <input
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
@@ -196,7 +200,7 @@ export default function Grocery() {
             >
               {addingItem ? "…" : "Add"}
             </button>
-          </div>
+          </div>}
 
           {/* Items list */}
           {itemsLoading ? (

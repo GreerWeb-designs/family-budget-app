@@ -276,14 +276,49 @@ app.post("/api/auth/logout", async (c) => {
 app.get("/api/auth/me", requireUser, async (c) => {
   const userId = c.get("userId");
   const user = await c.env.DB.prepare(
-    `SELECT id, name, email, onboarding_completed_at FROM users WHERE id = ? LIMIT 1`
-  ).bind(userId).first<{ id: string; name: string; email: string; onboarding_completed_at: string | null }>();
+    `SELECT id, name, email, onboarding_completed_at, account_type FROM users WHERE id = ? LIMIT 1`
+  ).bind(userId).first<{ id: string; name: string; email: string; onboarding_completed_at: string | null; account_type: string | null }>();
+
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  let role = "member";
+  if (householdId) {
+    const memberRow = await c.env.DB.prepare(
+      `SELECT role FROM household_members WHERE user_id = ? AND household_id = ? LIMIT 1`
+    ).bind(userId, householdId).first<{ role: string }>();
+    role = memberRow?.role ?? "member";
+  }
+
+  const accountType = user?.account_type ?? "standard";
+  let permissions: Record<string, boolean> | null = null;
+  if (accountType === "dependent") {
+    const perm = await c.env.DB.prepare(
+      `SELECT * FROM dependent_permissions WHERE user_id = ? LIMIT 1`
+    ).bind(userId).first<Record<string, number | string>>();
+    if (perm) {
+      permissions = {
+        can_see_budget: !!perm.can_see_budget,
+        can_see_transactions: !!perm.can_see_transactions,
+        can_see_bills: !!perm.can_see_bills,
+        can_see_debts: !!perm.can_see_debts,
+        can_see_goals: !!perm.can_see_goals,
+        can_add_chores: !!perm.can_add_chores,
+        can_add_grocery: !!perm.can_add_grocery,
+        can_add_calendar: !!perm.can_add_calendar,
+        can_view_notes: !!perm.can_view_notes,
+        can_post_notes: !!perm.can_post_notes,
+      };
+    }
+  }
+
   return c.json({
     ok: true,
     userId,
     name: user?.name ?? "",
     email: user?.email ?? "",
     onboardingCompletedAt: user?.onboarding_completed_at ?? null,
+    accountType,
+    role,
+    permissions,
   });
 });
 
@@ -1379,14 +1414,43 @@ app.get("/api/household", requireUser, async (c) => {
   ).bind(householdId).first<{ id: string; name: string; created_at: string }>();
 
   const members = await c.env.DB.prepare(
-    `SELECT u.id, u.name, u.email, hm.role, hm.joined_at
+    `SELECT u.id, u.name, u.email, hm.role, hm.joined_at, COALESCE(u.account_type, 'standard') as account_type
      FROM household_members hm
      JOIN users u ON u.id = hm.user_id
      WHERE hm.household_id = ?
      ORDER BY hm.joined_at ASC`
-  ).bind(householdId).all<{ id: string; name: string; email: string; role: string; joined_at: string }>();
+  ).bind(householdId).all<{ id: string; name: string; email: string; role: string; joined_at: string; account_type: string }>();
 
-  return c.json({ household, members: members.results ?? [] });
+  // Attach permissions for dependent members
+  const memberList = members.results ?? [];
+  const dependentIds = memberList.filter(m => m.account_type === "dependent").map(m => m.id);
+  const permsMap = new Map<string, Record<string, boolean>>();
+  for (const depId of dependentIds) {
+    const perm = await c.env.DB.prepare(
+      `SELECT * FROM dependent_permissions WHERE user_id = ? LIMIT 1`
+    ).bind(depId).first<Record<string, number | string>>();
+    if (perm) {
+      permsMap.set(depId, {
+        can_see_budget: !!perm.can_see_budget,
+        can_see_transactions: !!perm.can_see_transactions,
+        can_see_bills: !!perm.can_see_bills,
+        can_see_debts: !!perm.can_see_debts,
+        can_see_goals: !!perm.can_see_goals,
+        can_add_chores: !!perm.can_add_chores,
+        can_add_grocery: !!perm.can_add_grocery,
+        can_add_calendar: !!perm.can_add_calendar,
+        can_view_notes: !!perm.can_view_notes,
+        can_post_notes: !!perm.can_post_notes,
+      });
+    }
+  }
+
+  const membersWithPerms = memberList.map(m => ({
+    ...m,
+    permissions: m.account_type === "dependent" ? (permsMap.get(m.id) ?? null) : null,
+  }));
+
+  return c.json({ household, members: membersWithPerms });
 });
 
 app.patch("/api/household", requireUser, async (c) => {
@@ -1490,6 +1554,122 @@ app.delete("/api/household/members/:memberId", requireUser, async (c) => {
   await c.env.DB.prepare(
     `DELETE FROM household_members WHERE user_id = ? AND household_id = ?`
   ).bind(memberId, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+// ---- DEPENDENT ACCOUNTS ----
+
+async function isAdminOrPrimary(db: D1Database, userId: string, householdId: string): Promise<boolean> {
+  const row = await db.prepare(
+    `SELECT role FROM household_members WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(userId, householdId).first<{ role: string }>();
+  return row?.role === "admin" || row?.role === "primary";
+}
+
+// Create a dependent account (admin/primary only)
+app.post("/api/auth/signup-dependent", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+
+  const canManage = await isAdminOrPrimary(c.env.DB, userId, householdId);
+  if (!canManage) return c.json({ error: "Only admins can create dependent accounts" }, 403);
+
+  const body = await c.req.json<{ name?: string; email?: string; password?: string }>();
+  const name = (body.name || "").trim();
+  const email = (body.email || "").toLowerCase().trim();
+  const password = body.password || "";
+
+  if (!name || !email || !password) return c.json({ error: "Name, email, and password are required" }, 400);
+  if (password.length < 8) return c.json({ error: "Password must be at least 8 characters" }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "Invalid email address" }, 400);
+
+  const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ? LIMIT 1`)
+    .bind(email).first<{ id: string }>();
+  if (existing) return c.json({ error: "An account with that email already exists" }, 400);
+
+  const passwordHash = await sha256(password + c.env.SESSION_SECRET);
+  const now = new Date().toISOString();
+  const depUserId = uid();
+
+  await c.env.DB.prepare(
+    `INSERT INTO users (id, name, email, password_hash, email_verified, account_type, created_at) VALUES (?, ?, ?, ?, 0, 'dependent', ?)`
+  ).bind(depUserId, name, email, passwordHash, now).run();
+
+  await c.env.DB.prepare(
+    `INSERT INTO household_members (id, household_id, user_id, role, joined_at) VALUES (?, ?, ?, 'member', ?)`
+  ).bind(uid(), householdId, depUserId, now).run();
+
+  // Seed default permissions (goals + chores + grocery on; everything financial off)
+  await c.env.DB.prepare(
+    `INSERT INTO dependent_permissions (id, user_id, household_id, can_see_budget, can_see_transactions, can_see_bills, can_see_debts, can_see_goals, can_add_chores, can_add_grocery, can_add_calendar, can_view_notes, can_post_notes, created_at, updated_at)
+     VALUES (?, ?, ?, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, ?, ?)`
+  ).bind(uid(), depUserId, householdId, now, now).run();
+
+  return c.json({ ok: true, userId: depUserId, name });
+});
+
+// Update dependent permissions (admin/primary only)
+app.patch("/api/household/members/:userId/permissions", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+
+  const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+  if (!canManage) return c.json({ error: "Only admins can update permissions" }, 403);
+
+  const body = await c.req.json<Record<string, boolean>>();
+  const allowed = [
+    "can_see_budget","can_see_transactions","can_see_bills","can_see_debts",
+    "can_see_goals","can_add_chores","can_add_grocery","can_add_calendar",
+    "can_view_notes","can_post_notes",
+  ];
+
+  const sets: string[] = [];
+  const binds: unknown[] = [];
+  for (const key of allowed) {
+    if (key in body) {
+      sets.push(`${key} = ?`);
+      binds.push(body[key] ? 1 : 0);
+    }
+  }
+  if (sets.length === 0) return c.json({ error: "Nothing to update" }, 400);
+
+  const now = new Date().toISOString();
+  sets.push("updated_at = ?");
+  binds.push(now);
+  binds.push(targetUserId);
+
+  await c.env.DB.prepare(
+    `UPDATE dependent_permissions SET ${sets.join(", ")} WHERE user_id = ?`
+  ).bind(...binds).run();
+
+  return c.json({ ok: true });
+});
+
+// Update household member role (admin only)
+app.patch("/api/household/members/:userId/role", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+
+  const myRole = await c.env.DB.prepare(
+    `SELECT role FROM household_members WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(requesterId, householdId).first<{ role: string }>();
+  if (myRole?.role !== "admin") return c.json({ error: "Only admins can change roles" }, 403);
+
+  const body = await c.req.json<{ role?: string }>();
+  const newRole = body.role;
+  if (!newRole || !["admin","member","primary"].includes(newRole)) {
+    return c.json({ error: "Invalid role. Must be admin, primary, or member" }, 400);
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE household_members SET role = ? WHERE user_id = ? AND household_id = ?`
+  ).bind(newRole, targetUserId, householdId).run();
 
   return c.json({ ok: true });
 });

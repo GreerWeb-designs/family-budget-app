@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Lock, Home, Users, Link2, LogOut, Copy, Check, Pencil, X } from "lucide-react";
+import { User, Lock, Home, Users, Link2, LogOut, Copy, Check, Pencil, X, UserPlus } from "lucide-react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { isAdminOrPrimary } from "../lib/permissions";
 
-type Member    = { id: string; name: string; email: string; role: string; joined_at: string };
+type DepPermissions = {
+  can_see_budget: boolean; can_see_transactions: boolean; can_see_bills: boolean;
+  can_see_debts: boolean; can_see_goals: boolean; can_add_chores: boolean;
+  can_add_grocery: boolean; can_add_calendar: boolean; can_view_notes: boolean;
+  can_post_notes: boolean;
+};
+type Member    = { id: string; name: string; email: string; role: string; joined_at: string; account_type?: string; permissions?: DepPermissions | null };
 type Household = { id: string; name: string; created_at: string };
 
 const inputCls = "w-full h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm text-stone-900 placeholder-stone-400 outline-none focus:border-[#C8A464] focus:ring-2 focus:ring-[#C8A464]/15 transition-all";
@@ -255,8 +263,9 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
                     <span className="text-sm font-medium text-stone-800 truncate">{m.name}</span>
                     {m.id === currentUserId && <span className="text-xs text-stone-400">(you)</span>}
                     <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border",
+                      m.account_type === "dependent" ? "bg-[#EBF3EF] text-[#2F6B52] border-[#2F6B52]/30" :
                       m.role === "admin" ? "bg-[#FDF8F0] text-[#B8791F] border-[#C8A464]/30" : "bg-[#F5F1EA] text-[#5C6B7A] border-[#E8E2D9]")}>
-                      {m.role === "admin" ? "Admin" : "Member"}
+                      {m.account_type === "dependent" ? "Dependent" : m.role === "admin" ? "Admin" : "Member"}
                     </span>
                   </div>
                   <div className="text-xs text-stone-400 truncate">{m.email}</div>
@@ -341,9 +350,177 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
   );
 }
 
+// ── Dependents section ─────────────────────────────────
+const PERM_LABELS: { key: keyof DepPermissions; label: string }[] = [
+  { key: "can_see_budget",       label: "See budget" },
+  { key: "can_see_transactions", label: "See transactions" },
+  { key: "can_see_bills",        label: "See bills" },
+  { key: "can_see_debts",        label: "See debts" },
+  { key: "can_see_goals",        label: "See goals" },
+  { key: "can_add_chores",       label: "Add/manage chores" },
+  { key: "can_add_grocery",      label: "Add grocery items" },
+  { key: "can_add_calendar",     label: "Add calendar events" },
+  { key: "can_view_notes",       label: "View crew notes" },
+  { key: "can_post_notes",       label: "Post crew notes" },
+];
+
+function PermToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none",
+        checked ? "bg-[#2F6B52]" : "bg-stone-200"
+      )}
+    >
+      <span className={cn(
+        "inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200",
+        checked ? "translate-x-4" : "translate-x-0"
+      )} />
+    </button>
+  );
+}
+
+function DependentsSection() {
+  const [dependents, setDependents] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const data = await api<{ members: Member[] }>("/api/household");
+      setDependents((data.members ?? []).filter((m) => m.account_type === "dependent"));
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function addDependent(e: React.FormEvent) {
+    e.preventDefault(); setMsg(null); setAdding(true);
+    try {
+      await api("/api/auth/signup-dependent", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password }),
+      });
+      setMsg({ ok: true, text: `${name} added as a dependent.` });
+      setName(""); setEmail(""); setPassword(""); setShowAddForm(false);
+      await load();
+    } catch (err: any) {
+      setMsg({ ok: false, text: err?.message || "Failed to add dependent." });
+    } finally { setAdding(false); }
+  }
+
+  async function updatePerm(userId: string, key: keyof DepPermissions, value: boolean) {
+    setSaving(userId);
+    try {
+      await api(`/api/household/members/${userId}/permissions`, {
+        method: "PATCH",
+        body: JSON.stringify({ [key]: value }),
+      });
+      setDependents((prev) => prev.map((d) =>
+        d.id === userId
+          ? { ...d, permissions: { ...(d.permissions as DepPermissions), [key]: value } }
+          : d
+      ));
+    } catch { /* silent */ } finally { setSaving(null); }
+  }
+
+  if (loading) return <div className="text-sm text-stone-400 animate-pulse py-2">Loading…</div>;
+
+  return (
+    <div className="space-y-3">
+      {msg && (
+        <div className={cn("rounded-xl px-4 py-2.5 text-sm font-medium border",
+          msg.ok ? "bg-[#EBF3EF] text-[#2F6B52] border-[#2F6B52]/30" : "bg-[#FDF3E3] text-[#B8791F] border-[#B8791F]/30")}>
+          {msg.text}
+        </div>
+      )}
+
+      {dependents.length > 0 && dependents.map((dep) => (
+        <Card key={dep.id}>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-sm font-semibold text-[#0B2A4A]">{dep.name}</div>
+              <div className="text-xs text-stone-400">{dep.email}</div>
+            </div>
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-[#EBF3EF] text-[#2F6B52] border-[#2F6B52]/30">
+              Dependent
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {PERM_LABELS.map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-stone-600">{label}</span>
+                <PermToggle
+                  checked={!!(dep.permissions as DepPermissions)?.[key]}
+                  onChange={(v) => updatePerm(dep.id, key, v)}
+                />
+              </div>
+            ))}
+          </div>
+          {saving === dep.id && <div className="text-xs text-stone-400 mt-2 text-right">Saving…</div>}
+        </Card>
+      ))}
+
+      {dependents.length === 0 && !showAddForm && (
+        <div className="rounded-xl border border-dashed border-stone-200 px-4 py-8 text-center">
+          <div className="text-2xl mb-2">👦</div>
+          <p className="text-sm text-stone-500">No dependent accounts yet.</p>
+          <p className="text-xs text-stone-400 mt-0.5">Create one to give a family member limited access.</p>
+        </div>
+      )}
+
+      {!showAddForm ? (
+        <button
+          type="button"
+          onClick={() => { setShowAddForm(true); setMsg(null); }}
+          className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-white transition-all"
+          style={{ background: "#0B2A4A" }}
+        >
+          <UserPlus size={14} />
+          Add dependent account
+        </button>
+      ) : (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-semibold text-[#0B2A4A]">New dependent account</span>
+            <button type="button" onClick={() => { setShowAddForm(false); setMsg(null); }}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+          <form onSubmit={addDependent} className="space-y-3">
+            <input className={inputCls} placeholder="Name" value={name}
+              onChange={(e) => setName(e.target.value)} required autoFocus />
+            <input className={inputCls} type="email" placeholder="Email" value={email}
+              onChange={(e) => setEmail(e.target.value)} required />
+            <input className={inputCls} type="password" placeholder="Password (min 8 chars)" value={password}
+              onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+            <p className="text-xs text-stone-400">They'll log in with this email + password. You can adjust their permissions after adding them.</p>
+            <button type="submit" disabled={adding}
+              className="h-10 w-full rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all"
+              style={{ background: "#0B2A4A" }}>
+              {adding ? "Adding…" : "Create dependent account"}
+            </button>
+          </form>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────
 export default function Settings() {
   const nav = useNavigate();
+  const { user } = useUser();
+  const canManageDependents = isAdminOrPrimary(user);
   const [me, setMe] = useState<{ userId: string; name: string; email: string } | null>(null);
   const [resetting, setResetting] = useState(false);
 
@@ -380,6 +557,14 @@ export default function Settings() {
         <SectionTitle icon={Home} title="Your household" />
         {me ? <HouseholdSection currentUserId={me.userId} /> : <div className="text-sm text-stone-400 animate-pulse">Loading…</div>}
       </section>
+
+      {/* Dependents */}
+      {canManageDependents && (
+        <section id="dependents">
+          <SectionTitle icon={UserPlus} title="Dependent accounts" />
+          <DependentsSection />
+        </section>
+      )}
 
       {/* Mobile sign out */}
       <div className="md:hidden">
