@@ -105,6 +105,9 @@ export default function Home() {
   const [notes, setNotes]       = useState<Note[]>([]);
   const [noteInput, setNoteInput] = useState("");
   const [myUserId, setMyUserId] = useState<string>("");
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newCatInputValue, setNewCatInputValue] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
 
   const catNameById = useMemo(() => {
     const m: Record<string, string> = {};
@@ -231,6 +234,23 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
+  async function handleCreateCategoryInline() {
+    const name = newCatInputValue.trim();
+    if (!name) return;
+    setAddingCat(true); setMsg(null);
+    try {
+      const result = await api<{ ok: boolean; id: string }>("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({ name, direction: "outflow" }),
+      });
+      setNewCatInputValue(""); setShowNewCatInput(false);
+      await refresh();
+      if (result.id) { setCategoryId(result.id); setDirection("out"); }
+      setMsg(`"${name}" added.`);
+    } catch (err: any) { setMsg(err?.message || "Failed to create category."); }
+    finally { setAddingCat(false); }
+  }
+
   async function submitSpend(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
@@ -345,16 +365,55 @@ export default function Home() {
 
         <form onSubmit={submitSpend} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className="grid gap-1">
+            <div className="grid gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Where did it go?</span>
               <select className={selectCls} disabled={direction === "in"}
-                value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                value={showNewCatInput ? "__new__" : categoryId}
+                onChange={(e) => {
+                  if (e.target.value === "__new__") {
+                    setShowNewCatInput(true);
+                    setNewCatInputValue("");
+                  } else {
+                    setShowNewCatInput(false);
+                    setCategoryId(e.target.value);
+                  }
+                }}>
+                {direction === "out" && <option value="__new__">＋ New category</option>}
+                {direction === "out" && <option disabled value="">──────────────</option>}
                 {(direction === "in"
                   ? cats.filter((c) => c.id === INCOME_ID)
                   : cats.filter((c) => c.id !== INCOME_ID)
                 ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </label>
+              {showNewCatInput && direction === "out" && (
+                <div className="flex gap-2 items-center mt-1">
+                  <input
+                    autoFocus
+                    value={newCatInputValue}
+                    onChange={(e) => setNewCatInputValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); handleCreateCategoryInline(); }
+                      if (e.key === "Escape") { setShowNewCatInput(false); setNewCatInputValue(""); }
+                    }}
+                    placeholder="Category name"
+                    className="h-10 flex-1 min-w-0 rounded-xl border border-[#E8E2D9] bg-[#F5F1EA] px-3 text-sm text-[#0B2A4A] outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all placeholder-[#5C6B7A]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateCategoryInline}
+                    disabled={addingCat || !newCatInputValue.trim()}
+                    className="h-10 rounded-xl bg-[#0B2A4A] px-3 text-xs font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all">
+                    {addingCat ? "…" : "Add"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewCatInput(false); setNewCatInputValue(""); }}
+                    className="h-10 w-10 rounded-xl border border-[#E8E2D9] text-[#5C6B7A] hover:bg-[#F5F1EA] text-sm transition-all flex items-center justify-center">
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
             <label className="grid gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Amount</span>
               <input className={inputCls + " tabular-nums"} value={amount}

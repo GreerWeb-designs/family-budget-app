@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, PlusCircle, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { api } from "../lib/api";
 import { cn, money } from "../lib/utils";
 
@@ -41,8 +41,9 @@ export default function Budget() {
   const [categoryId, setCategoryId]   = useState("");
   const [setAmount, setSetAmount]     = useState("");
   const [bankInput, setBankInput]     = useState("");
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newCatInputValue, setNewCatInputValue] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
   const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [closingMonth, setClosingMonth] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -124,15 +125,21 @@ export default function Budget() {
     } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setBusy(false); }
   }
 
-  async function handleCreateCategory(e: React.FormEvent) {
-    e.preventDefault(); setMsg(null);
-    const name = newCategoryName.trim();
-    if (!name) { setMsg("Enter a category name."); return; }
-    setCreatingCategory(true);
+  async function handleCreateCategoryInline() {
+    const name = newCatInputValue.trim();
+    if (!name) return;
+    setAddingCat(true); setMsg(null);
     try {
-      await api("/api/categories", { method: "POST", body: JSON.stringify({ name, direction: "outflow" }) });
-      setNewCategoryName(""); setMsg("Category created."); await refresh(activeMonth);
-    } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setCreatingCategory(false); }
+      const result = await api<{ ok: boolean; id: string }>("/api/categories", {
+        method: "POST",
+        body: JSON.stringify({ name, direction: "outflow" }),
+      });
+      setNewCatInputValue(""); setShowNewCatInput(false);
+      await refresh(activeMonth);
+      if (result.id) setCategoryId(result.id);
+      setMsg(`"${name}" added.`);
+    } catch (err: any) { setMsg(err?.message || "Failed to create category."); }
+    finally { setAddingCat(false); }
   }
 
   async function handleDeleteCategory(id: string, name: string) {
@@ -378,10 +385,55 @@ export default function Budget() {
 
             {!isReadOnly && (
               <div className="space-y-2">
-                <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}
-                  className={cn(inputCls, "w-full")}>
-                  {cats.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                </select>
+                <div className="grid gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#5C6B7A]">Category</span>
+                  <select
+                    value={showNewCatInput ? "__new__" : categoryId}
+                    onChange={(e) => {
+                      if (e.target.value === "__new__") {
+                        setShowNewCatInput(true);
+                        setNewCatInputValue("");
+                      } else {
+                        setShowNewCatInput(false);
+                        setCategoryId(e.target.value);
+                      }
+                    }}
+                    className="h-11 w-full rounded-xl border border-[#E8E2D9] bg-white px-3 text-sm text-[#0B2A4A] outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all">
+                    <option value="__new__">＋ New category</option>
+                    <option disabled value="">──────────────</option>
+                    {cats.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  {showNewCatInput && (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        autoFocus
+                        value={newCatInputValue}
+                        onChange={(e) => setNewCatInputValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); handleCreateCategoryInline(); }
+                          if (e.key === "Escape") { setShowNewCatInput(false); setNewCatInputValue(""); }
+                        }}
+                        placeholder="Category name"
+                        className="h-10 flex-1 min-w-0 rounded-xl border border-[#E8E2D9] bg-[#F5F1EA] px-3 text-sm text-[#0B2A4A] outline-none focus:ring-2 focus:ring-[#C8A464]/20 focus:border-[#C8A464] transition-all placeholder-[#5C6B7A]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateCategoryInline}
+                        disabled={addingCat || !newCatInputValue.trim()}
+                        className="h-10 rounded-xl bg-[#0B2A4A] px-3 text-xs font-semibold text-white hover:bg-[#0F3360] disabled:opacity-50 transition-all">
+                        {addingCat ? "…" : "Add"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNewCatInput(false); setNewCatInputValue(""); }}
+                        className="h-10 w-10 rounded-xl border border-[#E8E2D9] text-[#5C6B7A] hover:bg-[#F5F1EA] text-sm transition-all flex items-center justify-center">
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <form onSubmit={handleSetBudget} className="flex gap-2">
                   <input value={setAmount} onChange={(e) => setSetAmount(e.target.value)}
                     placeholder="Amount" inputMode="decimal"
@@ -395,25 +447,6 @@ export default function Budget() {
               </div>
             )}
           </div>
-
-          {/* Add category */}
-          {!isReadOnly && (
-            <div className="rounded-2xl border bg-white p-5" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <PlusCircle size={15} className="text-stone-400" />
-                <div className="text-sm font-semibold text-stone-900">New Category</div>
-              </div>
-              <form onSubmit={handleCreateCategory} className="flex gap-2">
-                <input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="e.g. Groceries"
-                  className={cn(inputCls, "flex-1 min-w-0 bg-stone-50")} />
-                <button type="submit" disabled={creatingCategory}
-                  className="h-10 rounded-xl border border-stone-200 px-4 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-60 transition-all">
-                  Add
-                </button>
-              </form>
-            </div>
-          )}
 
           {/* Month history */}
           {months.length > 0 && (
