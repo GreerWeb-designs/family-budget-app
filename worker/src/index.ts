@@ -462,7 +462,7 @@ app.post("/api/account/set", requireUser, async (c) => {
   if (validIds.length > 0) {
     const placeholders = validIds.map(() => "?").join(",");
     const budgetRow = await c.env.DB.prepare(
-      `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ?`
+      `SELECT COALESCE(SUM(max_budgeted), 0) AS totalBudgeted FROM (SELECT category_id, MAX(amount_budgeted) as max_budgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ? GROUP BY category_id)`
     )
       .bind(...validIds, monthKey())
       .first<{ totalBudgeted: number }>();
@@ -526,7 +526,7 @@ app.post("/api/onboarding/complete", requireUser, async (c) => {
     if (validIds.length > 0) {
       const placeholders = validIds.map(() => "?").join(",");
       const budgetRow = await c.env.DB.prepare(
-        `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ?`
+        `SELECT COALESCE(SUM(max_budgeted), 0) AS totalBudgeted FROM (SELECT category_id, MAX(amount_budgeted) as max_budgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ? GROUP BY category_id)`
       ).bind(...validIds, monthKey()).first<{ totalBudgeted: number }>();
       totalBudgeted = Number(budgetRow?.totalBudgeted ?? 0);
     }
@@ -563,7 +563,7 @@ app.get("/api/totals", requireUser, async (c) => {
   if (validIds.length > 0) {
     const placeholders = validIds.map(() => "?").join(",");
     const budgetRow = await c.env.DB.prepare(
-      `SELECT COALESCE(SUM(amount_budgeted), 0) AS totalBudgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ?`
+      `SELECT COALESCE(SUM(max_budgeted), 0) AS totalBudgeted FROM (SELECT category_id, MAX(amount_budgeted) as max_budgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ? GROUP BY category_id)`
     )
       .bind(...validIds, monthKey())
       .first<{ totalBudgeted: number }>();
@@ -872,7 +872,7 @@ app.get("/api/spend/summary", requireUser, async (c) => {
     .all<{ category_id: string; activity: number }>();
 
   const budgetRows = await c.env.DB.prepare(
-    `SELECT category_id, amount_budgeted FROM budget_lines WHERE month = ? AND household_id = ?`
+    `SELECT category_id, MAX(amount_budgeted) as amount_budgeted FROM budget_lines WHERE month = ? AND household_id = ? GROUP BY category_id`
   )
     .bind(month, householdId)
     .all<{ category_id: string; amount_budgeted: number }>();
