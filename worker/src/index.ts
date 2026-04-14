@@ -1536,6 +1536,247 @@ app.patch("/api/auth/profile", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
+// ---- RECIPES ----
+
+app.get("/api/recipes", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ recipes: [] });
+
+  const rows = await c.env.DB.prepare(
+    `SELECT r.id, r.title, r.type, r.description, r.prep_time, r.cook_time,
+     r.servings, r.created_at,
+     COUNT(ri.id) as ingredient_count
+     FROM recipes r
+     LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+     WHERE r.household_id = ?
+     GROUP BY r.id
+     ORDER BY r.type ASC, r.title ASC`
+  ).bind(householdId).all<{
+    id: string; title: string; type: string; description: string | null;
+    prep_time: number | null; cook_time: number | null; servings: number | null;
+    created_at: string; ingredient_count: number;
+  }>();
+
+  return c.json({ recipes: rows.results ?? [] });
+});
+
+app.get("/api/recipes/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+
+  const recipe = await c.env.DB.prepare(
+    `SELECT id, title, type, description, prep_time, cook_time, servings, directions, created_at
+     FROM recipes WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(id, householdId).first<{
+    id: string; title: string; type: string; description: string | null;
+    prep_time: number | null; cook_time: number | null; servings: number | null;
+    directions: string | null; created_at: string;
+  }>();
+
+  if (!recipe) return c.json({ error: "Not found" }, 404);
+
+  const ingredients = await c.env.DB.prepare(
+    `SELECT id, name, quantity, unit, sort_order
+     FROM recipe_ingredients WHERE recipe_id = ? ORDER BY sort_order ASC`
+  ).bind(id).all<{
+    id: string; name: string; quantity: string | null; unit: string | null; sort_order: number;
+  }>();
+
+  return c.json({ recipe, ingredients: ingredients.results ?? [] });
+});
+
+app.post("/api/recipes", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{
+    title?: string; type?: string; description?: string;
+    prepTime?: number; cookTime?: number; servings?: number; directions?: string;
+    ingredients?: { name: string; quantity?: string; unit?: string }[];
+  }>();
+
+  const title = (body.title || "").trim();
+  if (!title) return c.json({ error: "Title required" }, 400);
+
+  const validTypes = ["soup_salad", "main", "appetizer", "dessert", "snack"];
+  const type = validTypes.includes(body.type || "") ? body.type! : "main";
+
+  const now = new Date().toISOString();
+  const id = uid();
+
+  await c.env.DB.prepare(
+    `INSERT INTO recipes (id, household_id, title, type, description, prep_time, cook_time, servings, directions, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, householdId, title, type, body.description || null,
+    body.prepTime || null, body.cookTime || null, body.servings || null,
+    body.directions || null, userId, now, now).run();
+
+  const ingredients = body.ingredients ?? [];
+  for (let i = 0; i < ingredients.length; i++) {
+    const ing = ingredients[i];
+    if (!ing.name?.trim()) continue;
+    await c.env.DB.prepare(
+      `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(uid(), id, ing.name.trim(), ing.quantity || null, ing.unit || null, i).run();
+  }
+
+  return c.json({ ok: true, id });
+});
+
+app.patch("/api/recipes/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{
+    title?: string; type?: string; description?: string;
+    prepTime?: number; cookTime?: number; servings?: number; directions?: string;
+    ingredients?: { name: string; quantity?: string; unit?: string }[];
+  }>();
+
+  const now = new Date().toISOString();
+  const sets: string[] = ["updated_at = ?"];
+  const binds: unknown[] = [now];
+
+  if (body.title !== undefined) { const t = (body.title || "").trim(); if (!t) return c.json({ error: "Title required" }, 400); sets.push("title = ?"); binds.push(t); }
+  if (body.type !== undefined) { sets.push("type = ?"); binds.push(body.type); }
+  if (body.description !== undefined) { sets.push("description = ?"); binds.push(body.description || null); }
+  if (body.prepTime !== undefined) { sets.push("prep_time = ?"); binds.push(body.prepTime); }
+  if (body.cookTime !== undefined) { sets.push("cook_time = ?"); binds.push(body.cookTime); }
+  if (body.servings !== undefined) { sets.push("servings = ?"); binds.push(body.servings); }
+  if (body.directions !== undefined) { sets.push("directions = ?"); binds.push(body.directions || null); }
+
+  await c.env.DB.prepare(
+    `UPDATE recipes SET ${sets.join(", ")} WHERE id = ? AND household_id = ?`
+  ).bind(...binds, id, householdId).run();
+
+  if (body.ingredients !== undefined) {
+    await c.env.DB.prepare(`DELETE FROM recipe_ingredients WHERE recipe_id = ?`).bind(id).run();
+    for (let i = 0; i < body.ingredients.length; i++) {
+      const ing = body.ingredients[i];
+      if (!ing.name?.trim()) continue;
+      await c.env.DB.prepare(
+        `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(uid(), id, ing.name.trim(), ing.quantity || null, ing.unit || null, i).run();
+    }
+  }
+
+  return c.json({ ok: true });
+});
+
+app.delete("/api/recipes/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  await c.env.DB.prepare(`DELETE FROM recipe_ingredients WHERE recipe_id = ?`).bind(id).run();
+  await c.env.DB.prepare(`DELETE FROM meal_plans WHERE recipe_id = ?`).bind(id).run();
+  await c.env.DB.prepare(`DELETE FROM recipes WHERE id = ? AND household_id = ?`).bind(id, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+// ---- MEAL PLANS ----
+
+app.get("/api/meals/upcoming", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ meals: [] });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  const rows = await c.env.DB.prepare(
+    `SELECT mp.id, mp.planned_date, mp.meal_type, r.title as recipe_title, r.type as recipe_type
+     FROM meal_plans mp
+     JOIN recipes r ON r.id = mp.recipe_id
+     WHERE mp.household_id = ? AND mp.planned_date >= ? AND mp.planned_date <= ?
+     ORDER BY mp.planned_date ASC LIMIT 5`
+  ).bind(householdId, today, in7).all<{
+    id: string; planned_date: string; meal_type: string;
+    recipe_title: string; recipe_type: string;
+  }>();
+
+  return c.json({ meals: rows.results ?? [] });
+});
+
+app.get("/api/meals", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ meals: [] });
+
+  const start = c.req.query("start") || "";
+  const end = c.req.query("end") || "";
+
+  let query = `
+    SELECT mp.id, mp.planned_date, mp.meal_type, mp.notes, mp.recipe_id,
+           r.title as recipe_title, r.type as recipe_type,
+           r.prep_time, r.cook_time, r.servings
+    FROM meal_plans mp
+    JOIN recipes r ON r.id = mp.recipe_id
+    WHERE mp.household_id = ?`;
+  const binds: unknown[] = [householdId];
+
+  if (start) { query += ` AND mp.planned_date >= ?`; binds.push(start); }
+  if (end) { query += ` AND mp.planned_date <= ?`; binds.push(end); }
+  query += ` ORDER BY mp.planned_date ASC, mp.meal_type ASC`;
+
+  const rows = await c.env.DB.prepare(query).bind(...binds).all<{
+    id: string; planned_date: string; meal_type: string; notes: string | null;
+    recipe_id: string; recipe_title: string; recipe_type: string;
+    prep_time: number | null; cook_time: number | null; servings: number | null;
+  }>();
+
+  return c.json({ meals: rows.results ?? [] });
+});
+
+app.post("/api/meals", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{
+    recipeId?: string; plannedDate?: string; mealType?: string; notes?: string;
+  }>();
+
+  const recipeId = (body.recipeId || "").trim();
+  const plannedDate = (body.plannedDate || "").trim();
+  if (!recipeId || !plannedDate) return c.json({ error: "recipeId and plannedDate required" }, 400);
+
+  const recipe = await c.env.DB.prepare(
+    `SELECT id FROM recipes WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(recipeId, householdId).first<{ id: string }>();
+  if (!recipe) return c.json({ error: "Recipe not found" }, 404);
+
+  const now = new Date().toISOString();
+  const id = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO meal_plans (id, household_id, recipe_id, planned_date, meal_type, notes, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, householdId, recipeId, plannedDate, body.mealType || "dinner", body.notes || null, userId, now).run();
+
+  return c.json({ ok: true, id });
+});
+
+app.delete("/api/meals/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  await c.env.DB.prepare(
+    `DELETE FROM meal_plans WHERE id = ? AND household_id = ?`
+  ).bind(id, householdId).run();
+
+  return c.json({ ok: true });
+});
+
 // ---- GROCERY LISTS ----
 
 app.get("/api/grocery/lists", requireUser, async (c) => {

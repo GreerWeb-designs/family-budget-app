@@ -23,6 +23,8 @@ import JoinHousehold from "./pages/JoinHousehold";
 import Onboarding from "./pages/Onboarding";
 import Grocery from "./pages/Grocery";
 import Chores from "./pages/Chores";
+import Recipes from "./pages/Recipes";
+import Meals from "./pages/Meals";
 
 type Totals = {
   bankBalance: number;
@@ -106,10 +108,12 @@ const NAV_GROUPS: NavGroup[] = [
   {
     to: "/household-hub", label: "Household", icon: "🏡",
     children: [
-      { to: "/goals",    label: "Goals",    icon: "🎯" },
-      { to: "/calendar", label: "Calendar", icon: "📅" },
-      { to: "/grocery",  label: "Grocery",  icon: "🛒" },
-      { to: "/chores",   label: "Chores",   icon: "🧹" },
+      { to: "/goals",    label: "Goals",     icon: "🎯" },
+      { to: "/calendar", label: "Calendar",  icon: "📅" },
+      { to: "/recipes",  label: "Recipes",   icon: "📖" },
+      { to: "/meals",    label: "Meal plan", icon: "🍽️" },
+      { to: "/grocery",  label: "Grocery",   icon: "🛒" },
+      { to: "/chores",   label: "Chores",    icon: "🧹" },
     ],
   },
   { to: "/settings",      label: "Settings",  icon: "⚙️", exact: true },
@@ -118,7 +122,7 @@ const NAV_GROUPS: NavGroup[] = [
 const MOBILE_NAV = [
   { to: "/home",     label: "Overview",  icon: "🏠", activeFor: [] as string[] },
   { to: "/budget",   label: "Finances",  icon: "💰", activeFor: ["/budget", "/bills", "/debts"] },
-  { to: "/goals",    label: "Household", icon: "🏡", activeFor: ["/goals", "/calendar", "/grocery", "/chores"] },
+  { to: "/goals",    label: "Household", icon: "🏡", activeFor: ["/goals", "/calendar", "/grocery", "/chores", "/recipes", "/meals"] },
   { to: "/settings", label: "Settings",  icon: "⚙️", activeFor: [] as string[] },
 ];
 
@@ -131,7 +135,9 @@ function PageTitle() {
     if (pathname.startsWith("/goals"))     return { title: "Goals",     icon: "🎯" };
     if (pathname.startsWith("/calendar"))  return { title: "Calendar",  icon: "📅" };
     if (pathname.startsWith("/grocery"))   return { title: "Grocery",   icon: "🛒" };
-    if (pathname.startsWith("/chores"))    return { title: "Chores",    icon: "🧹" };
+    if (pathname.startsWith("/chores"))    return { title: "Chores",     icon: "🧹" };
+    if (pathname.startsWith("/recipes"))   return { title: "Recipes",    icon: "📖" };
+    if (pathname.startsWith("/meals"))     return { title: "Meal plan",  icon: "🍽️" };
     if (pathname.startsWith("/settings"))  return { title: "Settings",  icon: "⚙️" };
     if (pathname.startsWith("/finances"))  return { title: "Finances",  icon: "💰" };
     if (pathname.startsWith("/household")) return { title: "Household", icon: "🏡" };
@@ -190,7 +196,7 @@ function AppShell({ children }: { children: ReactNode }) {
     )) {
       setExpandedGroups((prev) => [...new Set([...prev, "finances"])]);
     }
-    if (["/goals", "/calendar", "/grocery", "/chores"].some(
+    if (["/goals", "/calendar", "/grocery", "/chores", "/recipes", "/meals"].some(
       (p) => path === p || path.startsWith(p + "/")
     )) {
       setExpandedGroups((prev) => [...new Set([...prev, "household"])]);
@@ -520,6 +526,8 @@ export default function App() {
       <Route path="/calendar"      element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
       <Route path="/grocery"       element={<ProtectedLayout><Grocery /></ProtectedLayout>} />
       <Route path="/chores"        element={<ProtectedLayout><Chores /></ProtectedLayout>} />
+      <Route path="/recipes"       element={<ProtectedLayout><Recipes /></ProtectedLayout>} />
+      <Route path="/meals"         element={<ProtectedLayout><Meals /></ProtectedLayout>} />
       <Route path="/settings"      element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
       <Route path="/join/:code" element={<JoinHousehold />} />
       <Route path="*"         element={<Navigate to="/home" replace />} />

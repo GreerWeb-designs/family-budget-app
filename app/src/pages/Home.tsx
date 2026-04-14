@@ -16,6 +16,7 @@ type SpendListRes = { spends: SpendRow[] };
 type UpcomingBill  = { id: string; name: string; mode: "auto" | "manual"; day_of_month: number };
 type UpcomingEvent = { id: string; title: string; start_at: string; end_at: string | null; location: string | null };
 type HomeUpcomingRes = { bills: UpcomingBill[]; events: UpcomingEvent[] };
+type UpcomingMeal = { id: string; planned_date: string; meal_type: string; recipe_title: string; recipe_type: string };
 type Goal = { id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null };
 type Note = { id: string; user_id: string; body: string; created_at: string; author_name?: string };
 type AccountRes = { bankBalance: number; toBeBudgeted: number };
@@ -105,6 +106,7 @@ export default function Home() {
   const [notes, setNotes]       = useState<Note[]>([]);
   const [noteInput, setNoteInput] = useState("");
   const [myUserId, setMyUserId] = useState<string>("");
+  const [upcomingMeals, setUpcomingMeals] = useState<UpcomingMeal[]>([]);
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [newCatInputValue, setNewCatInputValue] = useState("");
   const [addingCat, setAddingCat] = useState(false);
@@ -185,7 +187,7 @@ export default function Home() {
   }, [toBeBudgeted, loading]);
 
   async function refresh() {
-    const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes, meRes, accRes] = await Promise.all([
+    const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes, meRes, accRes, mealsRes] = await Promise.all([
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>("/api/spend/summary"),
       api<SpendListRes>("/api/spend"),
@@ -194,6 +196,7 @@ export default function Home() {
       api<{ notes: Note[] }>("/api/notes"),
       api<{ userId: string }>("/api/auth/me"),
       api<AccountRes>("/api/account"),
+      api<{ meals: UpcomingMeal[] }>("/api/meals/upcoming").catch(() => ({ meals: [] })),
     ]);
     const allCats = Array.from(
       new Map((catRes.categories ?? []).map((c: Category) => [c.id, c])).values()
@@ -206,6 +209,7 @@ export default function Home() {
     setNotes(notesRes.notes ?? []);
     if (meRes.userId) setMyUserId(meRes.userId);
     setAccount(accRes);
+    setUpcomingMeals(mealsRes.meals ?? []);
     setCategoryId((prev) => {
       if (prev === INCOME_ID) return prev;
       const nonIncome = allCats.filter((c) => c.id !== INCOME_ID);
@@ -599,6 +603,30 @@ export default function Home() {
                   <div className={cn("text-xs mt-0.5", urgent ? "text-[#B8791F]" : "text-[#2F6B52]")}>
                     {daysLeft === 0 ? "Due today" : daysLeft === 1 ? "Due tomorrow" : `${daysLeft} days left`}
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-b border-stone-100 mb-4 mt-4" />
+
+        {/* Dinner plans */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#5C6B7A]">🍽️ Dinner plans</span>
+            <span className="text-xs text-stone-400">7 days</span>
+          </div>
+          <div className="space-y-1.5">
+            {upcomingMeals.length === 0 ? (
+              <p className="text-sm text-[#5C6B7A]">Nothing planned yet.</p>
+            ) : upcomingMeals.map((meal) => {
+              const date = new Date(`${meal.planned_date}T00:00:00`);
+              const label = date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+              return (
+                <div key={meal.id} className="rounded-xl bg-[#FDF8F0] border border-[#C8A464]/20 px-3 py-2 text-sm">
+                  <span className="font-medium text-[#0B2A4A]">{meal.recipe_title}</span>
+                  <span className="text-[#5C6B7A] text-xs ml-2">{label}</span>
                 </div>
               );
             })}

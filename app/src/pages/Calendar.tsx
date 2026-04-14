@@ -7,6 +7,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 
 type Bill = { id: string; name: string; mode: "auto" | "manual"; due_date: string };
 type FamEvent = { id: string; title: string; start_at: string; end_at: string | null; location: string | null };
+type MealCalEvent = { id: string; planned_date: string; meal_type: string; recipe_title: string; recipe_type: string; recipe_id: string };
 type RangeRes = { bills: Bill[]; events: FamEvent[] };
 type FCEvent = { id: string; title: string; start: string; end?: string; allDay?: boolean; backgroundColor?: string; borderColor?: string; textColor?: string; extendedProps?: Record<string, any> };
 
@@ -21,6 +22,7 @@ function prettyDate(iso: string) { return new Date(`${iso}T00:00:00`).toLocaleDa
 
 export default function Calendar() {
   const [rangeData, setRangeData] = useState<RangeRes | null>(null);
+  const [meals, setMeals] = useState<MealCalEvent[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [isMobile, setIsMobile] = useState(checkIsMobile());
@@ -36,7 +38,7 @@ export default function Calendar() {
   const [notes, setNotes] = useState("");
 
   const [viewOpen, setViewOpen] = useState(false);
-  const [selected, setSelected] = useState<{ kind: "bill" | "family"; id: string; title: string; start: string; end?: string; location?: string | null } | null>(null);
+  const [selected, setSelected] = useState<{ kind: "bill" | "family" | "meal"; id: string; title: string; start: string; end?: string; location?: string | null; mealType?: string } | null>(null);
 
   useEffect(() => {
     const handler = () => setIsMobile(checkIsMobile());
@@ -49,8 +51,12 @@ export default function Calendar() {
   }, []);
   
   async function loadRange(start: string, end: string) {
-    const r = await api<RangeRes>(`/api/calendar/range?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    const [r, mealRes] = await Promise.all([
+      api<RangeRes>(`/api/calendar/range?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
+      api<{ meals: MealCalEvent[] }>(`/api/meals?start=${start}&end=${end}`).catch(() => ({ meals: [] })),
+    ]);
     setRangeData(r);
+    setMeals(mealRes.meals ?? []);
   }
 
   useEffect(() => { loadRange(visibleStart, visibleEnd).catch((e) => setMsg(e?.message || "Error")); }, []);
@@ -67,18 +73,24 @@ export default function Calendar() {
       backgroundColor: "#dbeafe", borderColor: "#bfdbfe", textColor: "#1e40af",
       extendedProps: { kind: "family", location: e.location },
     }));
-    return [...bills, ...events];
-  }, [rangeData]);
+    const mealEvents: FCEvent[] = meals.map((m) => ({
+      id: `meal:${m.id}`, title: `🍽️ ${m.recipe_title}`, start: m.planned_date, allDay: true,
+      backgroundColor: "#FDF8F0", borderColor: "#C8A464", textColor: "#B8791F",
+      extendedProps: { kind: "meal", mealType: m.meal_type, recipeId: m.recipe_id },
+    }));
+    return [...bills, ...events, ...mealEvents];
+  }, [rangeData, meals]);
 
   // Combined list for mobile, sorted by date
   const listItems = useMemo(() => {
     if (!rangeData) return [];
-    const items: { date: string; label: string; type: "bill" | "event"; id: string; kind: "bill" | "family"; mode?: string; location?: string | null }[] = [
+    const items: { date: string; label: string; type: "bill" | "event" | "meal"; id: string; kind: "bill" | "family" | "meal"; mode?: string; location?: string | null }[] = [
       ...rangeData.bills.map((b) => ({ date: b.due_date, label: b.name, type: "bill" as const, id: b.id, kind: "bill" as const, mode: b.mode })),
       ...rangeData.events.map((e) => ({ date: e.start_at.slice(0, 10), label: e.title, type: "event" as const, id: e.id, kind: "family" as const, location: e.location })),
+      ...meals.map((m) => ({ date: m.planned_date, label: m.recipe_title, type: "meal" as const, id: m.id, kind: "meal" as const })),
     ];
     return items.sort((a, b) => a.date.localeCompare(b.date));
-  }, [rangeData]);
+  }, [rangeData, meals]);
 
   function openAdd(d: Date, hasTime: boolean) {
     if (!hasTime) d.setHours(9, 0, 0, 0);
@@ -98,17 +110,21 @@ export default function Calendar() {
 
   function onEventClick(info: any) {
     const ev = info.event; const rawId: string = ev.id || "";
-    const kind: "bill" | "family" = rawId.startsWith("bill:") ? "bill" : "family";
-    const id = rawId.includes(":") ? rawId.split(":")[1] : rawId;
-    setSelected({ kind, id, title: ev.title, start: ev.startStr, end: ev.endStr || undefined, location: ev.extendedProps?.location ?? null });
+    const kind: "bill" | "family" | "meal" = rawId.startsWith("bill:") ? "bill" : rawId.startsWith("meal:") ? "meal" : "family";
+    const id = rawId.includes(":") ? rawId.split(":").slice(1).join(":") : rawId;
+    setSelected({ kind, id, title: ev.title, start: ev.startStr, end: ev.endStr || undefined, location: ev.extendedProps?.location ?? null, mealType: ev.extendedProps?.mealType });
     setViewOpen(true);
   }
 
   async function deleteSelected() {
-    if (!selected || selected.kind !== "family") return;
+    if (!selected) return;
     setBusy(true); setMsg(null);
     try {
-      await api(`/api/calendar/${selected.id}`, { method: "DELETE" });
+      if (selected.kind === "family") {
+        await api(`/api/calendar/${selected.id}`, { method: "DELETE" });
+      } else if (selected.kind === "meal") {
+        await api(`/api/meals/${selected.id}`, { method: "DELETE" });
+      }
       setViewOpen(false); setSelected(null); await loadRange(visibleStart, visibleEnd);
     } catch (err: any) { setMsg(err?.message || "Error."); } finally { setBusy(false); }
   }
@@ -143,18 +159,19 @@ export default function Calendar() {
             <div className="flex gap-2">
               <span className="text-xs rounded-full bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5">📄 Bills</span>
               <span className="text-xs rounded-full bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5">📅 Events</span>
+              <span className="text-xs rounded-full bg-[#FDF8F0] text-[#B8791F] border border-[#C8A464]/30 px-2 py-0.5">🍽️ Meals</span>
             </div>
           </div>
           <div className="divide-y divide-slate-100">
             {listItems.length === 0 && <div className="px-4 py-8 text-sm text-slate-400 text-center">Nothing this month.</div>}
             {listItems.map((item, i) => (
               <div key={`${item.type}-${item.id}-${i}`} className="flex items-center gap-3 px-4 py-3">
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm ${item.type === "bill" ? "bg-amber-100" : "bg-blue-100"}`}>
-                  {item.type === "bill" ? "📄" : "📅"}
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm ${item.type === "bill" ? "bg-amber-100" : item.type === "meal" ? "bg-[#FDF8F0]" : "bg-blue-100"}`}>
+                  {item.type === "bill" ? "📄" : item.type === "meal" ? "🍽️" : "📅"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-slate-900 truncate">{item.label}</div>
-                  <div className="text-xs text-slate-400">{item.type === "bill" ? prettyDate(item.date) : prettyDT(item.date + "T00:00:00")}</div>
+                  <div className="text-xs text-slate-400">{prettyDate(item.date)}</div>
                 </div>
                 {item.type === "bill" && <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${item.mode === "auto" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>{item.mode === "auto" ? "Auto" : "Manual"}</span>}
               </div>
@@ -189,6 +206,9 @@ export default function Calendar() {
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800">
           <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />Family events
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C8A464]/30 bg-[#FDF8F0] px-3 py-1 text-xs font-medium text-[#B8791F]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#C8A464]" />Meal plans
         </span>
       </div>
 
@@ -249,15 +269,25 @@ export default function Calendar() {
         <Modal onClose={() => setViewOpen(false)}>
           <div className="flex items-start justify-between mb-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">{selected.kind === "bill" ? "Bill reminder" : "Family event"}</div>
-              <div className="text-lg font-semibold text-slate-900 mt-1">{selected.title}</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                {selected.kind === "bill" ? "Bill reminder" : selected.kind === "meal" ? "Meal plan" : "Family event"}
+              </div>
+              <div className="text-lg font-semibold text-slate-900 mt-1">{selected.title.replace(/^🍽️ /, "")}</div>
+              {selected.kind === "meal" && selected.mealType && (
+                <span className="text-xs font-medium capitalize rounded-full px-2.5 py-0.5 bg-[#FDF8F0] text-[#B8791F] border border-[#C8A464]/30 mt-1 inline-block">
+                  {selected.mealType}
+                </span>
+              )}
             </div>
             <button type="button" onClick={() => setViewOpen(false)} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
               Close
             </button>
           </div>
           <div className="space-y-2 text-sm">
-            <div className="flex gap-2"><span className="text-slate-400 w-14 shrink-0">Start</span><span className="text-slate-900">{selected.kind === "bill" ? prettyDate(selected.start) : prettyDT(selected.start)}</span></div>
+            <div className="flex gap-2">
+              <span className="text-slate-400 w-14 shrink-0">Date</span>
+              <span className="text-slate-900">{selected.kind === "bill" || selected.kind === "meal" ? prettyDate(selected.start) : prettyDT(selected.start)}</span>
+            </div>
             {selected.end && selected.kind === "family" && <div className="flex gap-2"><span className="text-slate-400 w-14 shrink-0">End</span><span className="text-slate-900">{prettyDT(selected.end)}</span></div>}
             {selected.location && <div className="flex gap-2"><span className="text-slate-400 w-14 shrink-0">Where</span><span className="text-slate-900">{selected.location}</span></div>}
           </div>
@@ -267,10 +297,10 @@ export default function Calendar() {
             </div>
           )}
           <div className="mt-5 flex gap-2 justify-end">
-            {selected.kind === "family" && (
+            {(selected.kind === "family" || selected.kind === "meal") && (
               <button type="button" disabled={busy} onClick={deleteSelected}
                 className="rounded-xl border border-[#B8791F]/30 bg-[#FDF3E3] px-4 py-2 text-sm font-semibold text-[#B8791F] hover:bg-[#FDF3E3]/70 disabled:opacity-60 transition-all">
-                Delete event
+                {selected.kind === "meal" ? "Remove from plan" : "Delete event"}
               </button>
             )}
             <button type="button" onClick={() => setViewOpen(false)}
