@@ -1536,4 +1536,271 @@ app.patch("/api/auth/profile", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
+// ---- GROCERY LISTS ----
+
+app.get("/api/grocery/lists", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ lists: [] });
+
+  const lists = await c.env.DB.prepare(
+    `SELECT gl.id, gl.name, gl.created_at,
+     COUNT(gi.id) as total_items,
+     SUM(CASE WHEN gi.checked = 1 THEN 1 ELSE 0 END) as checked_items
+     FROM grocery_lists gl
+     LEFT JOIN grocery_items gi ON gi.list_id = gl.id
+     WHERE gl.household_id = ?
+     GROUP BY gl.id
+     ORDER BY gl.created_at DESC`
+  ).bind(householdId).all<{
+    id: string; name: string; created_at: string;
+    total_items: number; checked_items: number;
+  }>();
+
+  return c.json({ lists: lists.results ?? [] });
+});
+
+app.post("/api/grocery/lists", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{ name?: string }>();
+  const name = (body.name || "").trim();
+  if (!name) return c.json({ error: "List name required" }, 400);
+
+  const now = new Date().toISOString();
+  const id = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO grocery_lists (id, household_id, name, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(id, householdId, name, userId, now, now).run();
+
+  return c.json({ ok: true, id });
+});
+
+app.delete("/api/grocery/lists/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  await c.env.DB.prepare(`DELETE FROM grocery_items WHERE list_id = ?`).bind(id).run();
+  await c.env.DB.prepare(
+    `DELETE FROM grocery_lists WHERE id = ? AND household_id = ?`
+  ).bind(id, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+app.get("/api/grocery/lists/:id/items", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const listId = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ items: [] });
+
+  const items = await c.env.DB.prepare(
+    `SELECT gi.id, gi.name, gi.quantity, gi.category, gi.checked, gi.added_by,
+     u.name as added_by_name
+     FROM grocery_items gi
+     LEFT JOIN users u ON u.id = gi.added_by
+     WHERE gi.list_id = ? AND gi.household_id = ?
+     ORDER BY gi.checked ASC, gi.created_at ASC`
+  ).bind(listId, householdId).all<{
+    id: string; name: string; quantity: string | null;
+    category: string | null; checked: number;
+    added_by: string; added_by_name: string | null;
+  }>();
+
+  return c.json({ items: items.results ?? [] });
+});
+
+app.post("/api/grocery/lists/:id/items", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const listId = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{ name?: string; quantity?: string; category?: string }>();
+  const name = (body.name || "").trim();
+  if (!name) return c.json({ error: "Item name required" }, 400);
+
+  const now = new Date().toISOString();
+  const id = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO grocery_items (id, list_id, household_id, name, quantity, category, checked, added_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
+  ).bind(id, listId, householdId, name, body.quantity || null, body.category || null, userId, now, now).run();
+
+  return c.json({ ok: true, id });
+});
+
+app.patch("/api/grocery/items/:id/check", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const item = await c.env.DB.prepare(
+    `SELECT id, checked FROM grocery_items WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(id, householdId).first<{ id: string; checked: number }>();
+
+  if (!item) return c.json({ error: "Not found" }, 404);
+
+  const newChecked = item.checked === 1 ? 0 : 1;
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `UPDATE grocery_items SET checked = ?, checked_by = ?, updated_at = ? WHERE id = ?`
+  ).bind(newChecked, newChecked === 1 ? userId : null, now, id).run();
+
+  return c.json({ ok: true, checked: newChecked });
+});
+
+app.delete("/api/grocery/items/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  await c.env.DB.prepare(
+    `DELETE FROM grocery_items WHERE id = ? AND household_id = ?`
+  ).bind(id, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+app.post("/api/grocery/lists/:id/clear-checked", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const listId = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  await c.env.DB.prepare(
+    `DELETE FROM grocery_items WHERE list_id = ? AND household_id = ? AND checked = 1`
+  ).bind(listId, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+// ---- CHORES ----
+
+app.get("/api/chores", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ chores: [] });
+
+  const rows = await c.env.DB.prepare(
+    `SELECT ch.id, ch.title, ch.assigned_to, ch.frequency, ch.due_date,
+     ch.completed, ch.completed_at, ch.created_at,
+     u.name as assigned_to_name
+     FROM chores ch
+     LEFT JOIN users u ON u.id = ch.assigned_to
+     WHERE ch.household_id = ?
+     ORDER BY ch.completed ASC, ch.due_date ASC, ch.created_at ASC`
+  ).bind(householdId).all<{
+    id: string; title: string; assigned_to: string | null;
+    frequency: string; due_date: string | null;
+    completed: number; completed_at: string | null;
+    created_at: string; assigned_to_name: string | null;
+  }>();
+
+  return c.json({ chores: rows.results ?? [] });
+});
+
+app.post("/api/chores", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{
+    title?: string; assignedTo?: string;
+    frequency?: string; dueDate?: string;
+  }>();
+
+  const title = (body.title || "").trim();
+  if (!title) return c.json({ error: "Title required" }, 400);
+
+  const frequency = body.frequency || "weekly";
+  const now = new Date().toISOString();
+  const id = uid();
+
+  await c.env.DB.prepare(
+    `INSERT INTO chores (id, household_id, title, assigned_to, frequency, due_date, completed, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
+  ).bind(id, householdId, title, body.assignedTo || null, frequency, body.dueDate || null, userId, now, now).run();
+
+  return c.json({ ok: true, id });
+});
+
+app.patch("/api/chores/:id/complete", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const chore = await c.env.DB.prepare(
+    `SELECT id, completed FROM chores WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(id, householdId).first<{ id: string; completed: number }>();
+
+  if (!chore) return c.json({ error: "Not found" }, 404);
+
+  const newCompleted = chore.completed === 1 ? 0 : 1;
+  const now = new Date().toISOString();
+
+  await c.env.DB.prepare(
+    `UPDATE chores SET completed = ?, completed_by = ?, completed_at = ?, updated_at = ?
+     WHERE id = ?`
+  ).bind(newCompleted, newCompleted === 1 ? userId : null, newCompleted === 1 ? now : null, now, id).run();
+
+  return c.json({ ok: true, completed: newCompleted });
+});
+
+app.patch("/api/chores/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{
+    title?: string; assignedTo?: string | null;
+    frequency?: string; dueDate?: string | null;
+  }>();
+
+  const sets: string[] = [];
+  const binds: unknown[] = [];
+
+  if (body.title !== undefined) {
+    const t = (body.title || "").trim();
+    if (!t) return c.json({ error: "Title required" }, 400);
+    sets.push("title = ?"); binds.push(t);
+  }
+  if (body.assignedTo !== undefined) { sets.push("assigned_to = ?"); binds.push(body.assignedTo); }
+  if (body.frequency !== undefined) { sets.push("frequency = ?"); binds.push(body.frequency); }
+  if (body.dueDate !== undefined) { sets.push("due_date = ?"); binds.push(body.dueDate); }
+
+  if (sets.length === 0) return c.json({ error: "Nothing to update" }, 400);
+
+  const now = new Date().toISOString();
+  sets.push("updated_at = ?"); binds.push(now);
+
+  await c.env.DB.prepare(
+    `UPDATE chores SET ${sets.join(", ")} WHERE id = ? AND household_id = ?`
+  ).bind(...binds, id, householdId).run();
+
+  return c.json({ ok: true });
+});
+
+app.delete("/api/chores/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  await c.env.DB.prepare(
+    `DELETE FROM chores WHERE id = ? AND household_id = ?`
+  ).bind(id, householdId).run();
+
+  return c.json({ ok: true });
+});
+
 export default { fetch: app.fetch };

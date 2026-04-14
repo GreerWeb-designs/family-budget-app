@@ -22,6 +22,7 @@ import SettingsPage from "./pages/Settings";
 import JoinHousehold from "./pages/JoinHousehold";
 import Onboarding from "./pages/Onboarding";
 import Grocery from "./pages/Grocery";
+import Chores from "./pages/Chores";
 
 type Totals = {
   bankBalance: number;
@@ -108,6 +109,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/goals",    label: "Goals",    icon: "🎯" },
       { to: "/calendar", label: "Calendar", icon: "📅" },
       { to: "/grocery",  label: "Grocery",  icon: "🛒" },
+      { to: "/chores",   label: "Chores",   icon: "🧹" },
     ],
   },
   { to: "/settings",      label: "Settings",  icon: "⚙️", exact: true },
@@ -116,7 +118,7 @@ const NAV_GROUPS: NavGroup[] = [
 const MOBILE_NAV = [
   { to: "/home",     label: "Overview",  icon: "🏠", activeFor: [] as string[] },
   { to: "/budget",   label: "Finances",  icon: "💰", activeFor: ["/budget", "/bills", "/debts"] },
-  { to: "/goals",    label: "Household", icon: "🏡", activeFor: ["/goals", "/calendar", "/grocery"] },
+  { to: "/goals",    label: "Household", icon: "🏡", activeFor: ["/goals", "/calendar", "/grocery", "/chores"] },
   { to: "/settings", label: "Settings",  icon: "⚙️", activeFor: [] as string[] },
 ];
 
@@ -129,6 +131,7 @@ function PageTitle() {
     if (pathname.startsWith("/goals"))     return { title: "Goals",     icon: "🎯" };
     if (pathname.startsWith("/calendar"))  return { title: "Calendar",  icon: "📅" };
     if (pathname.startsWith("/grocery"))   return { title: "Grocery",   icon: "🛒" };
+    if (pathname.startsWith("/chores"))    return { title: "Chores",    icon: "🧹" };
     if (pathname.startsWith("/settings"))  return { title: "Settings",  icon: "⚙️" };
     if (pathname.startsWith("/finances"))  return { title: "Finances",  icon: "💰" };
     if (pathname.startsWith("/household")) return { title: "Household", icon: "🏡" };
@@ -182,10 +185,14 @@ function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const path = location.pathname;
-    if (["/budget", "/bills", "/debts"].some((p) => path.startsWith(p))) {
+    if (["/budget", "/bills", "/debts"].some(
+      (p) => path === p || path.startsWith(p + "/")
+    )) {
       setExpandedGroups((prev) => [...new Set([...prev, "finances"])]);
     }
-    if (["/goals", "/calendar", "/grocery"].some((p) => path.startsWith(p))) {
+    if (["/goals", "/calendar", "/grocery", "/chores"].some(
+      (p) => path === p || path.startsWith(p + "/")
+    )) {
       setExpandedGroups((prev) => [...new Set([...prev, "household"])]);
     }
   }, [location.pathname]);
@@ -512,6 +519,7 @@ export default function App() {
       <Route path="/goals"         element={<ProtectedLayout><Goals /></ProtectedLayout>} />
       <Route path="/calendar"      element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
       <Route path="/grocery"       element={<ProtectedLayout><Grocery /></ProtectedLayout>} />
+      <Route path="/chores"        element={<ProtectedLayout><Chores /></ProtectedLayout>} />
       <Route path="/settings"      element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
       <Route path="/join/:code" element={<JoinHousehold />} />
       <Route path="*"         element={<Navigate to="/home" replace />} />
