@@ -14,7 +14,7 @@ import { api } from "./lib/api";
 import { cn, money } from "./lib/utils";
 import { UserProvider, useUser } from "./lib/UserContext";
 import { canAccess, isDependent } from "./lib/permissions";
-import { Wordmark, SegmentedTabs, BottomNav, ToastProvider } from "./components/ui";
+import { Wordmark, SegmentedTabs, BottomNav, ToastProvider, BrandMark } from "./components/ui";
 
 import Login          from "./pages/Login";
 import Signup         from "./pages/Signup";
@@ -607,9 +607,54 @@ function ProtectedLayout({ children }: { children: ReactElement }) {
   );
 }
 
+// ── Splash screen ─────────────────────────────────────────────────────────────
+
+const SPLASH_KEY = "nestotter_splashed";
+
+function SplashScreen({ onDone }: { onDone: () => void }) {
+  // phase: "in" → fade in, "hold" → fully visible, "out" → fade out
+  const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
+
+  useEffect(() => {
+    // fade in → hold → fade out → done
+    const t1 = setTimeout(() => setPhase("hold"), 400);
+    const t2 = setTimeout(() => setPhase("out"), 1600);
+    const t3 = setTimeout(() => onDone(), 2000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [onDone]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-5"
+      style={{
+        background: "#1B4243",
+        opacity: phase === "in" ? 0 : phase === "out" ? 0 : 1,
+        transition: phase === "in"
+          ? "opacity 400ms ease-out"
+          : phase === "out"
+          ? "opacity 400ms ease-in"
+          : "none",
+      }}
+    >
+      <BrandMark size={80} alt="NestOtter" />
+      <Wordmark size="lg" className="text-white" />
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(() => {
+    if (sessionStorage.getItem(SPLASH_KEY)) return false;
+    sessionStorage.setItem(SPLASH_KEY, "1");
+    return true;
+  });
+
+  if (showSplash) {
+    return <SplashScreen onDone={() => setShowSplash(false)} />;
+  }
+
   return (
     <UserProvider>
       <ToastProvider>
