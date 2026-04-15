@@ -19,7 +19,7 @@ function AuthShell({ subtitle, children }: { subtitle: string; children: React.R
             className="text-4xl font-medium text-ink-900 leading-tight mb-4"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}
           >
-            Where your<br />nest egg grows.
+            Your Home,<br />Organized.
           </p>
           <p className="text-sm text-ink-500 leading-relaxed">
             A warm, clear home for your household budget.
