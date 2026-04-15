@@ -28,12 +28,12 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#FAF6EE" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#1B4243" }}>
       <div className="w-full max-w-100">
         <div className="text-center mb-8">
           <BrandMark size={48} className="mx-auto mb-3" />
-          <Wordmark size="md" />
-          <div className="text-sm text-ink-500 mt-1">Reset your password</div>
+          <Wordmark size="md" className="text-white" />
+          <div className="text-sm mt-1" style={{ color: "#6FA3A5" }}>Reset your password</div>
         </div>
 
         <div className="rounded-2xl border p-8" style={{ background: "#FFFDF8", borderColor: "#C9DEDF" }}>

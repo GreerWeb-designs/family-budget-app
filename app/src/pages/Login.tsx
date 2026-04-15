@@ -6,21 +6,21 @@ import { BrandMark, Wordmark } from "../components/ui";
 
 function AuthShell({ subtitle, children }: { subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex" style={{ background: "#FAF6EE" }}>
+    <div className="min-h-screen flex" style={{ background: "#1B4243" }}>
       {/* Left panel — desktop only */}
-      <div className="hidden lg:flex lg:w-104 lg:flex-col lg:justify-between lg:p-10 lg:shrink-0"
-        style={{ background: "#1B4243", borderRight: "1px solid #245759" }}>
-        <Wordmark size="md" className="text-white" />
+      <div className="hidden lg:flex lg:w-104 lg:flex-col lg:justify-between lg:p-10 lg:shrink-0 bg-cream-50"
+        style={{ borderRight: "1px solid var(--color-cream-200)" }}>
+        <Wordmark size="md" />
         <div>
-          <p className="text-4xl font-medium text-white leading-tight mb-4"
+          <p className="text-4xl font-medium text-ink-900 leading-tight mb-4"
             style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
             Where your<br />nest egg grows.
           </p>
-          <p className="text-sm leading-relaxed" style={{ color: "#6FA3A5" }}>
+          <p className="text-sm text-ink-500 leading-relaxed">
             A warm, clear home for your household budget.
           </p>
         </div>
-        <p className="text-xs" style={{ color: "#6FA3A5" }}>Private household dashboard</p>
+        <p className="text-xs text-ink-500">Private household dashboard</p>
       </div>
 
       {/* Right panel — form */}
@@ -28,8 +28,8 @@ function AuthShell({ subtitle, children }: { subtitle: string; children: React.R
         {/* Mobile logo */}
         <div className="lg:hidden mb-8 text-center">
           <BrandMark size={48} className="mx-auto mb-3" />
-          <Wordmark size="md" />
-          <div className="text-sm text-ink-500 mt-1">{subtitle}</div>
+          <Wordmark size="md" className="text-white" />
+          <div className="text-sm mt-1" style={{ color: "#6FA3A5" }}>{subtitle}</div>
         </div>
 
         <div className="w-full max-w-100">
