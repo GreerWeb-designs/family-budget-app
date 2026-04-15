@@ -2,13 +2,15 @@ import { BrandMark } from "./BrandMark";
 import { cn } from "../../lib/utils";
 
 export interface WordmarkProps {
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "xl" | "lg";
   className?: string;
 }
 
 const configs = {
+  xs: { logoSize: 23, textClass: "text-xl"   },  // sm +15%
   sm: { logoSize: 20, textClass: "text-lg"   },
   md: { logoSize: 28, textClass: "text-2xl"  },
+  xl: { logoSize: 36, textClass: "text-3xl"  },  // md +30%
   lg: { logoSize: 40, textClass: "text-4xl"  },
 };
 

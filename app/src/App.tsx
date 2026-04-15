@@ -14,7 +14,9 @@ import { api } from "./lib/api";
 import { cn, money } from "./lib/utils";
 import { UserProvider, useUser } from "./lib/UserContext";
 import { canAccess, isDependent } from "./lib/permissions";
-import { Wordmark, SegmentedTabs, BottomNav, ToastProvider, BrandMark } from "./components/ui";
+import { Wordmark, SegmentedTabs, BottomNav, ToastProvider } from "./components/ui";
+import { Splash } from "./components/Splash";
+import { useIsMobile } from "./hooks/useIsMobile";
 
 import Login          from "./pages/Login";
 import Signup         from "./pages/Signup";
@@ -310,13 +312,13 @@ function AppShell({ children }: { children: ReactNode }) {
 
       {/* ── Desktop Sidebar ───────────────────────────────── */}
       <aside
-        className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0 fixed left-0 top-0 bottom-0 z-30 overflow-y-auto"
-        style={{ background: "#1B4243", borderRight: "1px solid #245759" }}
+        className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0 fixed left-0 top-0 bottom-0 z-30 overflow-y-auto bg-cream-50"
+        style={{ borderRight: "1px solid var(--color-cream-200)" }}
       >
-        {/* Wordmark */}
+        {/* Logo */}
         <div className="px-5 pt-6 pb-5">
-          <Wordmark size="md" className="text-white" />
-          <p className="mt-1 text-[11px]" style={{ color: "rgba(200,222,223,0.5)" }}>
+          <Wordmark size="xl" />
+          <p className="mt-1 text-[11px] text-ink-500">
             Your family, organized.
           </p>
         </div>
@@ -326,22 +328,21 @@ function AppShell({ children }: { children: ReactNode }) {
           <div className={cn(
             "rounded-lg px-4 py-3 border",
             tbb < 0
-              ? "bg-rust-700/25 border-rust-500/30"
-              : "bg-teal-600/30 border-teal-400/20"
+              ? "bg-rust-50 border-rust-500/30"
+              : "bg-teal-50 border-teal-500/20"
           )}>
-            <div className="text-[10px] font-bold uppercase tracking-widest mb-1"
-              style={{ color: "rgba(200,222,223,0.55)" }}>
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-ink-500">
               Ready to assign
             </div>
             <div
               className={cn("text-2xl font-medium tabular-nums leading-tight",
-                tbb < 0 ? "text-rust-300" : "text-teal-100"
+                tbb < 0 ? "text-rust-600" : "text-teal-700"
               )}
               style={{ fontFamily: "'Fraunces', Georgia, serif" }}
             >
               {loadingTotals ? "—" : money(tbb)}
             </div>
-            <div className="text-[11px] mt-0.5" style={{ color: "rgba(200,222,223,0.45)" }}>
+            <div className="text-[11px] mt-0.5 text-ink-500">
               Available to budget
             </div>
           </div>
@@ -372,18 +373,18 @@ function AppShell({ children }: { children: ReactNode }) {
                   className={({ isActive }) => cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     isActive
-                      ? "text-white bg-teal-500/25"
-                      : "text-teal-100/60 hover:text-white hover:bg-white/8"
+                      ? "text-teal-700 bg-teal-500/10"
+                      : "text-ink-500 hover:text-ink-900 hover:bg-cream-100"
                   )}
                 >
                   {({ isActive }) => (
                     <>
-                      <span className={cn("shrink-0", isActive ? "text-teal-300" : "")}>
+                      <span className={cn("shrink-0", isActive ? "text-teal-500" : "")}>
                         {g.icon}
                       </span>
                       <span>{g.label}</span>
                       {isActive && (
-                        <div className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-300" />
+                        <div className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-500" />
                       )}
                     </>
                   )}
@@ -412,13 +413,13 @@ function AppShell({ children }: { children: ReactNode }) {
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     hasActiveChild
-                      ? "text-white bg-teal-500/15 border-l-2 border-teal-300 pl-2.5"
-                      : "text-teal-100/60 hover:text-white hover:bg-white/8"
+                      ? "text-teal-700 bg-teal-500/10 border-l-2 border-teal-500 pl-2.5"
+                      : "text-ink-500 hover:text-ink-900 hover:bg-cream-100"
                   )}
                 >
                   <span className="shrink-0">{g.icon}</span>
                   <span>{g.label}</span>
-                  <span className="ml-auto text-teal-100/30">
+                  <span className="ml-auto text-ink-300">
                     {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                   </span>
                 </button>
@@ -432,8 +433,8 @@ function AppShell({ children }: { children: ReactNode }) {
                         className={({ isActive }) => cn(
                           "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150",
                           isActive
-                            ? "text-white bg-white/12"
-                            : "text-teal-100/50 hover:text-white hover:bg-white/8"
+                            ? "text-teal-700 bg-teal-500/10"
+                            : "text-ink-500 hover:text-ink-900 hover:bg-cream-100"
                         )}
                       >
                         <span className="shrink-0">{child.icon}</span>
@@ -448,14 +449,14 @@ function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* User footer */}
-        <div className="px-3 py-4 space-y-1" style={{ borderTop: "1px solid #245759" }}>
+        <div className="px-3 py-4 space-y-1 border-t border-cream-200">
           {userName && (
             <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
               <UserAvatar name={userName} size="sm" />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-semibold text-teal-100">{userName}</div>
+                <div className="truncate text-xs font-semibold text-ink-900">{userName}</div>
                 {userEmail && (
-                  <div className="truncate text-[10px]" style={{ color: "rgba(200,222,223,0.45)" }}>
+                  <div className="truncate text-[10px] text-ink-500">
                     {userEmail}
                   </div>
                 )}
@@ -465,7 +466,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={refreshTotals}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all text-teal-100/50 hover:text-white hover:bg-white/8"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all text-ink-500 hover:text-ink-900 hover:bg-cream-100"
           >
             <RefreshCw size={13} />
             <span>Refresh totals</span>
@@ -473,7 +474,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all text-teal-100/50 hover:text-rust-300 hover:bg-white/8"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all text-ink-500 hover:text-rust-600 hover:bg-rust-50"
           >
             <LogOut size={13} />
             <span>Sign out</span>
@@ -490,7 +491,7 @@ function AppShell({ children }: { children: ReactNode }) {
           {/* Left: Wordmark on mobile, page title on desktop */}
           <div className="flex items-center gap-2">
             <div className="lg:hidden">
-              <Wordmark size="sm" />
+              <Wordmark size="xs" />
             </div>
             <div className="hidden lg:flex items-center gap-2">
               {pageIcon && (
@@ -607,83 +608,52 @@ function ProtectedLayout({ children }: { children: ReactElement }) {
   );
 }
 
-// ── Splash screen ─────────────────────────────────────────────────────────────
-
-const SPLASH_KEY = "nestotter_splashed";
-
-function SplashScreen({ onDone }: { onDone: () => void }) {
-  // phase: "in" → fade in, "hold" → fully visible, "out" → fade out
-  const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
-
-  useEffect(() => {
-    // fade in → hold → fade out → done
-    const t1 = setTimeout(() => setPhase("hold"), 400);
-    const t2 = setTimeout(() => setPhase("out"), 1600);
-    const t3 = setTimeout(() => onDone(), 2000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [onDone]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-5"
-      style={{
-        background: "#1B4243",
-        opacity: phase === "in" ? 0 : phase === "out" ? 0 : 1,
-        transition: phase === "in"
-          ? "opacity 400ms ease-out"
-          : phase === "out"
-          ? "opacity 400ms ease-in"
-          : "none",
-      }}
-    >
-      <BrandMark size={80} alt="NestOtter" />
-      <Wordmark size="lg" className="text-white" />
-    </div>
-  );
-}
-
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(() => {
-    if (sessionStorage.getItem(SPLASH_KEY)) return false;
-    sessionStorage.setItem(SPLASH_KEY, "1");
-    return true;
+  const isMobile = useIsMobile();
+  // Desktop skips splash entirely; mobile shows it once per session
+  const [splashDone, setSplashDone] = useState(() => {
+    if (!isMobile) return true;
+    if (sessionStorage.getItem("nestotter_splashed")) return true;
+    sessionStorage.setItem("nestotter_splashed", "1");
+    return false;
   });
 
-  if (showSplash) {
-    return <SplashScreen onDone={() => setShowSplash(false)} />;
-  }
-
   return (
-    <UserProvider>
-      <ToastProvider>
-        <Routes>
-          <Route path="/login"           element={<Login />} />
-          <Route path="/signup"          element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password"  element={<ResetPassword />} />
-          <Route path="/"                element={<Navigate to="/home" replace />} />
-          <Route path="/onboarding"      element={<ProtectedOnboarding><Onboarding /></ProtectedOnboarding>} />
-          <Route path="/home"            element={<ProtectedLayout><Home_ /></ProtectedLayout>} />
-          <Route path="/finances"        element={<Navigate to="/budget" replace />} />
-          <Route path="/budget"          element={<ProtectedLayout><Budget /></ProtectedLayout>} />
-          <Route path="/spending"        element={<ProtectedLayout><Spending /></ProtectedLayout>} />
-          <Route path="/bills"           element={<ProtectedLayout><Bills /></ProtectedLayout>} />
-          <Route path="/debts"           element={<ProtectedLayout><Debts /></ProtectedLayout>} />
-          <Route path="/household-hub"   element={<Navigate to="/goals" replace />} />
-          <Route path="/goals"           element={<ProtectedLayout><Goals /></ProtectedLayout>} />
-          <Route path="/calendar"        element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
-          <Route path="/grocery"         element={<ProtectedLayout><Grocery /></ProtectedLayout>} />
-          <Route path="/chores"          element={<ProtectedLayout><Chores /></ProtectedLayout>} />
-          <Route path="/recipes"         element={<ProtectedLayout><Recipes /></ProtectedLayout>} />
-          <Route path="/meals"           element={<ProtectedLayout><Meals /></ProtectedLayout>} />
-          <Route path="/settings"        element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
-          <Route path="/join/:code"      element={<JoinHousehold />} />
-          <Route path="/design-system"   element={<DesignSystem />} />
-          <Route path="*"               element={<Navigate to="/home" replace />} />
-        </Routes>
-      </ToastProvider>
-    </UserProvider>
+    <>
+      {!splashDone && isMobile && (
+        <Splash onDone={() => setSplashDone(true)} />
+      )}
+      <UserProvider>
+        <ToastProvider>
+          <Routes>
+            <Route path="/login"           element={<Login />} />
+            <Route path="/signup"          element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password"  element={<ResetPassword />} />
+            <Route path="/"                element={<Navigate to="/home" replace />} />
+            <Route path="/onboarding"      element={<ProtectedOnboarding><Onboarding /></ProtectedOnboarding>} />
+            <Route path="/home"            element={<ProtectedLayout><Home_ /></ProtectedLayout>} />
+            <Route path="/finances"        element={<Navigate to="/budget" replace />} />
+            <Route path="/budget"          element={<ProtectedLayout><Budget /></ProtectedLayout>} />
+            <Route path="/spending"        element={<ProtectedLayout><Spending /></ProtectedLayout>} />
+            <Route path="/bills"           element={<ProtectedLayout><Bills /></ProtectedLayout>} />
+            <Route path="/debts"           element={<ProtectedLayout><Debts /></ProtectedLayout>} />
+            <Route path="/household-hub"   element={<Navigate to="/goals" replace />} />
+            <Route path="/goals"           element={<ProtectedLayout><Goals /></ProtectedLayout>} />
+            <Route path="/calendar"        element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
+            <Route path="/grocery"         element={<ProtectedLayout><Grocery /></ProtectedLayout>} />
+            <Route path="/chores"          element={<ProtectedLayout><Chores /></ProtectedLayout>} />
+            <Route path="/recipes"         element={<ProtectedLayout><Recipes /></ProtectedLayout>} />
+            <Route path="/meals"           element={<ProtectedLayout><Meals /></ProtectedLayout>} />
+            <Route path="/settings"        element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
+            <Route path="/join/:code"      element={<JoinHousehold />} />
+            <Route path="/design-system"   element={<DesignSystem />} />
+            <Route path="*"               element={<Navigate to="/home" replace />} />
+          </Routes>
+        </ToastProvider>
+      </UserProvider>
+    </>
   );
 }
