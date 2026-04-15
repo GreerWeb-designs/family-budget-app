@@ -10,6 +10,7 @@ type Bindings = {
   RESEND_API_KEY: string;
   ADMIN_EMAIL: string;
   RESEND_FROM_EMAIL: string;
+  ADMIN_KEY: string;
 };
 
 type Variables = {
@@ -32,7 +33,8 @@ app.use("*", async (c, next) => {
     c.header("Vary", "Origin");
   }
 
-  if (c.req.method === "OPTIONS") {
+  // Let admin routes handle their own OPTIONS preflight (they allow null origin)
+  if (c.req.method === "OPTIONS" && !c.req.path.startsWith("/api/admin")) {
     return c.body(null, 204);
   }
 
@@ -2241,5 +2243,125 @@ app.delete("/api/chores/:id", requireUser, async (c) => {
 
   return c.json({ ok: true });
 });
+
+// ---- ADMIN API ----
+
+const admin = new Hono<{ Bindings: Bindings }>();
+
+// CORS for admin: allow null (file://) and the app origin
+admin.use("*", async (c, next) => {
+  const origin = c.req.header("Origin");
+  const isAllowed = origin === "null" || origin === APP_ORIGIN;
+
+  if (isAllowed) {
+    c.header("Access-Control-Allow-Origin", origin!);
+    c.header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Key");
+    c.header("Access-Control-Allow-Methods", "GET,OPTIONS");
+    c.header("Vary", "Origin");
+  }
+
+  if (c.req.method === "OPTIONS") {
+    return c.body(null, 204);
+  }
+
+  await next();
+});
+
+// ADMIN_KEY auth middleware
+admin.use("*", async (c, next) => {
+  const key = c.req.header("X-Admin-Key");
+  if (!key || key !== c.env.ADMIN_KEY) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  await next();
+});
+
+admin.get("/stats", async (c) => {
+  try {
+    const db = c.env.DB;
+
+    const [
+      usersRow,
+      householdsRow,
+      multiRow,
+      spendsRow,
+      billsRow,
+      goalsRow,
+      debtsRow,
+      eventsRow,
+      sessionsRow,
+      signupsRows,
+    ] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as n FROM users`).first<{ n: number }>(),
+      db.prepare(`SELECT COUNT(*) as n FROM households`).first<{ n: number }>(),
+      db.prepare(
+        `SELECT COUNT(*) as n FROM (SELECT household_id FROM household_members GROUP BY household_id HAVING COUNT(*) > 1)`
+      ).first<{ n: number }>(),
+      db.prepare(`SELECT COUNT(*) as n FROM manual_spends`).first<{ n: number }>(),
+      db.prepare(`SELECT COUNT(*) as n FROM bills`).first<{ n: number }>(),
+      db.prepare(`SELECT COUNT(*) as n FROM goals`).first<{ n: number }>(),
+      db.prepare(`SELECT COUNT(*) as n FROM debts`).first<{ n: number }>(),
+      db.prepare(`SELECT COUNT(*) as n FROM calendar_events`).first<{ n: number }>(),
+      db.prepare(
+        `SELECT COUNT(*) as n FROM sessions WHERE expires_at > datetime('now')`
+      ).first<{ n: number }>(),
+      db.prepare(
+        `SELECT strftime('%Y-%m-%d', created_at) as day, COUNT(*) as signups FROM users GROUP BY day ORDER BY day ASC`
+      ).all<{ day: string; signups: number }>(),
+    ]);
+
+    return c.json({
+      stats: {
+        total_users: usersRow?.n ?? 0,
+        total_households: householdsRow?.n ?? 0,
+        multi_member_households: multiRow?.n ?? 0,
+        total_spends: spendsRow?.n ?? 0,
+        total_bills: billsRow?.n ?? 0,
+        total_goals: goalsRow?.n ?? 0,
+        total_debts: debtsRow?.n ?? 0,
+        total_events: eventsRow?.n ?? 0,
+        active_sessions: sessionsRow?.n ?? 0,
+      },
+      signups_by_day: signupsRows.results ?? [],
+    });
+  } catch {
+    return c.json({ error: "Internal error" }, 500);
+  }
+});
+
+admin.get("/users", async (c) => {
+  try {
+    const rows = await c.env.DB.prepare(
+      `SELECT
+        u.name,
+        u.email,
+        u.created_at,
+        h.name as household_name,
+        (SELECT COUNT(*) FROM manual_spends ms WHERE ms.user_id = u.id) as spend_count,
+        (SELECT COUNT(*) FROM bills b
+         JOIN household_members hm2 ON hm2.household_id = b.household_id
+         WHERE hm2.user_id = u.id LIMIT 1) as has_bills,
+        (SELECT COUNT(*) FROM goals g WHERE g.user_id = u.id) as goal_count
+       FROM users u
+       LEFT JOIN household_members hm ON hm.user_id = u.id
+       LEFT JOIN households h ON h.id = hm.household_id
+       ORDER BY u.created_at DESC`
+    ).all<{
+      name: string;
+      email: string;
+      created_at: string;
+      household_name: string | null;
+      spend_count: number;
+      has_bills: number;
+      goal_count: number;
+    }>();
+
+    return c.json({ users: rows.results ?? [] });
+  } catch {
+    return c.json({ error: "Internal error" }, 500);
+  }
+});
+
+app.route("/api/admin", admin);
 
 export default { fetch: app.fetch };
