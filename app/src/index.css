@@ -130,6 +130,14 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(45, 110, 112, 0.15);
 }
 
+/* ── Suppress yellow/blue autofill background ──────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #FFFDF8 inset !important;
+  -webkit-text-fill-color: var(--color-ink-900) !important;
+}
+
 /* ── Prevent input zoom on iOS ─────────────────────────── */
 @media (max-width: 1024px) {
   input[type="text"],

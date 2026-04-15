@@ -63,22 +63,6 @@ function DesignSystemInner() {
 
       <div className="px-4 py-8 max-w-[760px] mx-auto">
 
-        {/* ── Logo transparency test ────────────────────────── */}
-        {/* TEMP: remove after confirming transparent background */}
-        <Section title="Logo BG Test">
-          <div className="flex gap-6 flex-wrap">
-            <div style={{ background: "#FF00AA", padding: 16, borderRadius: 8, display: "inline-flex" }}>
-              <img src="/src/assets/nestotter-logo.svg" style={{ height: 80 }} alt="logo on hot pink" />
-            </div>
-            <div style={{ background: "#1B4243", padding: 16, borderRadius: 8, display: "inline-flex" }}>
-              <img src="/src/assets/nestotter-logo.svg" style={{ height: 80 }} alt="logo on teal" />
-            </div>
-            <div style={{ background: "#FAF6EE", padding: 16, borderRadius: 8, display: "inline-flex", border: "1px solid #ccc" }}>
-              <img src="/src/assets/nestotter-logo.svg" style={{ height: 80 }} alt="logo on cream" />
-            </div>
-          </div>
-        </Section>
-
         {/* ── Brand ─────────────────────────────────────────── */}
         <Section title="Brand">
           <Row className="mb-6">

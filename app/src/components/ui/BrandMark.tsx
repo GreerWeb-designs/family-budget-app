@@ -1,4 +1,3 @@
-import logoUrl from "../../assets/nestotter-logo.svg";
 import { cn } from "../../lib/utils";
 
 export interface BrandMarkProps {
@@ -9,14 +8,12 @@ export interface BrandMarkProps {
 }
 
 /**
- * The two-otter logo mark.
- * Replace src/assets/nestotter-logo.svg with the final artwork when ready —
- * this component will automatically pick it up.
+ * The two-otter logo mark. Served from /nestotter-logo.svg (public/).
  */
 export function BrandMark({ size = 40, className, alt = "NestOtter" }: BrandMarkProps) {
   return (
     <img
-      src={logoUrl}
+      src="/nestotter-logo.svg"
       width={size}
       height={size}
       alt={alt}

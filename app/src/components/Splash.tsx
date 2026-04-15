@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import logoUrl from "../assets/nestotter-logo.svg";
 
 interface SplashProps {
   onDone: () => void;
@@ -30,7 +29,7 @@ export function Splash({ onDone }: SplashProps) {
           transition={{ duration: 0.3, ease: "easeIn" }}
         >
           <img
-            src={logoUrl}
+            src="/nestotter-logo.svg"
             alt="NestOtter"
             style={{
               width: "60vw",

@@ -49,7 +49,7 @@ export default function JoinHousehold() {
         {/* Brand */}
         <div className="text-center mb-8">
           <BrandMark size={48} className="mx-auto mb-3" />
-          <Wordmark size="md" className="text-white" />
+          <Wordmark size="md" variant="plain" className="text-white" />
           <div className="text-sm text-teal-300 mt-1">Household invite</div>
         </div>
 
