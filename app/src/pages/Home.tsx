@@ -153,11 +153,6 @@ export default function Home() {
     return copy;
   }, [spends, sortBy, catNameById]);
 
-  const totalAvailable = useMemo(() =>
-    (summary?.byCategory ?? [])
-      .filter(c => c.id !== INCOME_ID)
-      .reduce((s, r) => s + Number(r.available ?? 0), 0),
-    [summary, INCOME_ID]);
 
   const totalIncome   = useMemo(() =>
     spends.filter(s => s.category_id === INCOME_ID || s.direction === "in").reduce((s, r) => s + Number(r.amount), 0),
@@ -721,14 +716,6 @@ export default function Home() {
           })() : <p className="text-sm text-ink-500 mt-2">Select a category above to view details.</p>}
         </Card>
 
-        <Card>
-          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">Total Available</div>
-          <div className="text-xs text-ink-500 mb-4">Across all budget categories</div>
-          <div className={cn("font-display text-4xl font-semibold tabular-nums",
-            totalAvailable < 0 ? "text-rust-600" : "text-ink-900")}>
-            {money(totalAvailable)}
-          </div>
-        </Card>
       </div>
 
       {/* ── Transaction History ───────────────────────── */}
