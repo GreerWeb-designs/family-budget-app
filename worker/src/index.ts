@@ -1827,6 +1827,135 @@ app.post("/api/recipes", requireUser, async (c) => {
   return c.json({ ok: true, id });
 });
 
+app.post("/api/recipes/import-url", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const body = await c.req.json<{ url?: string }>();
+  const url = (body.url || "").trim();
+  if (!url) return c.json({ error: "URL required" }, 400);
+
+  // Fetch HTML with a browser-like User-Agent
+  let html: string;
+  try {
+    const resp = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; NestOtter/1.0)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+    });
+    if (!resp.ok) return c.json({ error: "Could not fetch that URL" }, 400);
+    html = await resp.text();
+  } catch {
+    return c.json({ error: "Could not fetch that URL" }, 400);
+  }
+
+  function parseDuration(iso: string | undefined): number | null {
+    if (!iso) return null;
+    const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/i);
+    if (!m) return null;
+    const mins = (parseInt(m[1] || "0") * 60) + parseInt(m[2] || "0");
+    return mins || null;
+  }
+
+  function parseServings(val: unknown): number | null {
+    if (!val) return null;
+    if (typeof val === "number") return val;
+    const s = Array.isArray(val) ? String(val[0]) : String(val);
+    const n = s.match(/\d+/);
+    return n ? parseInt(n[0]) : null;
+  }
+
+  function parseInstructions(steps: unknown[]): string {
+    return steps.map((step, i) => {
+      const text = typeof step === "string" ? step : ((step as any).text || (step as any).name || "");
+      return `${i + 1}. ${text.trim()}`;
+    }).filter(Boolean).join("\n");
+  }
+
+  // PRIORITY 1 — JSON-LD structured data
+  let title = "";
+  let description = "";
+  let ingredientStrings: string[] = [];
+  let directions = "";
+  let prepTime: number | null = null;
+  let cookTime: number | null = null;
+  let servings: number | null = null;
+
+  const scriptRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let scriptMatch: RegExpExecArray | null;
+  let recipeNode: any = null;
+
+  const isRecipeType = (node: any) =>
+    node?.["@type"] === "Recipe" ||
+    (Array.isArray(node?.["@type"]) && node["@type"].includes("Recipe"));
+
+  while ((scriptMatch = scriptRegex.exec(html)) !== null && !recipeNode) {
+    try {
+      const parsed = JSON.parse(scriptMatch[1]);
+      if (isRecipeType(parsed)) {
+        recipeNode = parsed;
+      } else if (Array.isArray(parsed["@graph"])) {
+        recipeNode = parsed["@graph"].find(isRecipeType) ?? null;
+      }
+    } catch { /* malformed JSON-LD — skip */ }
+  }
+
+  if (recipeNode) {
+    title = (recipeNode.name || "").trim();
+    description = (recipeNode.description || "").trim();
+    ingredientStrings = Array.isArray(recipeNode.recipeIngredient)
+      ? recipeNode.recipeIngredient.map((s: unknown) => String(s).trim()).filter(Boolean)
+      : [];
+    if (Array.isArray(recipeNode.recipeInstructions)) {
+      directions = parseInstructions(recipeNode.recipeInstructions);
+    }
+    prepTime = parseDuration(recipeNode.prepTime);
+    cookTime = parseDuration(recipeNode.cookTime);
+    servings = parseServings(recipeNode.recipeYield ?? recipeNode.yield);
+  }
+
+  // PRIORITY 2 — OG / meta tag fallback for name and description
+  if (!title) {
+    const m = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+      ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+    if (m) title = m[1].trim();
+  }
+  if (!description) {
+    const m = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)
+      ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i)
+      ?? html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
+      ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
+    if (m) description = m[1].trim();
+  }
+
+  // PRIORITY 3 — no ingredients found
+  if (ingredientStrings.length === 0) {
+    return c.json({ error: "No recipe found at that URL. Try a different link." }, 400);
+  }
+
+  if (!title) title = "Imported Recipe";
+
+  // Save recipe using existing pattern
+  const now = new Date().toISOString();
+  const id = uid();
+
+  await c.env.DB.prepare(
+    `INSERT INTO recipes (id, household_id, title, type, description, prep_time, cook_time, servings, directions, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, householdId, title, "main", description || null,
+    prepTime, cookTime, servings, directions || null, userId, now, now).run();
+
+  for (let i = 0; i < ingredientStrings.length; i++) {
+    await c.env.DB.prepare(
+      `INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, sort_order) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(uid(), id, ingredientStrings[i], null, null, i).run();
+  }
+
+  return c.json({ ok: true, id, title, description, ingredientCount: ingredientStrings.length });
+});
+
 app.patch("/api/recipes/:id", requireUser, async (c) => {
   const userId = c.get("userId");
   const id = c.req.param("id");

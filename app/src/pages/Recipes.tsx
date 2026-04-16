@@ -57,6 +57,7 @@ export default function Recipes() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function loadRecipes() {
@@ -125,13 +126,22 @@ export default function Recipes() {
           <h2 className="text-lg font-semibold text-ink-900">Recipe book</h2>
           <p className="text-xs text-ink-500">Shared with your household</p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setEditingId(null); setShowForm(true); setMsg(null); }}
-          className="h-9 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 transition-all"
-        >
-          + Add recipe
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => { setShowImport(true); setMsg(null); }}
+            className="h-9 rounded-xl border border-cream-200 bg-white px-4 text-sm font-semibold text-ink-700 hover:bg-cream-100 transition-all"
+          >
+            Import from URL
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEditingId(null); setShowForm(true); setMsg(null); }}
+            className="h-9 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 transition-all"
+          >
+            + Add recipe
+          </button>
+        </div>
       </div>
 
       {/* Type filter pills */}
@@ -214,6 +224,18 @@ export default function Recipes() {
           onClose={() => { setShowForm(false); setEditingId(null); }}
           onSaved={async (id) => {
             setShowForm(false); setEditingId(null);
+            await loadRecipes();
+            openDetail(id);
+          }}
+        />
+      )}
+
+      {/* Import from URL modal */}
+      {showImport && (
+        <RecipeImportModal
+          onClose={() => setShowImport(false)}
+          onSaved={async (id: string) => {
+            setShowImport(false);
             await loadRecipes();
             openDetail(id);
           }}
@@ -704,6 +726,122 @@ function DetailView({
             {planMsg}
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ── RecipeImportModal ───────────────────────────────── */
+type ImportPreview = { id: string; title: string; description: string; ingredientCount: number };
+
+function RecipeImportModal({ onClose, onSaved }: { onClose: () => void; onSaved: (id: string) => void }) {
+  const [url, setUrl] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleImport() {
+    const trimmed = url.trim();
+    if (!trimmed) { setErr("Please paste a recipe URL."); return; }
+    setFetching(true); setErr(null); setPreview(null);
+    try {
+      const res = await api<{ ok: boolean; id: string; title: string; description: string; ingredientCount: number }>(
+        "/api/recipes/import-url",
+        { method: "POST", body: JSON.stringify({ url: trimmed }) }
+      );
+      setPreview({ id: res.id, title: res.title, description: res.description, ingredientCount: res.ingredientCount });
+    } catch (e: any) {
+      setErr(e?.message || "Could not import that recipe. Try a different URL.");
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl border border-cream-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-cream-200 px-5 py-4">
+          <h2 className="text-base font-semibold text-ink-900">Import from URL</h2>
+          <button type="button" onClick={onClose} className="rounded-xl border border-cream-200 px-3 py-1.5 text-xs font-semibold text-ink-500 hover:bg-cream-100">
+            ×
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {!preview && (
+            <>
+              {err && (
+                <div className="rounded-xl border border-rust-600/30 bg-rust-50 px-4 py-2.5 text-sm text-rust-600">
+                  {err}
+                  <button type="button" onClick={() => { setErr(null); setUrl(""); }} className="ml-2 underline text-xs">
+                    Try another URL
+                  </button>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-2">
+                  Paste a recipe URL
+                </label>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !fetching && handleImport()}
+                  placeholder="https://..."
+                  autoFocus
+                  className={cn(inputCls, "w-full")}
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={fetching}
+                  className="h-10 flex-1 rounded-xl bg-teal-700 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {fetching ? (
+                    <>
+                      <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Fetching recipe…
+                    </>
+                  ) : "Import Recipe"}
+                </button>
+                <button type="button" onClick={onClose}
+                  className="h-10 rounded-xl border border-cream-200 px-5 text-sm text-ink-500 hover:bg-cream-100 transition-all">
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
+
+          {preview && (
+            <>
+              <div className="rounded-xl border border-teal-600/30 bg-teal-50 px-4 py-3 space-y-1">
+                <p className="text-sm font-semibold text-ink-900">{preview.title}</p>
+                {preview.description && (
+                  <p className="text-xs text-ink-500 line-clamp-2">{preview.description}</p>
+                )}
+                <p className="text-xs text-teal-600 font-medium pt-1">
+                  {preview.ingredientCount} ingredient{preview.ingredientCount !== 1 ? "s" : ""} · Ready to save
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onSaved(preview.id)}
+                  className="h-10 flex-1 rounded-xl bg-teal-700 text-sm font-semibold text-white hover:bg-teal-600 transition-all"
+                >
+                  Save to Library ✓
+                </button>
+                <button type="button" onClick={onClose}
+                  className="h-10 rounded-xl border border-cream-200 px-5 text-sm text-ink-500 hover:bg-cream-100 transition-all">
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
