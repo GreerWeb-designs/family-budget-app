@@ -1836,14 +1836,21 @@ app.post("/api/recipes/import-url", requireUser, async (c) => {
   const url = (body.url || "").trim();
   if (!url) return c.json({ error: "URL required" }, 400);
 
-  // Fetch HTML with a browser-like User-Agent
+  // Fetch HTML with realistic browser headers to bypass bot detection
   let html: string;
   try {
     const resp = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; NestOtter/1.0)",
-        "Accept": "text/html,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
       },
+      redirect: "follow",
     });
     if (!resp.ok) return c.json({ error: "Could not fetch that URL" }, 400);
     html = await resp.text();
@@ -1883,7 +1890,8 @@ app.post("/api/recipes/import-url", requireUser, async (c) => {
   let cookTime: number | null = null;
   let servings: number | null = null;
 
-  const scriptRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  // Broader JSON-LD regex: also handles unquoted type attribute
+  const scriptRegex = /<script[^>]+type=(?:["']application\/ld\+json["']|application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/gi;
   let scriptMatch: RegExpExecArray | null;
   let recipeNode: any = null;
 
@@ -1922,6 +1930,10 @@ app.post("/api/recipes/import-url", requireUser, async (c) => {
       ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
     if (m) title = m[1].trim();
   }
+  if (!title) {
+    const m = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+    if (m) title = m[1].trim();
+  }
   if (!description) {
     const m = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)
       ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i)
@@ -1930,9 +1942,32 @@ app.post("/api/recipes/import-url", requireUser, async (c) => {
     if (m) description = m[1].trim();
   }
 
-  // PRIORITY 3 — no ingredients found
+  // PRIORITY 3 — HTML heuristic fallback for ingredients
   if (ingredientStrings.length === 0) {
-    return c.json({ error: "No recipe found at that URL. Try a different link." }, 400);
+    // Pattern 1: <li> elements with "ingredient" in their class
+    const liMatches = html.matchAll(/<li[^>]*class=[^>]*ingredient[^>]*>([^<]+(?:<(?!\/li)[^<]*)*)<\/li>/gi);
+    for (const m of liMatches) {
+      const text = m[1].replace(/<[^>]+>/g, "").trim();
+      if (text && text.length > 2 && text.length < 200) ingredientStrings.push(text);
+    }
+
+    // Pattern 2: <span> elements with "ingredient" in their class
+    if (ingredientStrings.length === 0) {
+      const spanMatches = html.matchAll(/<span[^>]*class=[^>]*ingredient[^>]*>([^<]+)<\/span>/gi);
+      for (const m of spanMatches) {
+        const text = m[1].replace(/<[^>]+>/g, "").trim();
+        if (text && text.length > 2 && text.length < 200) ingredientStrings.push(text);
+      }
+    }
+
+    // Deduplicate
+    ingredientStrings = [...new Set(ingredientStrings)];
+  }
+
+  // PRIORITY 4 — fail with debug log and helpful message
+  if (ingredientStrings.length === 0) {
+    console.error("[import-url] No ingredients found. HTML preview:", html.slice(0, 500));
+    return c.json({ error: "We couldn't extract a recipe from that URL. This sometimes happens with sites that block automated requests. Try copying the recipe manually." }, 400);
   }
 
   if (!title) title = "Imported Recipe";
