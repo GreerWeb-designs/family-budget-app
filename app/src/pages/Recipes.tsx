@@ -102,7 +102,7 @@ export default function Recipes() {
       <DetailView
         detail={detail}
         onBack={() => setDetail(null)}
-        onEdit={() => { setEditingId(detail.id); setShowForm(true); }}
+        onEdit={() => { setDetail(null); setEditingId(detail.id); setShowForm(true); }}
         onDelete={() => deleteRecipe(detail.id, detail.title)}
         onMealAdded={() => setMsg("Added to meal plan ✓")}
         msg={msg} setMsg={setMsg}
