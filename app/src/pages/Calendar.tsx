@@ -30,6 +30,8 @@ export default function Calendar() {
   const [meals, setMeals] = useState<MealCalEvent[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(checkIsMobile());
 
   const [visibleStart, setVisibleStart] = useState(() => ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
@@ -118,7 +120,19 @@ export default function Calendar() {
     const kind: "bill" | "family" | "meal" = rawId.startsWith("bill:") ? "bill" : rawId.startsWith("meal:") ? "meal" : "family";
     const id = rawId.includes(":") ? rawId.split(":").slice(1).join(":") : rawId;
     setSelected({ kind, id, title: ev.title, start: ev.startStr, end: ev.endStr || undefined, location: ev.extendedProps?.location ?? null, mealType: ev.extendedProps?.mealType });
+    setPushMsg(null);
     setViewOpen(true);
+  }
+
+  async function pushToGoogle() {
+    if (!selected || selected.kind !== "family") return;
+    setPushBusy(true); setPushMsg(null);
+    try {
+      await api(`/api/calendar/${selected.id}/push-to-google`, { method: "POST" });
+      setPushMsg("Added to Google Calendar ✓");
+    } catch (err: any) {
+      setPushMsg(err?.message || "Failed to push to Google Calendar.");
+    } finally { setPushBusy(false); }
   }
 
   async function deleteSelected() {
@@ -305,7 +319,24 @@ export default function Calendar() {
               Edit bills from the Bills page, not the calendar.
             </div>
           )}
-          <div className="mt-5 flex gap-2 justify-end">
+          {pushMsg && (
+            <p className={cn("mt-3 text-xs font-medium", pushMsg.includes("✓") ? "text-teal-600" : "text-rust-600")}>
+              {pushMsg}
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-2 justify-end">
+            {selected.kind === "family" && (
+              <button type="button" disabled={pushBusy} onClick={pushToGoogle}
+                className="rounded-xl border border-cream-200 px-3 py-2 text-xs font-semibold text-ink-700 hover:bg-cream-50 disabled:opacity-60 transition-all flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                {pushBusy ? "Pushing…" : "Add to Google Calendar"}
+              </button>
+            )}
             {(selected.kind === "family" || selected.kind === "meal") && (
               <button type="button" disabled={busy} onClick={deleteSelected}
                 className="rounded-xl border border-rust-600/30 bg-rust-50 px-4 py-2 text-sm font-semibold text-rust-600 hover:bg-rust-50/70 disabled:opacity-60 transition-all">

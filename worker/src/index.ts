@@ -11,6 +11,8 @@ type Bindings = {
   ADMIN_EMAIL: string;
   RESEND_FROM_EMAIL: string;
   ADMIN_KEY: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
 };
 
 type Variables = {
@@ -614,6 +616,197 @@ app.post("/api/auth/resend-verification", async (c) => {
     }).catch(err => console.error("[resend] Resend verification failed:", err))
   );
 
+  return c.json({ ok: true });
+});
+
+// ── Google Calendar OAuth ─────────────────────────────
+const GOOGLE_SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/userinfo.email",
+].join(" ");
+
+async function refreshGoogleToken(db: D1Database, userId: string, clientId: string, clientSecret: string) {
+  const row = await db.prepare(
+    `SELECT refresh_token FROM google_tokens WHERE user_id = ? LIMIT 1`
+  ).bind(userId).first<{ refresh_token: string }>();
+  if (!row) throw new Error("No Google token found");
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: row.refresh_token,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+  });
+  const data = await res.json<{ access_token?: string; expires_in?: number; error?: string }>();
+  if (!data.access_token) throw new Error(data.error ?? "Token refresh failed");
+
+  const expiresAt = new Date(Date.now() + (data.expires_in ?? 3600) * 1000).toISOString();
+  const now = new Date().toISOString();
+  await db.prepare(
+    `UPDATE google_tokens SET access_token = ?, expires_at = ?, updated_at = ? WHERE user_id = ?`
+  ).bind(data.access_token, expiresAt, now, userId).run();
+
+  return data.access_token;
+}
+
+async function getValidGoogleToken(db: D1Database, userId: string, clientId: string, clientSecret: string): Promise<string> {
+  const row = await db.prepare(
+    `SELECT access_token, expires_at FROM google_tokens WHERE user_id = ? LIMIT 1`
+  ).bind(userId).first<{ access_token: string; expires_at: string }>();
+  if (!row) throw new Error("Google Calendar not connected");
+
+  // Refresh if expiring within 2 minutes
+  if (new Date(row.expires_at) <= new Date(Date.now() + 120_000)) {
+    return refreshGoogleToken(db, userId, clientId, clientSecret);
+  }
+  return row.access_token;
+}
+
+// Step 1 — redirect to Google consent screen
+app.get("/api/auth/google", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const state = await sha256(userId + c.env.SESSION_SECRET + Date.now());
+  const params = new URLSearchParams({
+    client_id: c.env.GOOGLE_CLIENT_ID,
+    redirect_uri: `${APP_ORIGIN}/api/auth/google/callback`,
+    response_type: "code",
+    scope: GOOGLE_SCOPES,
+    access_type: "offline",
+    prompt: "consent",
+    state,
+  });
+  // Store state temporarily so callback can verify it
+  await c.env.DB.prepare(
+    `INSERT OR REPLACE INTO google_oauth_state (state, user_id, created_at) VALUES (?, ?, ?)`
+  ).bind(state, userId, new Date().toISOString()).run().catch(() => {});
+  return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+// Step 2 — Google redirects back here with a code
+app.get("/api/auth/google/callback", async (c) => {
+  const code  = c.req.query("code") ?? "";
+  const state = c.req.query("state") ?? "";
+  const error = c.req.query("error");
+
+  if (error || !code) return c.redirect(`${APP_ORIGIN}/settings?google=error`);
+
+  // Look up the user from state
+  const stateRow = await c.env.DB.prepare(
+    `SELECT user_id FROM google_oauth_state WHERE state = ? LIMIT 1`
+  ).bind(state).first<{ user_id: string }>();
+  if (!stateRow) return c.redirect(`${APP_ORIGIN}/settings?google=error`);
+
+  await c.env.DB.prepare(`DELETE FROM google_oauth_state WHERE state = ?`).bind(state).run().catch(() => {});
+
+  // Exchange code for tokens
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: c.env.GOOGLE_CLIENT_ID,
+      client_secret: c.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: `${APP_ORIGIN}/api/auth/google/callback`,
+      grant_type: "authorization_code",
+    }),
+  });
+  const tokens = await tokenRes.json<{
+    access_token?: string; refresh_token?: string;
+    expires_in?: number; error?: string;
+  }>();
+  if (!tokens.access_token || !tokens.refresh_token) {
+    return c.redirect(`${APP_ORIGIN}/settings?google=error`);
+  }
+
+  // Fetch Google email
+  const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+    headers: { Authorization: `Bearer ${tokens.access_token}` },
+  });
+  const profile = await profileRes.json<{ email?: string }>();
+
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000).toISOString();
+
+  await c.env.DB.prepare(
+    `INSERT INTO google_tokens (id, user_id, access_token, refresh_token, expires_at, google_email, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
+       access_token = excluded.access_token,
+       refresh_token = excluded.refresh_token,
+       expires_at = excluded.expires_at,
+       google_email = excluded.google_email,
+       updated_at = excluded.updated_at`
+  ).bind(uid(), stateRow.user_id, tokens.access_token, tokens.refresh_token, expiresAt, profile.email ?? null, now, now).run();
+
+  return c.redirect(`${APP_ORIGIN}/settings?google=connected`);
+});
+
+// Status — is this user connected?
+app.get("/api/auth/google/status", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const row = await c.env.DB.prepare(
+    `SELECT google_email FROM google_tokens WHERE user_id = ? LIMIT 1`
+  ).bind(userId).first<{ google_email: string | null }>();
+  return c.json({ connected: !!row, email: row?.google_email ?? null });
+});
+
+// Disconnect
+app.delete("/api/auth/google", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const row = await c.env.DB.prepare(
+    `SELECT access_token FROM google_tokens WHERE user_id = ? LIMIT 1`
+  ).bind(userId).first<{ access_token: string }>();
+
+  if (row) {
+    // Best-effort revoke
+    fetch(`https://oauth2.googleapis.com/revoke?token=${row.access_token}`, { method: "POST" }).catch(() => {});
+    await c.env.DB.prepare(`DELETE FROM google_tokens WHERE user_id = ?`).bind(userId).run();
+  }
+  return c.json({ ok: true });
+});
+
+// Push a NestOtter event to Google Calendar
+app.post("/api/calendar/:id/push-to-google", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const eventId = c.req.param("id");
+
+  const event = await c.env.DB.prepare(
+    `SELECT title, start_at, end_at, location FROM calendar_events WHERE id = ? AND household_id IN (
+       SELECT household_id FROM household_members WHERE user_id = ?
+     ) LIMIT 1`
+  ).bind(eventId, userId).first<{ title: string; start_at: string; end_at: string | null; location: string | null }>();
+  if (!event) return c.json({ error: "Event not found" }, 404);
+
+  let accessToken: string;
+  try {
+    accessToken = await getValidGoogleToken(c.env.DB, userId, c.env.GOOGLE_CLIENT_ID, c.env.GOOGLE_CLIENT_SECRET);
+  } catch {
+    return c.json({ error: "Google Calendar not connected" }, 400);
+  }
+
+  const body: Record<string, unknown> = {
+    summary: event.title,
+    start: { dateTime: event.start_at, timeZone: "UTC" },
+    end: { dateTime: event.end_at ?? event.start_at, timeZone: "UTC" },
+  };
+  if (event.location) body.location = event.location;
+
+  const gcalRes = await fetch(
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!gcalRes.ok) {
+    const err = await gcalRes.json<{ error?: { message?: string } }>();
+    return c.json({ error: err?.error?.message ?? "Google Calendar push failed" }, 500);
+  }
   return c.json({ ok: true });
 });
 
