@@ -5,6 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const round2 = (n: number) => Math.round(n * 100) / 100;
+
 export function money(n: number | null | undefined) {
   const value = Number(n ?? 0);
   const sign = value < 0 ? "-" : "";

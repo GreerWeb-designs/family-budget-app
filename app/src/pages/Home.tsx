@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { api } from "../lib/api";
-import { cn, money } from "../lib/utils";
+import { cn, money, round2 } from "../lib/utils";
 import { useUser } from "../lib/UserContext";
 import { canAccess } from "../lib/permissions";
 
@@ -142,10 +142,10 @@ export default function Home() {
   }, [spends, sortBy, catNameById]);
 
   const totalIncome   = useMemo(() =>
-    spends.filter(s => s.category_id === INCOME_ID || s.direction === "in").reduce((s, r) => s + Number(r.amount), 0),
+    round2(spends.filter(s => s.category_id === INCOME_ID || s.direction === "in").reduce((s, r) => s + Number(r.amount), 0)),
     [spends, INCOME_ID]);
   const totalSpending = useMemo(() =>
-    spends.filter(s => s.category_id !== INCOME_ID && s.direction !== "in").reduce((s, r) => s + Number(r.amount), 0),
+    round2(spends.filter(s => s.category_id !== INCOME_ID && s.direction !== "in").reduce((s, r) => s + Number(r.amount), 0)),
     [spends, INCOME_ID]);
 
   /* Month progress */

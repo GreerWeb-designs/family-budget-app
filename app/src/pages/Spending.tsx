@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis,
 } from "recharts";
 import { api } from "../lib/api";
-import { money } from "../lib/utils";
+import { money, round2 } from "../lib/utils";
 
 type SummaryRow = { id: string; name: string; budgeted: number; activity: number; available: number };
 
@@ -55,13 +55,13 @@ export default function Spending() {
         api<{ byCategory: SummaryRow[] }>(`/api/spend/summary?month=${m}`),
         ...pastMonths.map((pm) =>
           api<{ byCategory: SummaryRow[] }>(`/api/spend/summary?month=${pm}`)
-            .then((r) => ({ month: pm, total: r.byCategory.reduce((s, row) => s + row.activity, 0) }))
+            .then((r) => ({ month: pm, total: round2(r.byCategory.reduce((s, row) => s + row.activity, 0)) }))
             .catch(() => null)
         ),
       ]);
       const outflows = (cur.byCategory ?? []).filter((r) => r.activity > 0);
       setRows(outflows);
-      const currentTotal = outflows.reduce((s, r) => s + r.activity, 0);
+      const currentTotal = round2(outflows.reduce((s, r) => s + r.activity, 0));
       setHistory([
         ...(pastResults.filter(Boolean) as { month: string; total: number }[]),
         { month: m, total: currentTotal },
@@ -72,7 +72,7 @@ export default function Spending() {
 
   useEffect(() => { load(month); }, [month]);
 
-  const totalSpend = useMemo(() => rows.reduce((s, r) => s + r.activity, 0), [rows]);
+  const totalSpend = useMemo(() => round2(rows.reduce((s, r) => s + r.activity, 0)), [rows]);
 
   const donutData = useMemo(() =>
     rows.map((r) => ({ name: r.name, value: r.activity }))

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Zap, Hand, Trash2, PlusCircle, Receipt } from "lucide-react";
 import { api } from "../lib/api";
-import { cn, money } from "../lib/utils";
+import { cn, money, round2 } from "../lib/utils";
 import { useUser } from "../lib/UserContext";
 import { canAccess } from "../lib/permissions";
 
@@ -69,8 +69,8 @@ export default function Bills() {
   }
 
   const sorted       = useMemo(() => [...bills].sort((a, b) => a.day_of_month - b.day_of_month), [bills]);
-  const totalMonthly = useMemo(() => bills.reduce((s, b) => s + Number(b.amount), 0), [bills]);
-  const autoDraft    = useMemo(() => bills.filter(b => b.mode === "auto").reduce((s, b) => s + Number(b.amount), 0), [bills]);
+  const totalMonthly = useMemo(() => round2(bills.reduce((s, b) => s + Number(b.amount), 0)), [bills]);
+  const autoDraft    = useMemo(() => round2(bills.filter(b => b.mode === "auto").reduce((s, b) => s + Number(b.amount), 0)), [bills]);
 
   return (
     <div className="space-y-5">

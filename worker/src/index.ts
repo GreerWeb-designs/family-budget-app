@@ -21,6 +21,8 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 const APP_ORIGIN = "https://app.ducharmefamilybudget.com";
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 app.use("*", async (c, next) => {
   const origin = c.req.header("Origin");
   const isAllowedOrigin = origin === APP_ORIGIN;
@@ -612,10 +614,10 @@ app.get("/api/totals", requireUser, async (c) => {
   ).bind(householdId).first<{ bankBalance: number; toBeBudgeted: number }>();
 
   return c.json({
-    bankBalance:    Number(accountRow?.bankBalance   ?? 0),
-    totalIncome:    Number(incomeRow?.totalIncome    ?? 0),
-    totalBudgeted,
-    toBeBudgeted:   Number(accountRow?.toBeBudgeted  ?? 0),
+    bankBalance:   round2(Number(accountRow?.bankBalance  ?? 0)),
+    totalIncome:   round2(Number(incomeRow?.totalIncome   ?? 0)),
+    totalBudgeted: round2(totalBudgeted),
+    toBeBudgeted:  round2(Number(accountRow?.toBeBudgeted ?? 0)),
   });
 });
 
@@ -695,12 +697,12 @@ app.post("/api/budget/set", requireUser, async (c) => {
   await ensureAccountState(c.env.DB, householdId);
   const body = await c.req.json<{ categoryId?: string; amount?: number; month?: string }>();
   const categoryId = (body.categoryId || "").trim();
-  const amount = body.amount;
   const month = (body.month || "").trim() || monthKey();
 
-  if (!categoryId || typeof amount !== "number" || Number.isNaN(amount)) {
+  if (!categoryId || typeof body.amount !== "number" || Number.isNaN(body.amount)) {
     return c.json({ error: "Bad payload" }, 400);
   }
+  const amount = round2(body.amount);
 
   const existing = await c.env.DB.prepare(
     `SELECT amount_budgeted FROM budget_lines WHERE category_id = ? AND month = ? LIMIT 1`
@@ -708,8 +710,8 @@ app.post("/api/budget/set", requireUser, async (c) => {
     .bind(categoryId, month)
     .first<{ amount_budgeted: number }>();
 
-  const oldAmount = Number(existing?.amount_budgeted ?? 0);
-  const delta = Number(amount) - oldAmount;
+  const oldAmount = round2(Number(existing?.amount_budgeted ?? 0));
+  const delta = round2(amount - oldAmount);
 
   await c.env.DB.prepare(
     `INSERT INTO budget_lines (id, category_id, amount_budgeted, month, household_id)
@@ -734,12 +736,12 @@ app.post("/api/budget/adjust", requireUser, async (c) => {
   await ensureAccountState(c.env.DB, householdId);
   const body = await c.req.json<{ categoryId?: string; delta?: number; month?: string }>();
   const categoryId = (body.categoryId || "").trim();
-  const delta = body.delta;
   const month = (body.month || "").trim() || monthKey();
 
-  if (!categoryId || typeof delta !== "number" || Number.isNaN(delta)) {
+  if (!categoryId || typeof body.delta !== "number" || Number.isNaN(body.delta)) {
     return c.json({ error: "Bad payload" }, 400);
   }
+  const delta = round2(body.delta);
 
   await c.env.DB.prepare(
     `INSERT INTO budget_lines (id, category_id, amount_budgeted, month, household_id)
@@ -799,14 +801,14 @@ app.post("/api/spend", requireUser, async (c) => {
   }>();
 
   const categoryId = (body.categoryId || "").trim();
-  const amount = body.amount;
   const date = (body.date || "").trim();
   const note = body.note ?? null;
   const direction: "in" | "out" = body.direction === "in" ? "in" : "out";
 
-  if (!categoryId || typeof amount !== "number" || Number.isNaN(amount) || amount < 0 || !date) {
+  if (!categoryId || typeof body.amount !== "number" || Number.isNaN(body.amount) || body.amount < 0 || !date) {
     return c.json({ error: "Bad payload" }, 400);
   }
+  const amount = round2(body.amount);
 
   const catRow = await c.env.DB.prepare(
     `SELECT direction FROM categories WHERE id = ? AND household_id = ? LIMIT 1`
@@ -918,10 +920,10 @@ app.get("/api/spend/summary", requireUser, async (c) => {
   const budgetByCategory: Record<string, number> = {};
 
   for (const r of activityRows.results ?? []) {
-    activityByCategory[r.category_id] = Number(r.activity || 0);
+    activityByCategory[r.category_id] = round2(Number(r.activity || 0));
   }
   for (const r of budgetRows.results ?? []) {
-    budgetByCategory[r.category_id] = Number(r.amount_budgeted || 0);
+    budgetByCategory[r.category_id] = round2(Number(r.amount_budgeted || 0));
   }
 
   const byCategory = categories
@@ -929,7 +931,7 @@ app.get("/api/spend/summary", requireUser, async (c) => {
     .map((cat) => {
       const budgeted = budgetByCategory[cat.id] || 0;
       const activity = activityByCategory[cat.id] || 0;
-      return { id: cat.id, name: cat.name, budgeted, activity, available: budgeted - activity };
+      return { id: cat.id, name: cat.name, budgeted, activity, available: round2(budgeted - activity) };
     });
 
   return c.json({ byCategory });
