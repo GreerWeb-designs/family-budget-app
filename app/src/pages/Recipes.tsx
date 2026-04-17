@@ -323,7 +323,10 @@ function RecipeFormModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-cream-200 bg-white shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-cream-200 bg-white px-5 py-4">
+        <div
+          className="sticky top-0 z-10 flex items-center justify-between border-b border-cream-200 bg-white px-5 pb-4"
+          style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
+        >
           <h2 className="text-base font-semibold text-ink-900">{editingId ? "Edit recipe" : "New recipe"}</h2>
           <button type="button" onClick={onClose} className="rounded-xl border border-cream-200 px-3 py-1.5 text-xs font-semibold text-ink-500 hover:bg-cream-100">
             ×
