@@ -288,6 +288,7 @@ export default function Home() {
         events={upcoming?.events ?? []}
         meals={upcomingMeals}
         goals={goals}
+        onEventAdded={refresh}
       />
 
       {/* ── This Month ────────────────────────────────── */}
@@ -604,16 +605,57 @@ function hourLabel(h: number) {
   return h > 12 ? `${h - 12} pm` : `${h} am`;
 }
 
+function toLocalDT(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}T${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+
 function DayPlanner({
-  bills, events, meals, goals,
+  bills, events, meals, goals, onEventAdded,
 }: {
   bills: UpcomingBill[];
   events: UpcomingEvent[];
   meals: UpcomingMeal[];
   goals: Goal[];
+  onEventAdded: () => void;
 }) {
   const todayBase = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const [selected, setSelected] = useState<Date>(() => new Date(todayBase));
+
+  /* Add-event form state */
+  const [showAdd, setShowAdd]     = useState(false);
+  const [evTitle, setEvTitle]     = useState("");
+  const [evStart, setEvStart]     = useState("");
+  const [evEnd, setEvEnd]         = useState("");
+  const [evLocation, setEvLocation] = useState("");
+  const [evSaving, setEvSaving]   = useState(false);
+  const [evErr, setEvErr]         = useState<string | null>(null);
+
+  function openAddForm() {
+    const start = new Date(selected); start.setHours(9, 0, 0, 0);
+    const end   = new Date(selected); end.setHours(10, 0, 0, 0);
+    setEvTitle(""); setEvStart(toLocalDT(start)); setEvEnd(toLocalDT(end));
+    setEvLocation(""); setEvErr(null); setShowAdd(true);
+  }
+
+  async function saveEvent(e: React.FormEvent) {
+    e.preventDefault(); setEvErr(null);
+    if (!evTitle.trim()) { setEvErr("Enter a title."); return; }
+    setEvSaving(true);
+    try {
+      await api("/api/calendar", {
+        method: "POST",
+        body: JSON.stringify({
+          title: evTitle.trim(),
+          startAt: new Date(evStart).toISOString(),
+          endAt: evEnd ? new Date(evEnd).toISOString() : null,
+          location: evLocation.trim() || undefined,
+        }),
+      });
+      setShowAdd(false);
+      onEventAdded();
+    } catch (err: any) { setEvErr(err?.message || "Error saving."); }
+    finally { setEvSaving(false); }
+  }
 
   function shiftDay(n: number) {
     setSelected(d => { const next = new Date(d); next.setDate(next.getDate() + n); return next; });
@@ -868,19 +910,89 @@ function DayPlanner({
           border: "1.5px dashed #C9CBAA",
           backdropFilter: "blur(4px)",
         }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">🕐</span>
-            <span style={{
-              fontFamily: "'Fraunces', Georgia, serif",
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "#1B4243",
-            }}>Schedule</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🕐</span>
+              <span style={{
+                fontFamily: "'Fraunces', Georgia, serif",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#1B4243",
+              }}>Schedule</span>
+            </div>
+            <button
+              type="button"
+              onClick={openAddForm}
+              className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95"
+              style={{ background: "rgba(27,66,67,0.10)", color: "#1B4243", border: "1.5px solid rgba(27,66,67,0.20)" }}
+            >
+              + Add event
+            </button>
           </div>
 
-          {dayEvents.length === 0 ? (
+          {/* Inline add-event form */}
+          {showAdd && (
+            <form onSubmit={saveEvent} className="mb-4 rounded-2xl p-4 space-y-3" style={{
+              background: "rgba(255,255,255,0.70)",
+              border: "1.5px solid rgba(27,66,67,0.20)",
+              backdropFilter: "blur(4px)",
+            }}>
+              {evErr && <p className="text-xs text-rust-600">{evErr}</p>}
+              <input
+                autoFocus
+                value={evTitle}
+                onChange={e => setEvTitle(e.target.value)}
+                placeholder="Event title"
+                className="w-full h-9 rounded-xl border px-3 text-sm outline-none transition-all"
+                style={{ borderColor: "rgba(27,66,67,0.25)", background: "rgba(255,255,255,0.8)", color: "#0F2A2B" }}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#5C7A7B" }}>Start</label>
+                  <input
+                    type="datetime-local"
+                    value={evStart}
+                    onChange={e => setEvStart(e.target.value)}
+                    className="w-full h-9 rounded-xl border px-2 text-xs outline-none transition-all"
+                    style={{ borderColor: "rgba(27,66,67,0.25)", background: "rgba(255,255,255,0.8)", color: "#0F2A2B" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#5C7A7B" }}>End</label>
+                  <input
+                    type="datetime-local"
+                    value={evEnd}
+                    onChange={e => setEvEnd(e.target.value)}
+                    className="w-full h-9 rounded-xl border px-2 text-xs outline-none transition-all"
+                    style={{ borderColor: "rgba(27,66,67,0.25)", background: "rgba(255,255,255,0.8)", color: "#0F2A2B" }}
+                  />
+                </div>
+              </div>
+              <input
+                value={evLocation}
+                onChange={e => setEvLocation(e.target.value)}
+                placeholder="Location (optional)"
+                className="w-full h-9 rounded-xl border px-3 text-sm outline-none transition-all"
+                style={{ borderColor: "rgba(27,66,67,0.25)", background: "rgba(255,255,255,0.8)", color: "#0F2A2B" }}
+              />
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={evSaving}
+                  className="h-9 flex-1 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-50"
+                  style={{ background: "#1B4243" }}>
+                  {evSaving ? "Saving…" : "Save event"}
+                </button>
+                <button type="button" onClick={() => setShowAdd(false)}
+                  className="h-9 rounded-xl border px-4 text-xs font-semibold transition-all"
+                  style={{ borderColor: "rgba(27,66,67,0.25)", color: "#5C7A7B" }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {dayEvents.length === 0 && !showAdd ? (
             <div className="text-center py-5">
               <p className="text-sm" style={{
                 fontFamily: "'Fraunces', Georgia, serif",
@@ -893,7 +1005,7 @@ function DayPlanner({
           ) : (
             <div className="relative">
               {/* Vertical timeline spine */}
-              <div className="absolute top-0 bottom-0 w-px" style={{ left: "44px", background: "linear-gradient(180deg, transparent 0%, #C9CBAA 10%, #C9CBAA 90%, transparent 100%)" }} />
+              <div className="absolute top-0 bottom-0 w-px" style={{ left: "56px", background: "linear-gradient(180deg, transparent 0%, #C9CBAA 10%, #C9CBAA 90%, transparent 100%)" }} />
 
               <div className="space-y-0.5">
                 {PLANNER_HOURS.map(hour => {
@@ -904,7 +1016,7 @@ function DayPlanner({
                     return (
                       <div key={hour} className="flex items-center" style={{ height: "28px" }}>
                         <span className="text-[10px] tabular-nums text-right shrink-0"
-                          style={{ width: "36px", color: "#A8B8B9", paddingRight: "8px" }}>
+                          style={{ width: "48px", color: "#A8B8B9", paddingRight: "8px" }}>
                           {label}
                         </span>
                         <div className="h-px flex-1 mx-2" style={{ borderTop: "1px dotted #D8D0C0" }} />
@@ -915,7 +1027,7 @@ function DayPlanner({
                   return (
                     <div key={hour} className="flex gap-2 py-1.5">
                       <span className="text-[10px] font-bold tabular-nums text-right shrink-0 mt-2"
-                        style={{ width: "36px", color: "#2D6E70", paddingRight: "8px" }}>
+                        style={{ width: "48px", color: "#2D6E70", paddingRight: "8px" }}>
                         {label}
                       </span>
                       <div className="flex-1 space-y-1.5">
