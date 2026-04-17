@@ -130,14 +130,14 @@ export default function Recipes() {
           <button
             type="button"
             onClick={() => { setShowImport(true); setMsg(null); }}
-            className="h-9 rounded-xl border border-cream-200 bg-white px-4 text-sm font-semibold text-ink-700 hover:bg-cream-100 transition-all"
+            className="h-9 rounded-xl border border-cream-200 bg-white px-3 text-xs font-semibold text-ink-700 hover:bg-cream-100 transition-all"
           >
             Import from URL
           </button>
           <button
             type="button"
             onClick={() => { setEditingId(null); setShowForm(true); setMsg(null); }}
-            className="h-9 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-600 transition-all"
+            className="h-9 rounded-xl bg-teal-700 px-3 text-xs font-semibold text-white hover:bg-teal-600 transition-all"
           >
             + Add recipe
           </button>

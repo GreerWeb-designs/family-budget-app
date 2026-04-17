@@ -84,7 +84,7 @@ export default function Bills() {
         ].map(({ label, value, sub }) => (
           <div key={label} className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
             <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-1">{label}</div>
-            <div className="text-2xl font-semibold text-ink-900 tabular-nums"
+            <div className="text-lg font-semibold text-ink-900 tabular-nums truncate"
               style={{ fontFamily: "'Fraunces', Georgia, serif" }}>{value}</div>
             <div className="text-xs text-ink-400 mt-0.5">{sub}</div>
           </div>
