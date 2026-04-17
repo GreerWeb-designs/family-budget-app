@@ -220,7 +220,7 @@ function SubNav() {
   return (
     <div
       className="sticky z-10 px-4 py-2 bg-cream-50/95 backdrop-blur-sm border-b border-cream-200"
-      style={{ top: "56px" }}
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}
     >
       <SegmentedTabs
         layoutId="sub-nav-pill"
@@ -486,7 +486,10 @@ function AppShell({ children }: { children: ReactNode }) {
       <div className="flex flex-1 flex-col lg:ml-60 min-w-0 w-full">
 
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-cream-200 bg-cream-50/95 backdrop-blur-sm px-4 md:px-6">
+        <header
+          className="sticky top-0 z-20 flex min-h-14 items-center justify-between border-b border-cream-200 bg-cream-50/95 backdrop-blur-sm px-4 md:px-6"
+          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        >
 
           {/* Left: Wordmark on mobile, page title on desktop */}
           <div className="flex items-center gap-2">
