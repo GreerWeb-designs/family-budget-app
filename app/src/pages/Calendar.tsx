@@ -147,7 +147,7 @@ export default function Calendar() {
     <div className="space-y-4">
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-ink-500">{canAddCalendar ? "Click a day to add an event · " : ""}Click an event to view</p>
+        <p className="text-xs text-ink-500">Rotate phone to landscape to view full calendar</p>
         {canAddCalendar && (
           <button type="button" onClick={() => openAdd(new Date(), true)}
             className="h-9 rounded-xl px-4 text-xs font-semibold text-white transition-all" style={{ background: "#1B4243" }}>
