@@ -20,6 +20,7 @@ type Variables = {
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 const APP_ORIGIN = "https://app.nestotter.com";
+const APP_ORIGIN_LEGACY = "https://app.ducharmefamilybudget.com";
 const LANDING_ORIGIN = "https://nestotter.com";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -139,7 +140,7 @@ function householdInviteHtml(inviterName: string, householdName: string, joinUrl
 
 app.use("*", async (c, next) => {
   const origin = c.req.header("Origin");
-  const isAllowedOrigin = origin === APP_ORIGIN || origin === LANDING_ORIGIN;
+  const isAllowedOrigin = origin === APP_ORIGIN || origin === APP_ORIGIN_LEGACY || origin === LANDING_ORIGIN;
 
   if (isAllowedOrigin) {
     c.header("Access-Control-Allow-Origin", origin!);
@@ -2648,7 +2649,7 @@ const admin = new Hono<{ Bindings: Bindings }>();
 // CORS for admin: allow null (file://) and the app origin
 admin.use("*", async (c, next) => {
   const origin = c.req.header("Origin");
-  const isAllowed = origin === "null" || origin === APP_ORIGIN;
+  const isAllowed = origin === "null" || origin === APP_ORIGIN || origin === APP_ORIGIN_LEGACY;
 
   if (isAllowed) {
     c.header("Access-Control-Allow-Origin", origin!);
