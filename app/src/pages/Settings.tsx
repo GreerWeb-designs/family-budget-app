@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { User, Lock, Home, Users, Link2, LogOut, Copy, Check, Pencil, X, UserPlus, Plug } from "lucide-react";
-import { api } from "../lib/api";
+import { api, getApiBase } from "../lib/api";
 import { cn } from "../lib/utils";
 import { useUser } from "../lib/UserContext";
 import { isAdminOrPrimary } from "../lib/permissions";
@@ -650,16 +650,24 @@ const GoogleLogo = () => (
   </svg>
 );
 
+type SyncPrefs = { syncEvents: boolean; syncMeals: boolean; syncBills: boolean };
+
 function GoogleCalendarCard({ oauthResult }: { oauthResult: string | null }) {
   const [connected, setConnected] = useState(false);
   const [googleEmail, setGoogleEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [prefs, setPrefs] = useState<SyncPrefs>({ syncEvents: true, syncMeals: false, syncBills: false });
+  const [prefsSaving, setPrefsSaving] = useState(false);
 
   useEffect(() => {
-    api<{ connected: boolean; email: string | null }>("/api/auth/google/status")
-      .then(d => { setConnected(d.connected); setGoogleEmail(d.email); })
+    api<{ connected: boolean; email: string | null; prefs?: SyncPrefs }>("/api/auth/google/status")
+      .then(d => {
+        setConnected(d.connected);
+        setGoogleEmail(d.email);
+        if (d.prefs) setPrefs(d.prefs);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -678,6 +686,19 @@ function GoogleCalendarCard({ oauthResult }: { oauthResult: string | null }) {
       setMsg({ ok: true, text: "Disconnected." });
     } catch { setMsg({ ok: false, text: "Failed to disconnect." }); }
     finally { setDisconnecting(false); }
+  }
+
+  async function togglePref(key: keyof SyncPrefs) {
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    setPrefsSaving(true);
+    try {
+      await api("/api/auth/google/sync-prefs", {
+        method: "PATCH",
+        body: JSON.stringify({ syncEvents: next.syncEvents, syncMeals: next.syncMeals, syncBills: next.syncBills }),
+      });
+    } catch { setPrefs(prefs); setMsg({ ok: false, text: "Failed to save preference." }); }
+    finally { setPrefsSaving(false); }
   }
 
   return (
@@ -700,7 +721,7 @@ function GoogleCalendarCard({ oauthResult }: { oauthResult: string | null }) {
         </div>
         <div className="shrink-0">
           {!loading && !connected && (
-            <a href="/api/auth/google"
+            <a href={`${getApiBase()}/api/auth/google`}
               className="inline-flex h-8 items-center rounded-xl px-3 text-xs font-semibold text-white transition-all"
               style={{ background: "#1B4243" }}>
               Connect
@@ -714,6 +735,38 @@ function GoogleCalendarCard({ oauthResult }: { oauthResult: string | null }) {
           )}
         </div>
       </div>
+
+      {connected && !loading && (
+        <div className="mt-4 space-y-2 border-t border-cream-100 pt-4">
+          <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider mb-2">Sync categories</p>
+          {([
+            { key: "syncEvents" as const, label: "Calendar events" },
+            { key: "syncMeals"  as const, label: "Meal plans" },
+            { key: "syncBills"  as const, label: "Bills & due dates" },
+          ] as const).map(({ key, label }) => (
+            <label key={key} className="flex items-center justify-between gap-3 cursor-pointer">
+              <span className="text-sm text-ink-700">{label}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={prefs[key]}
+                disabled={prefsSaving}
+                onClick={() => togglePref(key)}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50",
+                  prefs[key] ? "bg-teal-600" : "bg-cream-300"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200",
+                  prefs[key] ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </label>
+          ))}
+        </div>
+      )}
+
       {msg && (
         <p className={cn("mt-3 text-xs font-medium", msg.ok ? "text-teal-600" : "text-rust-600")}>{msg.text}</p>
       )}

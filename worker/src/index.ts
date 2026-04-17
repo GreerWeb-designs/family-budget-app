@@ -620,6 +620,8 @@ app.post("/api/auth/resend-verification", async (c) => {
 });
 
 // ── Google Calendar OAuth ─────────────────────────────
+const GOOGLE_REDIRECT_URI = "https://family-budget-api.bob-31b.workers.dev/api/auth/google/callback";
+
 const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/userinfo.email",
@@ -672,7 +674,7 @@ app.get("/api/auth/google", requireUser, async (c) => {
   const state = await sha256(userId + c.env.SESSION_SECRET + Date.now());
   const params = new URLSearchParams({
     client_id: c.env.GOOGLE_CLIENT_ID,
-    redirect_uri: `${APP_ORIGIN}/api/auth/google/callback`,
+    redirect_uri: GOOGLE_REDIRECT_URI,
     response_type: "code",
     scope: GOOGLE_SCOPES,
     access_type: "offline",
@@ -710,7 +712,7 @@ app.get("/api/auth/google/callback", async (c) => {
       code,
       client_id: c.env.GOOGLE_CLIENT_ID,
       client_secret: c.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `${APP_ORIGIN}/api/auth/google/callback`,
+      redirect_uri: GOOGLE_REDIRECT_URI,
       grant_type: "authorization_code",
     }),
   });
@@ -749,9 +751,27 @@ app.get("/api/auth/google/callback", async (c) => {
 app.get("/api/auth/google/status", requireUser, async (c) => {
   const userId = c.get("userId");
   const row = await c.env.DB.prepare(
-    `SELECT google_email FROM google_tokens WHERE user_id = ? LIMIT 1`
-  ).bind(userId).first<{ google_email: string | null }>();
-  return c.json({ connected: !!row, email: row?.google_email ?? null });
+    `SELECT google_email, sync_events, sync_meals, sync_bills FROM google_tokens WHERE user_id = ? LIMIT 1`
+  ).bind(userId).first<{ google_email: string | null; sync_events: number; sync_meals: number; sync_bills: number }>();
+  return c.json({
+    connected: !!row,
+    email: row?.google_email ?? null,
+    prefs: row ? { syncEvents: !!row.sync_events, syncMeals: !!row.sync_meals, syncBills: !!row.sync_bills } : null,
+  });
+});
+
+// Update sync prefs
+app.patch("/api/auth/google/sync-prefs", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const body = await c.req.json<{ syncEvents?: boolean; syncMeals?: boolean; syncBills?: boolean }>();
+  const sets: string[] = []; const binds: unknown[] = [];
+  if (body.syncEvents !== undefined) { sets.push("sync_events = ?"); binds.push(body.syncEvents ? 1 : 0); }
+  if (body.syncMeals  !== undefined) { sets.push("sync_meals = ?");  binds.push(body.syncMeals  ? 1 : 0); }
+  if (body.syncBills  !== undefined) { sets.push("sync_bills = ?");  binds.push(body.syncBills  ? 1 : 0); }
+  if (!sets.length) return c.json({ ok: true });
+  binds.push(userId);
+  await c.env.DB.prepare(`UPDATE google_tokens SET ${sets.join(", ")} WHERE user_id = ?`).bind(...binds).run();
+  return c.json({ ok: true });
 });
 
 // Disconnect
@@ -1636,6 +1656,28 @@ app.post("/api/calendar", requireUser, async (c) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(id, userId, householdId, title, startAt, endAt, location, notes, now, now).run();
+
+  // Auto-push to Google Calendar if user has sync_events enabled
+  c.executionCtx.waitUntil((async () => {
+    try {
+      const prefs = await c.env.DB.prepare(
+        `SELECT sync_events FROM google_tokens WHERE user_id = ? LIMIT 1`
+      ).bind(userId).first<{ sync_events: number }>();
+      if (!prefs?.sync_events) return;
+      const token = await getValidGoogleToken(c.env.DB, userId, c.env.GOOGLE_CLIENT_ID, c.env.GOOGLE_CLIENT_SECRET);
+      const gcBody: Record<string, unknown> = {
+        summary: title,
+        start: { dateTime: startAt, timeZone: "UTC" },
+        end: { dateTime: endAt ?? startAt, timeZone: "UTC" },
+      };
+      if (location) gcBody.location = location;
+      await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(gcBody),
+      });
+    } catch { /* silent — never block the response */ }
+  })());
 
   return c.json({ ok: true, id });
 });
@@ -2622,6 +2664,31 @@ app.post("/api/meals", requireUser, async (c) => {
     `INSERT INTO meal_plans (id, household_id, recipe_id, planned_date, meal_type, notes, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(id, householdId, recipeId, plannedDate, body.mealType || "dinner", body.notes || null, userId, now).run();
+
+  // Auto-push to Google Calendar if user has sync_meals enabled
+  c.executionCtx.waitUntil((async () => {
+    try {
+      const prefs = await c.env.DB.prepare(
+        `SELECT sync_meals FROM google_tokens WHERE user_id = ? LIMIT 1`
+      ).bind(userId).first<{ sync_meals: number }>();
+      if (!prefs?.sync_meals) return;
+      const token = await getValidGoogleToken(c.env.DB, userId, c.env.GOOGLE_CLIENT_ID, c.env.GOOGLE_CLIENT_SECRET);
+      const recipeRow = await c.env.DB.prepare(
+        `SELECT title FROM recipes WHERE id = ? LIMIT 1`
+      ).bind(recipeId).first<{ title: string }>();
+      const mealType = body.mealType || "dinner";
+      const summary = recipeRow ? `${mealType.charAt(0).toUpperCase() + mealType.slice(1)}: ${recipeRow.title}` : mealType;
+      await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summary,
+          start: { date: plannedDate },
+          end: { date: plannedDate },
+        }),
+      });
+    } catch { /* silent */ }
+  })());
 
   return c.json({ ok: true, id });
 });

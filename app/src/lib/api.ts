@@ -15,7 +15,7 @@ const DEFAULT_PROD_API_BASE = "https://family-budget-api.bob-31b.workers.dev";
  *   - Local dev: use same-origin "/api" and rely on Vite proxy
  *   - Non-local: fall back to your workers.dev domain
  */
-function getApiBase(): string {
+export function getApiBase(): string {
   const envBase = (import.meta.env.VITE_API_BASE as string | undefined)?.trim();
   if (envBase) return envBase.replace(/\/+$/, ""); // strip trailing /
 
