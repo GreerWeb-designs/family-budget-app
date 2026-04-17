@@ -290,13 +290,8 @@ export default function Grocery() {
       )}
 
       {/* Lists */}
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-24 rounded-2xl bg-white border border-cream-200 animate-pulse" />
-          ))}
-        </div>
-      ) : lists.length === 0 ? (
+      <div className={cn("transition-opacity duration-200", loading ? "opacity-0 pointer-events-none" : "opacity-100")}>
+      {lists.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="text-4xl mb-3">🛒</div>
           <p className="text-sm font-medium text-ink-900 mb-1">No lists yet</p>
@@ -344,6 +339,7 @@ export default function Grocery() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

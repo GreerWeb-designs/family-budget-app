@@ -144,8 +144,8 @@ export default function Chores() {
   }, [chores, filter]);
 
   const filterTabs: { key: Filter; label: string }[] = [
-    { key: "pending",   label: `Pending (${chores.filter((c) => !c.completed).length})` },
-    { key: "completed", label: `Done (${chores.filter((c) => c.completed).length})` },
+    { key: "pending",   label: loading ? "Pending" : `Pending (${chores.filter((c) => !c.completed).length})` },
+    { key: "completed", label: loading ? "Done"    : `Done (${chores.filter((c) => c.completed).length})` },
     { key: "all",       label: "All" },
   ];
 
@@ -275,13 +275,8 @@ export default function Chores() {
       </div>
 
       {/* Chore list */}
-      {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-16 rounded-2xl bg-white border border-cream-200 animate-pulse" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
+      <div className={cn("transition-opacity duration-200", loading ? "opacity-0 pointer-events-none" : "opacity-100")}>
+      {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="text-3xl mb-3">🧹</div>
           <p className="text-sm text-ink-500">
@@ -368,6 +363,7 @@ export default function Chores() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

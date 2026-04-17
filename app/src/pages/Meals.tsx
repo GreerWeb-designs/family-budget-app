@@ -95,7 +95,7 @@ export default function Meals() {
         </button>
         <div className="text-center">
           <div className="font-medium text-sm text-ink-900">{monthLabel(year, month)}</div>
-          <div className="text-xs text-ink-500">{meals.length} meal{meals.length !== 1 ? "s" : ""} planned</div>
+          <div className="text-xs text-ink-500">{loading ? "\u00a0" : `${meals.length} meal${meals.length !== 1 ? "s" : ""} planned`}</div>
         </div>
         <button type="button" onClick={nextMonth}
           className="h-9 w-9 rounded-xl border border-cream-200 text-ink-500 hover:bg-cream-100 transition-all flex items-center justify-center">
@@ -104,13 +104,8 @@ export default function Meals() {
       </div>
 
       {/* List */}
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 rounded-2xl border border-cream-200 bg-white animate-pulse" />
-          ))}
-        </div>
-      ) : grouped.length === 0 ? (
+      <div className={cn("transition-opacity duration-200", loading ? "opacity-0 pointer-events-none" : "opacity-100")}>
+      {grouped.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="text-3xl mb-3">🍽️</div>
           <p className="text-sm font-medium text-ink-900 mb-1">Nothing planned for {monthLabel(year, month)}</p>
@@ -200,6 +195,7 @@ export default function Meals() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
