@@ -19,11 +19,12 @@ export function PageHeader({ title, icon, accessoryRight, className }: PageHeade
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 flex items-center gap-2.5 px-4 py-3",
+        "sticky top-0 z-20 flex items-center gap-2.5 px-4 pb-3",
         "bg-cream-50/95 backdrop-blur-sm",
         "border-b border-cream-200",
         className
       )}
+      style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
     >
       {icon && (
         <span className="flex-shrink-0 text-teal-500" aria-hidden>
