@@ -22,6 +22,8 @@ import Login          from "./pages/Login";
 import Signup         from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword  from "./pages/ResetPassword";
+import CheckEmail     from "./pages/CheckEmail";
+import VerifyEmail    from "./pages/VerifyEmail";
 import Home_          from "./pages/Home";
 import Budget         from "./pages/Budget";
 import Bills          from "./pages/Bills";
@@ -635,6 +637,8 @@ export default function App() {
             <Route path="/signup"          element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password"  element={<ResetPassword />} />
+            <Route path="/check-email"     element={<CheckEmail />} />
+            <Route path="/verify-email"    element={<VerifyEmail />} />
             <Route path="/"                element={<Navigate to="/home" replace />} />
             <Route path="/onboarding"      element={<ProtectedOnboarding><Onboarding /></ProtectedOnboarding>} />
             <Route path="/home"            element={<ProtectedLayout><Home_ /></ProtectedLayout>} />

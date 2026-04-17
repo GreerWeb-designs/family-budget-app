@@ -65,6 +65,16 @@ function truncate(s: string, n = 400) {
   return s.length > n ? `${s.slice(0, n)}…` : s;
 }
 
+export class ApiError extends Error {
+  code?: string;
+  status: number;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export async function api<T = any>(path: string, init: ApiInit = {}): Promise<T> {
   const { query, headers, ...rest } = init;
 
@@ -85,19 +95,16 @@ export async function api<T = any>(path: string, init: ApiInit = {}): Promise<T>
   const { ct, text } = await readBody(res);
 
   if (!res.ok) {
-    // Try to extract { error } from JSON
     if (isJson(ct)) {
       try {
         const data = JSON.parse(text);
         const msg = data?.error || data?.message || `HTTP ${res.status}`;
-        throw new Error(msg);
-      } catch {
-        // fall through to raw body
+        throw new ApiError(msg, res.status, data?.code);
+      } catch (inner) {
+        if (inner instanceof ApiError) throw inner;
       }
     }
-
-    // Helpful error (shows status + a snippet of server response)
-    throw new Error(`HTTP ${res.status} ${res.statusText}: ${truncate(text)}`);
+    throw new ApiError(`HTTP ${res.status} ${res.statusText}: ${truncate(text)}`, res.status);
   }
 
   if (!text) return undefined as T;

@@ -72,6 +72,38 @@ function passwordResetHtml(resetUrl: string): string {
 </body></html>`;
 }
 
+function emailVerificationHtml(name: string, verifyUrl: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FAF6EE;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#FAF6EE;padding:40px 16px">
+  <tr><td align="center">
+    <table width="100%" style="max-width:520px;background:#FFFDF8;border-radius:16px;border:1px solid #EDE7D8;overflow:hidden">
+      <tr><td style="background:#2D6E70;padding:28px 32px;text-align:center">
+        <span style="font-family:Georgia,serif;font-size:22px;font-weight:600;color:#FFFDF8;letter-spacing:-0.3px">NestOtter</span>
+      </td></tr>
+      <tr><td style="padding:32px">
+        <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;font-weight:500;color:#1C2A33">Verify your email</h1>
+        <p style="margin:0 0 24px;font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6;color:#3F5260">
+          Hi ${name}, welcome to NestOtter! Click the button below to verify your email address and activate your account. This link expires in <strong>24 hours</strong>.
+        </p>
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px">
+          <tr><td style="background:#2D6E70;border-radius:10px;padding:14px 28px">
+            <a href="${verifyUrl}" style="font-family:-apple-system,sans-serif;font-size:14px;font-weight:600;color:#FFFDF8;text-decoration:none;display:block">Verify my email →</a>
+          </td></tr>
+        </table>
+        <p style="margin:0 0 8px;font-family:-apple-system,sans-serif;font-size:13px;color:#6B7A85">Or copy this link:</p>
+        <p style="margin:0 0 24px;font-family:monospace;font-size:12px;color:#6B7A85;word-break:break-all;background:#FAF6EE;padding:10px 12px;border-radius:8px;border:1px solid #EDE7D8">${verifyUrl}</p>
+        <p style="margin:0;font-family:-apple-system,sans-serif;font-size:13px;color:#A8B3BB">Didn't create a NestOtter account? You can safely ignore this email.</p>
+      </td></tr>
+      <tr><td style="padding:20px 32px;border-top:1px solid #EDE7D8;text-align:center">
+        <p style="margin:0;font-family:-apple-system,sans-serif;font-size:12px;color:#A8B3BB">NestOtter — Your home, organized.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
 function householdInviteHtml(inviterName: string, householdName: string, joinUrl: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#FAF6EE;">
@@ -324,15 +356,19 @@ app.post("/api/auth/login", async (c) => {
   if (!email || !password) return c.json({ error: "Missing email/password" }, 400);
 
   const user = await c.env.DB.prepare(
-    `SELECT id, password_hash FROM users WHERE email = ? LIMIT 1`
+    `SELECT id, password_hash, email_verified FROM users WHERE email = ? LIMIT 1`
   )
     .bind(email)
-    .first<{ id: string; password_hash: string }>();
+    .first<{ id: string; password_hash: string; email_verified: number }>();
 
   if (!user) return c.json({ error: "Invalid credentials" }, 401);
 
   const candidate = await sha256(password + c.env.SESSION_SECRET);
   if (candidate !== user.password_hash) return c.json({ error: "Invalid credentials" }, 401);
+
+  if (!user.email_verified) {
+    return c.json({ error: "Please verify your email before signing in. Check your inbox for the verification link.", code: "EMAIL_NOT_VERIFIED" }, 403);
+  }
 
   const sessionToken = uid();
   const tokenHash = await sha256(sessionToken + c.env.SESSION_SECRET);
@@ -467,33 +503,36 @@ app.post("/api/auth/signup", async (c) => {
     ).bind(catId, cat.name, cat.direction, userId, householdId).run();
   }
 
-  const sessionToken = uid();
-  const tokenHash = await sha256(sessionToken + c.env.SESSION_SECRET);
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString();
+  // Generate verification token
+  const verifyToken = uid();
+  const verifyTokenHash = await sha256(verifyToken + c.env.SESSION_SECRET);
+  const verifyExpires = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(); // 24 hours
   await c.env.DB.prepare(
-    `INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`
-  ).bind(uid(), userId, tokenHash, expiresAt, now).run();
+    `INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`
+  ).bind(uid(), userId, verifyTokenHash, verifyExpires, now).run();
 
-  c.header("Set-Cookie", setCookie("session", sessionToken));
+  const verifyUrl = `${APP_ORIGIN}/verify-email?token=${verifyToken}`;
 
-  // Admin notification — fire-and-forget, never blocks signup
+  // Send verification email + admin notification — fire-and-forget
   const householdName = `${name}'s Household`;
   c.executionCtx.waitUntil(
     (async () => {
+      try {
+        await sendEmail(c.env.RESEND_API_KEY, {
+          to: email,
+          subject: "Verify your NestOtter email",
+          html: emailVerificationHtml(name, verifyUrl),
+        });
+      } catch (err) {
+        console.error("[resend] Verification email failed:", err);
+      }
       try {
         const resend = new Resend(c.env.RESEND_API_KEY);
         await resend.emails.send({
           from: c.env.RESEND_FROM_EMAIL,
           to:   c.env.ADMIN_EMAIL,
-          subject: "New signup: FamilyBudgetApp",
-          html: `
-            <p>A new user just signed up for FamilyBudgetApp.</p>
-            <ul>
-              <li><strong>Display name:</strong> ${name}</li>
-              <li><strong>Household created:</strong> ${householdName}</li>
-              <li><strong>Signed up at:</strong> ${now} (UTC)</li>
-            </ul>
-          `.trim(),
+          subject: "New signup: NestOtter",
+          html: `<p>New signup.</p><ul><li><strong>Name:</strong> ${name}</li><li><strong>Household:</strong> ${householdName}</li><li><strong>At:</strong> ${now} (UTC)</li></ul>`,
         });
       } catch (err) {
         console.error("[resend] Admin notification failed:", err);
@@ -501,7 +540,7 @@ app.post("/api/auth/signup", async (c) => {
     })()
   );
 
-  return c.json({ ok: true, userId, name });
+  return c.json({ ok: true, email });
 });
 
 // ── Waitlist (public, no auth) ─────────────────────────
@@ -520,6 +559,60 @@ app.post("/api/waitlist", async (c) => {
   } catch {
     // duplicate — still return ok so we don't leak whether email exists
   }
+  return c.json({ ok: true });
+});
+
+// ── Email verification ────────────────────────────────
+app.get("/api/auth/verify-email", async (c) => {
+  const token = c.req.query("token") ?? "";
+  if (!token) return c.json({ error: "Missing token" }, 400);
+
+  const tokenHash = await sha256(token + c.env.SESSION_SECRET);
+  const row = await c.env.DB.prepare(
+    `SELECT id, user_id, expires_at FROM email_verification_tokens WHERE token_hash = ? LIMIT 1`
+  ).bind(tokenHash).first<{ id: string; user_id: string; expires_at: string }>();
+
+  if (!row) return c.json({ error: "Invalid or already used verification link." }, 400);
+  if (new Date(row.expires_at) < new Date()) return c.json({ error: "Verification link has expired. Please request a new one." }, 400);
+
+  await c.env.DB.prepare(`UPDATE users SET email_verified = 1 WHERE id = ?`).bind(row.user_id).run();
+  await c.env.DB.prepare(`DELETE FROM email_verification_tokens WHERE id = ?`).bind(row.id).run();
+
+  return c.json({ ok: true });
+});
+
+app.post("/api/auth/resend-verification", async (c) => {
+  const body = await c.req.json<{ email?: string }>();
+  const email = (body.email ?? "").trim().toLowerCase();
+  if (!email) return c.json({ error: "Email required" }, 400);
+
+  const user = await c.env.DB.prepare(
+    `SELECT id, name, email_verified FROM users WHERE email = ? LIMIT 1`
+  ).bind(email).first<{ id: string; name: string; email_verified: number }>();
+
+  // Always return ok to avoid leaking whether email exists
+  if (!user || user.email_verified) return c.json({ ok: true });
+
+  // Delete any existing tokens for this user
+  await c.env.DB.prepare(`DELETE FROM email_verification_tokens WHERE user_id = ?`).bind(user.id).run();
+
+  const token = uid();
+  const tokenHash = await sha256(token + c.env.SESSION_SECRET);
+  const now = new Date().toISOString();
+  const expires = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`
+  ).bind(uid(), user.id, tokenHash, expires, now).run();
+
+  const verifyUrl = `${APP_ORIGIN}/verify-email?token=${token}`;
+  c.executionCtx.waitUntil(
+    sendEmail(c.env.RESEND_API_KEY, {
+      to: email,
+      subject: "Verify your NestOtter email",
+      html: emailVerificationHtml(user.name, verifyUrl),
+    }).catch(err => console.error("[resend] Resend verification failed:", err))
+  );
+
   return c.json({ ok: true });
 });
 

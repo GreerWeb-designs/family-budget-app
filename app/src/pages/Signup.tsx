@@ -36,7 +36,7 @@ export default function Signup() {
     setBusy(true);
     try {
       await api("/api/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password }) });
-      nav("/onboarding");
+      nav("/check-email", { state: { email } });
     } catch (e: any) {
       setErr(e?.message || "Couldn't create account — please try again.");
     } finally { setBusy(false); }

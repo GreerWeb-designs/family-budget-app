@@ -90,21 +90,33 @@ export function PrimaryBtn({ busy, label, loadingLabel }: { busy: boolean; label
 
 export default function Login() {
   const nav = useNavigate();
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [err, setErr]           = useState<string | null>(null);
-  const [busy, setBusy]         = useState(false);
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
+  const [err, setErr]                   = useState<string | null>(null);
+  const [unverified, setUnverified]     = useState(false);
+  const [resendBusy, setResendBusy]     = useState(false);
+  const [resendDone, setResendDone]     = useState(false);
+  const [busy, setBusy]                 = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
+    setErr(null); setUnverified(false);
     setBusy(true);
     try {
       await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
       nav("/home");
     } catch (e: any) {
-      setErr(e?.message || "Couldn't sign in — please check your credentials.");
+      if (e?.code === "EMAIL_NOT_VERIFIED") { setUnverified(true); }
+      else { setErr(e?.message || "Couldn't sign in — please check your credentials."); }
     } finally { setBusy(false); }
+  }
+
+  async function resendVerification() {
+    setResendBusy(true);
+    try {
+      await api("/api/auth/resend-verification", { method: "POST", body: JSON.stringify({ email }) });
+      setResendDone(true);
+    } catch { /* silent */ } finally { setResendBusy(false); }
   }
 
   return (
@@ -158,6 +170,22 @@ export default function Login() {
           </label>
 
           <AuthError msg={err} />
+
+          {unverified && (
+            <div className="rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <p className="font-medium mb-1">Email not verified</p>
+              <p className="text-xs mb-2">Check your inbox for the verification link.</p>
+              {resendDone ? (
+                <p className="text-xs font-medium text-teal-600">Verification email resent ✓</p>
+              ) : (
+                <button type="button" onClick={resendVerification} disabled={resendBusy}
+                  className="text-xs font-semibold text-amber-700 hover:text-amber-900 underline disabled:opacity-50">
+                  {resendBusy ? "Sending…" : "Resend verification email"}
+                </button>
+              )}
+            </div>
+          )}
+
           <PrimaryBtn busy={busy} label="Sign in" loadingLabel="Signing in…" />
         </form>
 
