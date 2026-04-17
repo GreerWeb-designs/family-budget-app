@@ -36,6 +36,7 @@ const inputCls = "h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-
 export default function Budget() {
   const { user } = useUser();
   const [cats, setCats]           = useState<Category[]>([]);
+  const [allCats, setAllCats]     = useState<Category[]>([]); // includes income, for tx panel
   const [summary, setSummary]     = useState<SummaryRes | null>(null);
   const [totals, setTotals]       = useState<TotalsRes | null>(null);
   const [account, setAccount]     = useState<AccountRes | null>(null);
@@ -87,7 +88,7 @@ export default function Budget() {
     ) as SummaryRow[];
     sumRes.byCategory = deduped;
 
-    setCats(nonIncome); setSummary(sumRes); setTotals(totRes); setAccount(accRes);
+    setCats(nonIncome); setAllCats(uniqueCats); setSummary(sumRes); setTotals(totRes); setAccount(accRes);
     setMonths(monRes.months ?? []);
     setBankInput(String(accRes.bankBalance ?? 0));
     setCategoryId((prev) => { if (prev && nonIncome.some((c) => c.id === prev)) return prev; return nonIncome[0]?.id ?? ""; });
@@ -243,7 +244,7 @@ export default function Budget() {
           </button>
           <button type="button" onClick={() => {
             setTxDirection("in");
-            const income = cats.find((c) => c.direction === "inflow");
+            const income = allCats.find((c) => c.direction === "inflow");
             if (income) setTxCategoryId(income.id);
           }}
             className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
@@ -263,8 +264,8 @@ export default function Budget() {
                 onChange={(e) => setTxCategoryId(e.target.value)}
                 disabled={txDirection === "in"}>
                 {(txDirection === "in"
-                  ? cats.filter((c) => c.direction === "inflow")
-                  : cats.filter((c) => c.direction !== "inflow")
+                  ? allCats.filter((c) => c.direction === "inflow")
+                  : allCats.filter((c) => c.direction !== "inflow")
                 ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
