@@ -1,2 +1,1 @@
-New-Item -Path "app/public/_redirects" -ItemType File -Force
-Set-Content -Path "app/public/_redirects" -Value "/* /index.html 200"
+/* /index.html 200
