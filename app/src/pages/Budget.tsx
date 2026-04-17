@@ -44,6 +44,7 @@ export default function Budget() {
   const [activeMonth, setActiveMonth] = useState(currentMonthKey());
   const [categoryId, setCategoryId]   = useState("");
   const [setAmount, setSetAmount]     = useState("");
+  const [adjustAmount, setAdjustAmount] = useState("");
   const [bankInput, setBankInput]     = useState("");
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [newCatInputValue, setNewCatInputValue] = useState("");
@@ -124,6 +125,18 @@ export default function Budget() {
     try {
       await api("/api/budget/set", { method: "POST", body: JSON.stringify({ categoryId, amount, month: activeMonth }) });
       setSetAmount(""); setMsg("Budget updated."); await refresh(activeMonth);
+    } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setBusy(false); }
+  }
+
+  async function handleAdjust(direction: 1 | -1) {
+    if (isReadOnly) return; setMsg(null);
+    const amount = Number(adjustAmount);
+    if (!categoryId || !adjustAmount || Number.isNaN(amount) || amount <= 0) { setMsg("Enter a valid amount."); return; }
+    setBusy(true);
+    try {
+      await api("/api/budget/adjust", { method: "POST", body: JSON.stringify({ categoryId, delta: direction * amount, month: activeMonth }) });
+      setAdjustAmount(""); setMsg(`Budget ${direction > 0 ? "increased" : "decreased"} by ${money(amount)}.`);
+      await refresh(activeMonth);
     } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setBusy(false); }
   }
 
@@ -480,7 +493,7 @@ export default function Budget() {
             </div>
 
             {!isReadOnly && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="grid gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Category</span>
                   <select
@@ -514,32 +527,51 @@ export default function Budget() {
                         placeholder="Category name"
                         className="h-10 flex-1 min-w-0 rounded-xl border border-cream-200 bg-cream-100 px-3 text-sm text-ink-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder-[#5C6B7A]"
                       />
-                      <button
-                        type="button"
-                        onClick={handleCreateCategoryInline}
+                      <button type="button" onClick={handleCreateCategoryInline}
                         disabled={addingCat || !newCatInputValue.trim()}
                         className="h-10 rounded-xl bg-teal-700 px-3 text-xs font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all">
                         {addingCat ? "…" : "Add"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => { setShowNewCatInput(false); setNewCatInputValue(""); }}
+                      <button type="button" onClick={() => { setShowNewCatInput(false); setNewCatInputValue(""); }}
                         className="h-10 w-10 rounded-xl border border-cream-200 text-ink-500 hover:bg-cream-100 text-sm transition-all flex items-center justify-center">
                         ×
                       </button>
                     </div>
                   )}
                 </div>
-                <form onSubmit={handleSetBudget} className="flex gap-2">
-                  <input value={setAmount} onChange={(e) => setSetAmount(e.target.value)}
-                    placeholder="Amount" inputMode="decimal"
-                    className={cn(inputCls, "flex-1 min-w-0 bg-cream-50 tabular-nums")} />
-                  <button type="submit" disabled={busy}
-                    className="h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-60 transition-all"
-                    style={{ background: "#1B4243" }}>
-                    Save
-                  </button>
-                </form>
+
+                {/* Set budget */}
+                <div>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">Set budget</span>
+                  <form onSubmit={handleSetBudget} className="flex gap-2">
+                    <input value={setAmount} onChange={(e) => setSetAmount(e.target.value)}
+                      placeholder="Exact amount" inputMode="decimal"
+                      className={cn(inputCls, "flex-1 min-w-0 bg-cream-50 tabular-nums")} />
+                    <button type="submit" disabled={busy}
+                      className="h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-60 transition-all"
+                      style={{ background: "#1B4243" }}>
+                      Set
+                    </button>
+                  </form>
+                </div>
+
+                {/* Adjust budget +/- */}
+                <div>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-ink-500 block mb-1.5">Adjust budget</span>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => handleAdjust(-1)} disabled={busy}
+                      className="h-10 w-10 shrink-0 rounded-xl border border-cream-200 text-lg font-bold text-rust-600 hover:bg-rust-50 disabled:opacity-50 transition-all">
+                      −
+                    </button>
+                    <input value={adjustAmount} onChange={(e) => setAdjustAmount(e.target.value)}
+                      placeholder="Amount" inputMode="decimal"
+                      className={cn(inputCls, "flex-1 min-w-0 bg-cream-50 tabular-nums text-center")} />
+                    <button type="button" onClick={() => handleAdjust(1)} disabled={busy}
+                      className="h-10 w-10 shrink-0 rounded-xl border border-cream-200 text-lg font-bold text-teal-600 hover:bg-teal-50 disabled:opacity-50 transition-all">
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
