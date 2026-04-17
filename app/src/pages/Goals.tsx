@@ -45,6 +45,7 @@ export default function Goals() {
   const [notes, setNotes]   = useState("");
   const [goalType, setGoalType] = useState<"personal" | "savings">("personal");
   const [targetAmount, setTargetAmount] = useState("");
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy]     = useState(false);
   const [msg, setMsg]       = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -54,8 +55,12 @@ export default function Goals() {
   const [contributionBusy, setContributionBusy] = useState(false);
 
   async function refresh() {
-    const r = await api<{ goals: Goal[] }>("/api/goals");
-    setGoals(r.goals);
+    try {
+      const r = await api<{ goals: Goal[] }>("/api/goals");
+      setGoals(r.goals);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (!canAccess(user, "can_see_goals")) {
@@ -249,7 +254,7 @@ export default function Goals() {
       <div className="flex items-center justify-between">
         <div>
           <div className="text-xl font-medium text-ink-900" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>Goals</div>
-          <div className="text-xs text-ink-400 mt-0.5">{active.length} active · {done.length} completed</div>
+          <div className="text-xs text-ink-400 mt-0.5">{loading ? "\u00a0" : `${active.length} active · ${done.length} completed`}</div>
         </div>
         <button type="button" onClick={() => setShowForm((v) => !v)}
           className="flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all bg-teal-500 hover:bg-teal-600">
@@ -335,7 +340,8 @@ export default function Goals() {
         </div>
       )}
 
-      {/* Active goals */}
+      {/* Active + completed goals */}
+      <div className={cn("space-y-5 transition-opacity duration-200", loading ? "opacity-0 pointer-events-none" : "opacity-100")}>
       <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
           <div className="flex items-center gap-2">
@@ -370,6 +376,7 @@ export default function Goals() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -164,13 +164,8 @@ export default function Recipes() {
       </div>
 
       {/* Recipe grid */}
-      {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 rounded-2xl border border-cream-200 bg-white animate-pulse" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
+      <div className={cn("transition-opacity duration-200", loading ? "opacity-0 pointer-events-none" : "opacity-100")}>
+      {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="text-4xl mb-3">📖</div>
           <p className="text-sm font-medium text-ink-900 mb-1">No recipes yet</p>
@@ -216,6 +211,7 @@ export default function Recipes() {
           })}
         </div>
       )}
+      </div>
 
       {/* Add/Edit modal */}
       {showForm && (

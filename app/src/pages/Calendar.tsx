@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
+import { cn } from "../lib/utils";
 import { useUser } from "../lib/UserContext";
 import { canAccess } from "../lib/permissions";
 import FullCalendar from "@fullcalendar/react";
@@ -157,7 +158,8 @@ export default function Calendar() {
 
       {msg && <div className="rounded-xl border bg-rust-50 border-rust-600/30 px-4 py-2.5 text-sm text-rust-600">{msg}</div>}
 
-      {/* Mobile: list view */}
+      {/* Mobile: list view / Desktop: FullCalendar */}
+      <div className={cn("transition-opacity duration-200", rangeData === null ? "opacity-0 pointer-events-none" : "opacity-100")}>
       {isMobile ? (
         <div className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-hidden">
           <div className="border-b border-cream-100 px-4 py-3 flex items-center justify-between">
@@ -204,6 +206,7 @@ export default function Calendar() {
           />
         </div>
       )}
+      </div>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-2">
