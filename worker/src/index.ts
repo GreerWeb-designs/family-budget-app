@@ -1928,6 +1928,77 @@ app.patch("/api/household/members/:userId/role", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
+// ── Child profiles (no-account household members) ─────
+app.get("/api/household/children", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ children: [] });
+  const rows = await c.env.DB.prepare(
+    `SELECT id, name, emoji, created_at FROM child_profiles WHERE household_id = ? ORDER BY name ASC`
+  ).bind(householdId).all<{ id: string; name: string; emoji: string; created_at: string }>();
+  return c.json({ children: rows.results ?? [] });
+});
+
+app.post("/api/household/children", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const myRole = await c.env.DB.prepare(
+    `SELECT role FROM household_members WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(userId, householdId).first<{ role: string }>();
+  if (!["admin","primary"].includes(myRole?.role ?? "")) return c.json({ error: "Only admins can add children" }, 403);
+
+  const body = await c.req.json<{ name?: string; emoji?: string }>();
+  const name = (body.name ?? "").trim();
+  if (!name) return c.json({ error: "Name is required" }, 400);
+  const emoji = (body.emoji ?? "🧒").trim();
+
+  const id = uid();
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO child_profiles (id, household_id, name, emoji, created_at) VALUES (?, ?, ?, ?, ?)`
+  ).bind(id, householdId, name, emoji, now).run();
+
+  return c.json({ ok: true, id, name, emoji });
+});
+
+app.patch("/api/household/children/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const childId = c.req.param("id");
+  const body = await c.req.json<{ name?: string; emoji?: string }>();
+  const sets: string[] = []; const binds: unknown[] = [];
+  if (body.name !== undefined) { sets.push("name = ?"); binds.push(body.name.trim()); }
+  if (body.emoji !== undefined) { sets.push("emoji = ?"); binds.push(body.emoji.trim()); }
+  if (!sets.length) return c.json({ error: "Nothing to update" }, 400);
+
+  binds.push(childId, householdId);
+  await c.env.DB.prepare(
+    `UPDATE child_profiles SET ${sets.join(", ")} WHERE id = ? AND household_id = ?`
+  ).bind(...binds).run();
+  return c.json({ ok: true });
+});
+
+app.delete("/api/household/children/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+
+  const myRole = await c.env.DB.prepare(
+    `SELECT role FROM household_members WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(userId, householdId).first<{ role: string }>();
+  if (!["admin","primary"].includes(myRole?.role ?? "")) return c.json({ error: "Only admins can remove children" }, 403);
+
+  const childId = c.req.param("id");
+  await c.env.DB.prepare(
+    `DELETE FROM child_profiles WHERE id = ? AND household_id = ?`
+  ).bind(childId, householdId).run();
+  return c.json({ ok: true });
+});
+
 // ---- PROFILE (unchanged) ----
 app.patch("/api/auth/profile", requireUser, async (c) => {
   const userId = c.get("userId");
@@ -2531,9 +2602,11 @@ app.get("/api/chores", requireUser, async (c) => {
   const rows = await c.env.DB.prepare(
     `SELECT ch.id, ch.title, ch.assigned_to, ch.frequency, ch.due_date,
      ch.completed, ch.completed_at, ch.created_at,
-     u.name as assigned_to_name
+     COALESCE(u.name, cp.name) as assigned_to_name,
+     CASE WHEN cp.id IS NOT NULL THEN 1 ELSE 0 END as assigned_to_is_child
      FROM chores ch
      LEFT JOIN users u ON u.id = ch.assigned_to
+     LEFT JOIN child_profiles cp ON cp.id = ch.assigned_to
      WHERE ch.household_id = ?
      ORDER BY ch.completed ASC, ch.due_date ASC, ch.created_at ASC`
   ).bind(householdId).all<{

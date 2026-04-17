@@ -350,6 +350,130 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
   );
 }
 
+// ── Children section ──────────────────────────────────
+type ChildProfile = { id: string; name: string; emoji: string };
+
+const CHILD_EMOJIS = ["🧒","👦","👧","🧒‍♂️","🧒‍♀️","🐣","⭐","🦁","🐻","🐼","🦊","🐸"];
+
+function ChildrenSection() {
+  const [children, setChildren] = useState<ChildProfile[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName]         = useState("");
+  const [emoji, setEmoji]       = useState("🧒");
+  const [adding, setAdding]     = useState(false);
+  const [msg, setMsg]           = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function load() {
+    try {
+      const data = await api<{ children: ChildProfile[] }>("/api/household/children");
+      setChildren(data.children ?? []);
+    } catch { /* silent */ } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function addChild(e: React.FormEvent) {
+    e.preventDefault(); setMsg(null); setAdding(true);
+    try {
+      const child = await api<ChildProfile>("/api/household/children", {
+        method: "POST", body: JSON.stringify({ name: name.trim(), emoji }),
+      });
+      setChildren(prev => [...prev, child]);
+      setName(""); setEmoji("🧒"); setShowForm(false);
+    } catch (err: any) {
+      setMsg({ ok: false, text: err?.message || "Failed to add child." });
+    } finally { setAdding(false); }
+  }
+
+  async function removeChild(id: string) {
+    if (!confirm("Remove this child profile?")) return;
+    try {
+      await api(`/api/household/children/${id}`, { method: "DELETE" });
+      setChildren(prev => prev.filter(c => c.id !== id));
+    } catch { setMsg({ ok: false, text: "Failed to remove." }); }
+  }
+
+  if (loading) return <div className="text-sm text-ink-500 animate-pulse py-2">Loading…</div>;
+
+  return (
+    <div className="space-y-3">
+      {msg && (
+        <div className={cn("rounded-xl px-4 py-2.5 text-sm font-medium border",
+          msg.ok ? "bg-teal-50 text-teal-600 border-teal-500/30" : "bg-rust-50 text-rust-600 border-rust-600/30")}>
+          {msg.text}
+        </div>
+      )}
+
+      {children.map((child) => (
+        <Card key={child.id}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{child.emoji}</span>
+              <div>
+                <div className="text-sm font-semibold text-ink-900">{child.name}</div>
+                <div className="text-xs text-ink-500">No account — chore assignment only</div>
+              </div>
+            </div>
+            <button type="button" onClick={() => removeChild(child.id)}
+              className="p-1.5 rounded-lg text-ink-500 hover:text-rust-600 hover:bg-rust-50 transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+        </Card>
+      ))}
+
+      {children.length === 0 && !showForm && (
+        <div className="rounded-xl border border-dashed border-cream-200 px-4 py-8 text-center">
+          <div className="text-2xl mb-2">🧒</div>
+          <p className="text-sm text-ink-500">No children added yet.</p>
+          <p className="text-xs text-ink-500 mt-0.5">Add a child to assign them chores without giving them an account.</p>
+        </div>
+      )}
+
+      {!showForm ? (
+        <button type="button" onClick={() => { setShowForm(true); setMsg(null); }}
+          className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-white transition-all"
+          style={{ background: "#1B4243" }}>
+          <UserPlus size={14} />
+          Add child
+        </button>
+      ) : (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-semibold text-ink-900">Add child</span>
+            <button type="button" onClick={() => { setShowForm(false); setMsg(null); }}
+              className="p-1.5 rounded-lg text-ink-500 hover:bg-cream-100 transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+          <form onSubmit={addChild} className="space-y-3">
+            <input className={inputCls} placeholder="Child's name" value={name}
+              onChange={(e) => setName(e.target.value)} required autoFocus />
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-ink-500 mb-2">Pick an emoji</label>
+              <div className="flex flex-wrap gap-2">
+                {CHILD_EMOJIS.map((e) => (
+                  <button key={e} type="button" onClick={() => setEmoji(e)}
+                    className={cn("text-xl w-9 h-9 rounded-xl border transition-all",
+                      emoji === e ? "border-teal-500 bg-teal-50" : "border-cream-200 hover:bg-cream-100")}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button type="submit" disabled={adding}
+              className="h-10 w-full rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all"
+              style={{ background: "#1B4243" }}>
+              {adding ? "Adding…" : "Add child"}
+            </button>
+          </form>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ── Dependents section ─────────────────────────────────
 const PERM_LABELS: { key: keyof DepPermissions; label: string }[] = [
   { key: "can_see_budget",       label: "See budget" },
@@ -563,6 +687,14 @@ export default function Settings() {
         <section id="dependents">
           <SectionTitle icon={UserPlus} title="Dependent accounts" />
           <DependentsSection />
+        </section>
+      )}
+
+      {/* Children */}
+      {canManageDependents && (
+        <section id="children">
+          <SectionTitle icon={UserPlus} title="Children" />
+          <ChildrenSection />
         </section>
       )}
 

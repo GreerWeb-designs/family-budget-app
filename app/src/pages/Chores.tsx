@@ -23,6 +23,12 @@ type HouseholdMember = {
   role: string;
 };
 
+type ChildProfile = {
+  id: string;
+  name: string;
+  emoji: string;
+};
+
 const FREQUENCIES = [
   { value: "daily",      label: "Daily" },
   { value: "weekly",     label: "Weekly" },
@@ -68,6 +74,7 @@ export default function Chores() {
   const canAddChores = canAccess(user, "can_add_chores");
   const [chores, setChores] = useState<Chore[]>([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
+  const [children, setChildren] = useState<ChildProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("pending");
   const [showForm, setShowForm] = useState(false);
@@ -82,12 +89,14 @@ export default function Chores() {
 
   async function load() {
     try {
-      const [choreRes, householdRes] = await Promise.all([
+      const [choreRes, householdRes, childrenRes] = await Promise.all([
         api<{ chores: Chore[] }>("/api/chores"),
         api<{ members: HouseholdMember[] }>("/api/household"),
+        api<{ children: ChildProfile[] }>("/api/household/children"),
       ]);
       setChores(choreRes.chores ?? []);
       setMembers(householdRes.members ?? []);
+      setChildren(childrenRes.children ?? []);
     } catch {
       setMsg("Failed to load chores.");
     }
@@ -201,9 +210,16 @@ export default function Chores() {
                   className={cn(inputCls, "w-full")}
                 >
                   <option value="">Anyone / unassigned</option>
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
+                  {members.length > 0 && <optgroup label="Household members">
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </optgroup>}
+                  {children.length > 0 && <optgroup label="Children">
+                    {children.map((c) => (
+                      <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                    ))}
+                  </optgroup>}
                 </select>
               </div>
 
