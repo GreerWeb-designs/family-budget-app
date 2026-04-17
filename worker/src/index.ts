@@ -20,6 +20,7 @@ type Variables = {
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 const APP_ORIGIN = "https://app.nestotter.com";
+const LANDING_ORIGIN = "https://nestotter.com";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -106,7 +107,7 @@ function householdInviteHtml(inviterName: string, householdName: string, joinUrl
 
 app.use("*", async (c, next) => {
   const origin = c.req.header("Origin");
-  const isAllowedOrigin = origin === APP_ORIGIN;
+  const isAllowedOrigin = origin === APP_ORIGIN || origin === LANDING_ORIGIN;
 
   if (isAllowedOrigin) {
     c.header("Access-Control-Allow-Origin", origin!);
@@ -501,6 +502,25 @@ app.post("/api/auth/signup", async (c) => {
   );
 
   return c.json({ ok: true, userId, name });
+});
+
+// ── Waitlist (public, no auth) ─────────────────────────
+app.post("/api/waitlist", async (c) => {
+  const body = await c.req.json<{ email?: string }>();
+  const email = (body.email ?? "").trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return c.json({ error: "Invalid email" }, 400);
+  }
+  const db = c.env.DB;
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  try {
+    await db.prepare("INSERT INTO waitlist (id, email, created_at) VALUES (?, ?, ?)")
+      .bind(id, email, now).run();
+  } catch {
+    // duplicate — still return ok so we don't leak whether email exists
+  }
+  return c.json({ ok: true });
 });
 
 app.post("/api/auth/forgot-password", async (c) => {
