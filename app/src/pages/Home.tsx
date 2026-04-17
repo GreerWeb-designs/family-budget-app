@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   MessageSquare, Send, Trash2, TrendingUp,
-  Calendar, Target, Receipt, Clock, Plus, Minus,
+  Calendar, Target, Receipt, Plus, Minus,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { api } from "../lib/api";
@@ -66,10 +66,6 @@ function CardHeader({ title, sub, icon: Icon }: { title: string; sub?: string; i
   );
 }
 
-/* ── Input / select styling ─────────────────────────── */
-const inputCls = "h-10 rounded-xl border border-cream-200 bg-white px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 transition-all w-full";
-const selectCls = inputCls;
-
 /* ── Pill for category snapshot ─────────────────────── */
 function AvailPill({ val }: { val: number | null | undefined }) {
   if (val == null) return null;
@@ -100,22 +96,14 @@ export default function Home() {
   const [upcoming, setUpcoming] = useState<HomeUpcomingRes | null>(null);
   const [sortBy, setSortBy]     = useState<"date" | "category">("date");
   const [categoryId, setCategoryId] = useState("");
-  const [amount, setAmount]     = useState("");
-  const [direction, setDirection] = useState<"out" | "in">("out");
-  const [date, setDate]         = useState(() => new Date().toISOString().slice(0, 10));
-  const [note, setNote]         = useState("");
   const [msg, setMsg]           = useState<string | null>(null);
   const [busy, setBusy]         = useState(false);
-  const [lastSpendId, setLastSpendId] = useState<string | null>(null);
   const [loading, setLoading]   = useState(true);
   const [goals, setGoals]       = useState<Goal[]>([]);
   const [notes, setNotes]       = useState<Note[]>([]);
   const [noteInput, setNoteInput] = useState("");
   const [myUserId, setMyUserId] = useState<string>("");
   const [upcomingMeals, setUpcomingMeals] = useState<UpcomingMeal[]>([]);
-  const [showNewCatInput, setShowNewCatInput] = useState(false);
-  const [newCatInputValue, setNewCatInputValue] = useState("");
-  const [addingCat, setAddingCat] = useState(false);
 
   const catNameById = useMemo(() => {
     const m: Record<string, string> = {};
@@ -152,7 +140,6 @@ export default function Home() {
     }
     return copy;
   }, [spends, sortBy, catNameById]);
-
 
   const totalIncome   = useMemo(() =>
     spends.filter(s => s.category_id === INCOME_ID || s.direction === "in").reduce((s, r) => s + Number(r.amount), 0),
@@ -192,7 +179,7 @@ export default function Home() {
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>("/api/spend/summary"),
       api<SpendListRes>("/api/spend"),
-      api<HomeUpcomingRes>("/api/home/upcoming?billsDays=3&calDays=7"),
+      api<HomeUpcomingRes>("/api/home/upcoming?billsDays=31&calDays=30"),
       api<{ goals: Goal[] }>("/api/goals"),
       api<{ notes: Note[] }>("/api/notes"),
       api<{ userId: string }>("/api/auth/me"),
@@ -212,8 +199,7 @@ export default function Home() {
     setAccount(accRes);
     setUpcomingMeals(mealsRes.meals ?? []);
     setCategoryId((prev) => {
-      if (prev === INCOME_ID) return prev;
-      const nonIncome = allCats.filter((c) => c.id !== INCOME_ID);
+      const nonIncome = allCats.filter((c) => c.direction !== "inflow");
       if (prev && nonIncome.some((c) => c.id === prev)) return prev;
       return nonIncome[0]?.id ?? "";
     });
@@ -225,62 +211,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (direction === "in") { setCategoryId(INCOME_ID); return; }
-    setCategoryId((prev) => {
-      if (prev !== INCOME_ID) return prev;
-      return cats.find((x) => x.id !== INCOME_ID)?.id ?? prev;
-    });
-  }, [direction, cats, INCOME_ID]);
-
-  useEffect(() => {
     const id = setInterval(() => {
       api<{ notes: Note[] }>("/api/notes").then((r) => setNotes(r.notes ?? [])).catch(() => {});
     }, 60000);
     return () => clearInterval(id);
   }, []);
 
-  async function handleCreateCategoryInline() {
-    const name = newCatInputValue.trim();
-    if (!name) return;
-    setAddingCat(true); setMsg(null);
-    try {
-      const result = await api<{ ok: boolean; id: string }>("/api/categories", {
-        method: "POST",
-        body: JSON.stringify({ name, direction: "outflow" }),
-      });
-      setNewCatInputValue(""); setShowNewCatInput(false);
-      await refresh();
-      if (result.id) { setCategoryId(result.id); setDirection("out"); }
-      setMsg(`"${name}" added.`);
-    } catch (err: any) { setMsg(err?.message || "Failed to create category."); }
-    finally { setAddingCat(false); }
-  }
-
-  async function submitSpend(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-    const n = Number(amount);
-    if (!amount || Number.isNaN(n)) { setMsg("Enter an amount."); return; }
-    if (!categoryId) { setMsg("Pick a category."); return; }
-    setBusy(true);
-    try {
-      const res = await api<{ ok: true; id: string }>("/api/spend", {
-        method: "POST",
-        body: JSON.stringify({ categoryId, amount: n, date, note, direction }),
-      });
-      setLastSpendId(res.id);
-      setAmount(""); setNote("");
-      setMsg(direction === "in" ? "Income saved" : "Transaction saved");
-      await refresh();
-    } catch (err: any) { setMsg(err?.message || "Error saving."); }
-    finally { setBusy(false); }
-  }
-
   async function deleteSpend(id: string, isUndo = false) {
     setBusy(true); setMsg(null);
     try {
       await api(`/api/spend/${id}`, { method: "DELETE" });
-      if (lastSpendId === id) setLastSpendId(null);
       setMsg(isUndo ? "Undone" : "Removed");
       await refresh();
     } catch (err: any) { setMsg(err?.message || "Error."); }
@@ -310,9 +250,7 @@ export default function Home() {
     return (
       <div className="space-y-5 animate-pulse">
         <div className="rounded-2xl bg-white border h-36" style={{ borderColor: "var(--color-border)" }} />
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[1,2].map(i => <div key={i} className="rounded-2xl bg-white border h-48" style={{ borderColor: "var(--color-border)" }} />)}
-        </div>
+        <div className="rounded-2xl bg-white border h-64" style={{ borderColor: "var(--color-border)" }} />
         <div className="rounded-2xl bg-white border h-48" style={{ borderColor: "var(--color-border)" }} />
       </div>
     );
@@ -344,173 +282,38 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Record a transaction ──────────────────────── */}
-      {canSeeTransactions && <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-sm font-semibold text-ink-900">Record a transaction</div>
-            <div className="text-xs text-ink-500 mt-0.5">
-              {direction === "out" ? "Outflow · reduces category balance" : "Income · increases ready to assign"}
-            </div>
-          </div>
-          <div className="inline-flex rounded-xl border border-cream-200 bg-cream-100 p-1">
-            <button type="button" onClick={() => setDirection("out")}
-              className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "out" ? "bg-rust-600 text-white shadow-sm" : "text-ink-500 hover:text-ink-900")}>
-              Outflow
-            </button>
-            <button type="button" onClick={() => setDirection("in")}
-              className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-                direction === "in" ? "text-white shadow-sm" : "text-ink-500 hover:text-ink-900")}
-              style={direction === "in" ? { background: "#2D6E70" } : {}}>
-              Income
-            </button>
-          </div>
+      {/* ── Day Planner ───────────────────────────────── */}
+      <DayPlanner
+        bills={upcoming?.bills ?? []}
+        events={upcoming?.events ?? []}
+        meals={upcomingMeals}
+        goals={goals}
+      />
+
+      {/* ── This Month ────────────────────────────────── */}
+      <Card>
+        <CardHeader title="This Month" sub="Income vs. spending" icon={TrendingUp} />
+        <div className="h-32">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={barData} barCategoryGap="30%" margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#78716C" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#A8A29E" }} axisLine={false} tickLine={false}
+                tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+              <Tooltip
+                formatter={(v) => [money(Number(v)), ""]}
+                contentStyle={{ borderRadius: "12px", border: "1px solid #E7E5E4", fontSize: 12 }}
+                cursor={{ fill: "#F5F5F4" }} />
+              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-
-        <form onSubmit={submitSpend} className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Where did it go?</span>
-              <select className={selectCls} disabled={direction === "in"}
-                value={showNewCatInput ? "__new__" : categoryId}
-                onChange={(e) => {
-                  if (e.target.value === "__new__") {
-                    setShowNewCatInput(true);
-                    setNewCatInputValue("");
-                  } else {
-                    setShowNewCatInput(false);
-                    setCategoryId(e.target.value);
-                  }
-                }}>
-                {direction === "out" && <option value="__new__">＋ New category</option>}
-                {direction === "out" && <option disabled value="">──────────────</option>}
-                {(direction === "in"
-                  ? cats.filter((c) => c.id === INCOME_ID)
-                  : cats.filter((c) => c.id !== INCOME_ID)
-                ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              {showNewCatInput && direction === "out" && (
-                <div className="flex gap-2 items-center mt-1">
-                  <input
-                    autoFocus
-                    value={newCatInputValue}
-                    onChange={(e) => setNewCatInputValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); handleCreateCategoryInline(); }
-                      if (e.key === "Escape") { setShowNewCatInput(false); setNewCatInputValue(""); }
-                    }}
-                    placeholder="Category name"
-                    className="h-10 flex-1 min-w-0 rounded-xl border border-cream-200 bg-cream-100 px-3 text-sm text-ink-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder-[#5C6B7A]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCreateCategoryInline}
-                    disabled={addingCat || !newCatInputValue.trim()}
-                    className="h-10 rounded-xl bg-teal-700 px-3 text-xs font-semibold text-white hover:bg-teal-900 disabled:opacity-50 transition-all">
-                    {addingCat ? "…" : "Add"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowNewCatInput(false); setNewCatInputValue(""); }}
-                    className="h-10 w-10 rounded-xl border border-cream-200 text-ink-500 hover:bg-cream-100 text-sm transition-all flex items-center justify-center">
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Amount</span>
-              <input className={inputCls + " tabular-nums"} value={amount}
-                onChange={(e) => setAmount(e.target.value)} placeholder="0.00" inputMode="decimal" />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Date</span>
-              <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
-            </label>
-          </div>
-          <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Note (optional)</span>
-            <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder={direction === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
-          </label>
-          <div className="flex items-center gap-3 pt-1">
-            <button type="submit" disabled={busy}
-              className="h-10 px-5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
-              style={{ background: direction === "in" ? "#2D6E70" : "#1B4243" }}>
-              {busy ? "Saving…" : direction === "in" ? "Add income" : "Record"}
-            </button>
-            <button type="button" disabled={busy || !lastSpendId} onClick={() => deleteSpend(lastSpendId!, true)}
-              className="h-10 px-4 rounded-xl border border-cream-200 text-sm font-medium text-ink-500 hover:bg-cream-100 disabled:opacity-40 transition-all">
-              Undo
-            </button>
-            {msg && (
-              <span className={cn("text-sm", msg.includes("Error") || msg.includes("error") ? "text-rust-600" : "text-teal-600")}>
-                {msg}
-              </span>
-            )}
-          </div>
-        </form>
-      </Card>}
-
-      {/* ── Cards grid ────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2">
-
-        {/* This Month */}
-        <Card>
-          <CardHeader title="This Month" sub="Income vs. spending" icon={TrendingUp} />
-          <div className="h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} barCategoryGap="30%" margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#78716C" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: "#A8A29E" }} axisLine={false} tickLine={false}
-                  tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
-                <Tooltip
-                  formatter={(v) => [money(Number(v)), ""]}
-                  contentStyle={{ borderRadius: "12px", border: "1px solid #E7E5E4", fontSize: 12 }}
-                  cursor={{ fill: "#F5F5F4" }} />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex gap-4 text-xs text-ink-500">
-            <div><span className="font-semibold text-teal-600">{money(totalIncome)}</span> in</div>
-            <div><span className="font-semibold text-rust-600">{money(totalSpending)}</span> spent</div>
-          </div>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader title="Recent activity" sub="Last 5 transactions" icon={Clock} />
-          {sortedSpends.length === 0 ? (
-            <div className="text-sm text-ink-500 py-4 text-center">No transactions yet.</div>
-          ) : (
-            <div className="space-y-2">
-              {sortedSpends.slice(0, 5).map((row) => {
-                const isIncome = row.category_id === INCOME_ID || row.direction === "in";
-                const catName  = catNameById[row.category_id] || row.category_id;
-                return (
-                  <div key={row.id} className="flex items-center gap-3">
-                    <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
-                      isIncome ? "bg-teal-50 text-teal-600" : "bg-cream-100 text-ink-500")}>
-                      {isIncome ? <Plus size={12} /> : <Minus size={12} />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-ink-900 truncate">{catName}{row.note ? ` · ${row.note}` : ""}</div>
-                      <div className="text-[10px] text-ink-500">{row.date}</div>
-                    </div>
-                    <div className={cn("text-xs font-semibold tabular-nums shrink-0", isIncome ? "text-teal-600" : "text-ink-900")}>
-                      {isIncome ? "+" : "-"}{money(row.amount)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
+        <div className="mt-2 flex gap-4 text-xs text-ink-500">
+          <div><span className="font-semibold text-teal-600">{money(totalIncome)}</span> in</div>
+          <div><span className="font-semibold text-rust-600">{money(totalSpending)}</span> spent</div>
+        </div>
+      </Card>
 
       {/* ── Upcoming (combined) ───────────────────────── */}
       <Card>
@@ -528,7 +331,10 @@ export default function Home() {
           <div className="space-y-2">
             {!upcoming || upcoming.bills.length === 0 ? (
               <p className="text-sm text-ink-500">Clear skies — no bills due soon.</p>
-            ) : upcoming.bills.map((bill) => {
+            ) : upcoming.bills.filter(b => {
+              const today = new Date().getDate();
+              return b.day_of_month >= today && b.day_of_month <= today + 3;
+            }).slice(0, 5).map((bill) => {
               const diff    = bill.day_of_month - new Date().getDate();
               const isAuto  = bill.mode === "auto";
               const urgency = diff === 0 ? "today" : `in ${diff}d`;
@@ -565,7 +371,7 @@ export default function Home() {
           <div className="space-y-2">
             {!upcoming || upcoming.events.length === 0 ? (
               <p className="text-sm text-ink-500">Nothing on the horizon.</p>
-            ) : upcoming.events.map((ev) => {
+            ) : upcoming.events.slice(0, 5).map((ev) => {
               const d = new Date(ev.start_at);
               const pretty = d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
               return (
@@ -687,7 +493,7 @@ export default function Home() {
         </div>
       </Card>}
 
-      {/* ── Budget snapshot + total ────────────────────── */}
+      {/* ── Budget snapshot ────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-3">Category detail</div>
@@ -713,9 +519,8 @@ export default function Home() {
                 </div>
               </>
             );
-          })() : <p className="text-sm text-ink-500 mt-2">Select a category above to view details.</p>}
+          })() : <p className="text-sm text-ink-500 mt-2">Select a category to view details.</p>}
         </Card>
-
       </div>
 
       {/* ── Transaction History ───────────────────────── */}
@@ -737,7 +542,7 @@ export default function Home() {
         </div>
         <div className="divide-y" style={{ borderColor: "var(--color-border-subtle)" }}>
           {sortedSpends.length === 0 && (
-            <div className="px-5 py-10 text-center text-sm text-ink-500">Nothing recorded yet. Add your first transaction above.</div>
+            <div className="px-5 py-10 text-center text-sm text-ink-500">Nothing recorded yet.</div>
           )}
           {sortedSpends.map((row) => {
             const catName  = catNameById[row.category_id] || row.category_id;
@@ -770,6 +575,372 @@ export default function Home() {
         </div>
       </Card>}
 
+      {msg && (
+        <div className={cn("rounded-xl border px-4 py-2.5 text-sm",
+          msg.includes("Error") || msg.includes("error") || msg.includes("Failed")
+            ? "bg-rust-50 border-rust-600/30 text-rust-600"
+            : "bg-teal-50 border-teal-500/30 text-teal-600")}>
+          {msg}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   DayPlanner — artsy illustrated daily calendar
+═══════════════════════════════════════════════════════ */
+
+const PLANNER_HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6 am – 10 pm
+
+function hourLabel(h: number) {
+  if (h === 12) return "12 pm";
+  return h > 12 ? `${h - 12} pm` : `${h} am`;
+}
+
+function DayPlanner({
+  bills, events, meals, goals,
+}: {
+  bills: UpcomingBill[];
+  events: UpcomingEvent[];
+  meals: UpcomingMeal[];
+  goals: Goal[];
+}) {
+  const todayBase = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const [selected, setSelected] = useState<Date>(() => new Date(todayBase));
+
+  function shiftDay(n: number) {
+    setSelected(d => { const next = new Date(d); next.setDate(next.getDate() + n); return next; });
+  }
+
+  const dateStr  = selected.toISOString().slice(0, 10);
+  const isToday  = selected.getTime() === todayBase.getTime();
+
+  /* Filter for selected day */
+  const dayBills  = bills.filter(b => b.day_of_month === selected.getDate());
+  const dayMeals  = meals.filter(m => m.planned_date === dateStr);
+  const dayGoals  = goals.filter(g => g.status === "active" && g.due_date === dateStr);
+  const dayEvents = events.filter(ev => ev.start_at.slice(0, 10) === dateStr);
+
+  const hasContent = dayBills.length > 0 || dayMeals.length > 0 || dayGoals.length > 0 || dayEvents.length > 0;
+
+  const dayName  = selected.toLocaleDateString(undefined, { weekday: "long" });
+  const dateLabel = selected.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+
+  /* 7-day strip starting today */
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(todayBase); d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  return (
+    <div className="relative rounded-3xl overflow-hidden border" style={{
+      borderColor: "#C9CBAA",
+      background: "linear-gradient(160deg, #FDFAF2 0%, #F5EDD8 60%, #EAE4D0 100%)",
+      boxShadow: "0 6px 32px rgba(27,66,67,0.10), 0 1px 0 rgba(255,255,255,0.9) inset",
+    }}>
+
+      {/* ── Decorative botanical blobs ─────────────────── */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {/* top-right teal bloom */}
+        <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full opacity-[0.12]"
+          style={{ background: "radial-gradient(circle, #2D6E70 0%, transparent 70%)" }} />
+        {/* bottom-left amber warmth */}
+        <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full opacity-[0.10]"
+          style={{ background: "radial-gradient(circle, #C17A3F 0%, transparent 70%)" }} />
+        {/* center soft lavender */}
+        <div className="absolute top-1/2 right-1/4 h-24 w-24 rounded-full opacity-[0.07]"
+          style={{ background: "radial-gradient(circle, #8B7EC8 0%, transparent 70%)" }} />
+        {/* Tiny scatter dots */}
+        {[
+          { top: "18%", left: "8%",  size: 3,  color: "#2D6E70", opacity: 0.18 },
+          { top: "72%", left: "91%", size: 4,  color: "#C17A3F", opacity: 0.20 },
+          { top: "40%", left: "96%", size: 2.5,color: "#2D6E70", opacity: 0.14 },
+          { top: "85%", left: "12%", size: 3,  color: "#8B7EC8", opacity: 0.15 },
+          { top: "55%", left: "4%",  size: 2,  color: "#C17A3F", opacity: 0.18 },
+        ].map((dot, i) => (
+          <div key={i} className="absolute rounded-full" style={{
+            top: dot.top, left: dot.left,
+            width: dot.size, height: dot.size,
+            background: dot.color, opacity: dot.opacity,
+          }} />
+        ))}
+      </div>
+
+      {/* ── Date header ───────────────────────────────── */}
+      <div className="relative px-5 pt-6 pb-4">
+        <div className="flex items-center justify-between gap-3">
+
+          <button type="button" onClick={() => shiftDay(-1)}
+            className="relative h-10 w-10 rounded-full border-2 flex items-center justify-center text-xl font-light transition-all hover:scale-105 active:scale-95 shrink-0"
+            style={{ borderColor: "#1B4243", color: "#1B4243", background: "rgba(255,255,255,0.6)" }}>
+            ‹
+          </button>
+
+          <div className="text-center flex-1 min-w-0">
+            {isToday && (
+              <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 mb-1.5 text-[10px] font-black uppercase tracking-[0.15em]"
+                style={{ background: "#1B4243", color: "#FFFDF8" }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-300 animate-pulse inline-block" />
+                Today
+              </div>
+            )}
+            <div className="leading-none" style={{
+              fontFamily: "'Fraunces', Georgia, serif",
+              fontSize: "clamp(1.5rem, 5vw, 2rem)",
+              fontWeight: 600,
+              color: "#1B4243",
+            }}>
+              {dayName}
+            </div>
+            <div className="text-xs mt-1" style={{ color: "#5C7A7B", fontFamily: "'Fraunces', Georgia, serif", fontStyle: "italic" }}>
+              {dateLabel}
+            </div>
+          </div>
+
+          <button type="button" onClick={() => shiftDay(1)}
+            className="relative h-10 w-10 rounded-full border-2 flex items-center justify-center text-xl font-light transition-all hover:scale-105 active:scale-95 shrink-0"
+            style={{ borderColor: "#1B4243", color: "#1B4243", background: "rgba(255,255,255,0.6)" }}>
+            ›
+          </button>
+        </div>
+
+        {/* ── 7-day pill strip ───────────────────────── */}
+        <div className="flex gap-1.5 mt-4 justify-center overflow-x-auto pb-0.5 scrollbar-none">
+          {weekDays.map((d) => {
+            const ds     = d.toISOString().slice(0, 10);
+            const isSel  = ds === dateStr;
+            const hasDot = bills.some(b => b.day_of_month === d.getDate()) ||
+                           meals.some(m => m.planned_date === ds) ||
+                           events.some(ev => ev.start_at.slice(0, 10) === ds) ||
+                           goals.some(g => g.due_date === ds && g.status === "active");
+            return (
+              <button key={ds} type="button"
+                onClick={() => setSelected(new Date(d))}
+                className="flex flex-col items-center rounded-2xl px-2.5 py-2 transition-all min-w-[38px] relative shrink-0"
+                style={isSel ? {
+                  background: "#1B4243",
+                  boxShadow: "0 2px 10px rgba(27,66,67,0.30)",
+                } : {}}>
+                <span className="text-[9px] font-extrabold uppercase tracking-wider"
+                  style={{ color: isSel ? "rgba(255,255,255,0.6)" : "#5C7A7B" }}>
+                  {d.toLocaleDateString(undefined, { weekday: "narrow" })}
+                </span>
+                <span className="text-sm font-bold tabular-nums mt-0.5"
+                  style={{ color: isSel ? "#FFFDF8" : "#1B4243" }}>
+                  {d.getDate()}
+                </span>
+                {hasDot && !isSel && (
+                  <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full"
+                    style={{ background: "#C17A3F" }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Day content ───────────────────────────────── */}
+      <div className="relative px-4 pb-6 space-y-3">
+
+        {/* Quiet day empty state */}
+        {!hasContent && (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="text-5xl mb-3 opacity-60">🌿</div>
+            <p className="text-base font-semibold" style={{ fontFamily: "'Fraunces', Georgia, serif", color: "#1B4243" }}>
+              A quiet day ahead
+            </p>
+            <p className="text-xs mt-1" style={{ color: "#5C7A7B", fontStyle: "italic" }}>
+              Nothing scheduled — enjoy the open space.
+            </p>
+          </div>
+        )}
+
+        {/* ── Bills Due ─────────────────────────────── */}
+        {dayBills.length > 0 && (
+          <div className="rounded-2xl p-4 relative overflow-hidden" style={{
+            background: "linear-gradient(135deg, rgba(201,222,223,0.55) 0%, rgba(168,207,209,0.40) 100%)",
+            border: "1.5px solid rgba(45,110,112,0.20)",
+            backdropFilter: "blur(4px)",
+          }}>
+            <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-20 pointer-events-none"
+              style={{ background: "radial-gradient(circle, #2D6E70, transparent)", transform: "translate(40%,-40%)" }} />
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">📋</span>
+              <span style={{
+                fontFamily: "'Fraunces', Georgia, serif",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#1B4243",
+              }}>Bills Due</span>
+            </div>
+            <div className="space-y-2">
+              {dayBills.map(bill => (
+                <div key={bill.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-2 w-2 rounded-full shrink-0"
+                      style={{ background: bill.mode === "auto" ? "#2D6E70" : "#C17A3F" }} />
+                    <span className="text-sm font-semibold" style={{ color: "#0F2A2B" }}>{bill.name}</span>
+                  </div>
+                  <span className="text-[10px] font-bold rounded-full px-2.5 py-0.5 uppercase tracking-wide" style={
+                    bill.mode === "auto"
+                      ? { background: "rgba(27,66,67,0.12)", color: "#1B4243" }
+                      : { background: "rgba(193,122,63,0.15)", color: "#7A4A1E" }
+                  }>{bill.mode}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Meals ─────────────────────────────────── */}
+        {dayMeals.length > 0 && (
+          <div className="rounded-2xl p-4 relative overflow-hidden" style={{
+            background: "linear-gradient(135deg, rgba(240,217,192,0.60) 0%, rgba(232,194,158,0.40) 100%)",
+            border: "1.5px solid rgba(193,122,63,0.25)",
+          }}>
+            <div className="absolute bottom-0 left-0 w-16 h-16 rounded-full opacity-15 pointer-events-none"
+              style={{ background: "radial-gradient(circle, #C17A3F, transparent)", transform: "translate(-30%,30%)" }} />
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">🍽️</span>
+              <span style={{
+                fontFamily: "'Fraunces', Georgia, serif",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#7A4A1E",
+              }}>Meal Plans</span>
+            </div>
+            <div className="space-y-2">
+              {dayMeals.map(meal => (
+                <div key={meal.id} className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold truncate" style={{ color: "#4A2E12" }}>{meal.recipe_title}</span>
+                  <span className="text-[10px] font-bold capitalize rounded-full px-2.5 py-0.5 shrink-0 uppercase tracking-wide"
+                    style={{ background: "rgba(193,122,63,0.15)", color: "#7A4A1E" }}>
+                    {meal.meal_type}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Goals ─────────────────────────────────── */}
+        {dayGoals.length > 0 && (
+          <div className="rounded-2xl p-4 relative overflow-hidden" style={{
+            background: "linear-gradient(135deg, rgba(200,190,230,0.40) 0%, rgba(178,165,218,0.30) 100%)",
+            border: "1.5px solid rgba(139,126,200,0.30)",
+          }}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">🎯</span>
+              <span style={{
+                fontFamily: "'Fraunces', Georgia, serif",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#3D2E6B",
+              }}>Goals Due Today</span>
+            </div>
+            <div className="space-y-1.5">
+              {dayGoals.map(goal => (
+                <div key={goal.id} className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full shrink-0" style={{ background: "#7B6CC8" }} />
+                  <span className="text-sm font-semibold" style={{ color: "#3D2E6B" }}>{goal.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Hour-by-hour schedule ─────────────────── */}
+        <div className="rounded-2xl p-4 relative" style={{
+          background: "rgba(255,255,255,0.45)",
+          border: "1.5px dashed #C9CBAA",
+          backdropFilter: "blur(4px)",
+        }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xl">🕐</span>
+            <span style={{
+              fontFamily: "'Fraunces', Georgia, serif",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "#1B4243",
+            }}>Schedule</span>
+          </div>
+
+          {dayEvents.length === 0 ? (
+            <div className="text-center py-5">
+              <p className="text-sm" style={{
+                fontFamily: "'Fraunces', Georgia, serif",
+                fontStyle: "italic",
+                color: "#5C7A7B",
+              }}>
+                Open canvas — nothing timed today
+              </p>
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Vertical timeline spine */}
+              <div className="absolute top-0 bottom-0 w-px" style={{ left: "44px", background: "linear-gradient(180deg, transparent 0%, #C9CBAA 10%, #C9CBAA 90%, transparent 100%)" }} />
+
+              <div className="space-y-0.5">
+                {PLANNER_HOURS.map(hour => {
+                  const eventsAtHour = dayEvents.filter(ev => new Date(ev.start_at).getHours() === hour);
+                  const label = hourLabel(hour);
+
+                  if (eventsAtHour.length === 0) {
+                    return (
+                      <div key={hour} className="flex items-center" style={{ height: "28px" }}>
+                        <span className="text-[10px] tabular-nums text-right shrink-0"
+                          style={{ width: "36px", color: "#A8B8B9", paddingRight: "8px" }}>
+                          {label}
+                        </span>
+                        <div className="h-px flex-1 mx-2" style={{ borderTop: "1px dotted #D8D0C0" }} />
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={hour} className="flex gap-2 py-1.5">
+                      <span className="text-[10px] font-bold tabular-nums text-right shrink-0 mt-2"
+                        style={{ width: "36px", color: "#2D6E70", paddingRight: "8px" }}>
+                        {label}
+                      </span>
+                      <div className="flex-1 space-y-1.5">
+                        {eventsAtHour.map(ev => {
+                          const start = new Date(ev.start_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+                          const end   = ev.end_at ? new Date(ev.end_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : null;
+                          return (
+                            <div key={ev.id} className="rounded-xl px-3 py-2.5 relative overflow-hidden" style={{
+                              background: "linear-gradient(135deg, #C9DEDF, #A8CFD1)",
+                              border: "1px solid rgba(45,110,112,0.30)",
+                              boxShadow: "0 2px 8px rgba(27,66,67,0.12)",
+                            }}>
+                              <div className="absolute inset-y-0 left-0 w-1 rounded-l-xl" style={{ background: "#1B4243" }} />
+                              <div className="text-xs font-bold pl-2" style={{ color: "#0F2A2B" }}>{ev.title}</div>
+                              <div className="text-[10px] pl-2 mt-0.5 flex items-center gap-2" style={{ color: "#2D6E70" }}>
+                                <span>{start}{end ? ` – ${end}` : ""}</span>
+                                {ev.location && <span>📍 {ev.location}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

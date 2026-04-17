@@ -222,6 +222,88 @@ export default function Budget() {
         </button>
       </div>
 
+      {/* ── Log a Transaction (dark panel) ───────────── */}
+      <div className="rounded-2xl p-5 shadow-lg" style={{ background: "#1B4243" }}>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-2 w-2 rounded-full bg-rust-500 animate-pulse" />
+          <span className="text-sm font-semibold text-white">Log a Transaction</span>
+          <span className="text-xs text-teal-300 ml-auto">Quick entry</span>
+        </div>
+
+        {/* Direction toggle */}
+        <div className="inline-flex rounded-xl border border-teal-900 bg-teal-800 p-1 mb-4">
+          <button type="button" onClick={() => {
+            setTxDirection("out");
+            setTxCategoryId(cats[0]?.id ?? "");
+          }}
+            className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
+              txDirection === "out" ? "text-white shadow-sm" : "text-ink-500 hover:text-white")}
+            style={txDirection === "out" ? { background: "#C17A3F" } : {}}>
+            Outflow
+          </button>
+          <button type="button" onClick={() => {
+            setTxDirection("in");
+            const income = cats.find((c) => c.direction === "inflow");
+            if (income) setTxCategoryId(income.id);
+          }}
+            className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
+              txDirection === "in" ? "text-white shadow-sm" : "text-ink-500 hover:text-white")}
+            style={txDirection === "in" ? { background: "#2D6E70" } : {}}>
+            Income
+          </button>
+        </div>
+
+        <form onSubmit={submitTransaction} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Category</span>
+              <select
+                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
+                value={txCategoryId}
+                onChange={(e) => setTxCategoryId(e.target.value)}
+                disabled={txDirection === "in"}>
+                {(txDirection === "in"
+                  ? cats.filter((c) => c.direction === "inflow")
+                  : cats.filter((c) => c.direction !== "inflow")
+                ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Amount</span>
+              <input
+                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all tabular-nums"
+                value={txAmount} onChange={(e) => setTxAmount(e.target.value)}
+                placeholder="0.00" inputMode="decimal" />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Date</span>
+              <input type="date"
+                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
+                value={txDate} onChange={(e) => setTxDate(e.target.value)} />
+            </label>
+          </div>
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Note (optional)</span>
+            <input
+              className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
+              value={txNote} onChange={(e) => setTxNote(e.target.value)}
+              placeholder={txDirection === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
+          </label>
+          <div className="flex items-center gap-3 pt-1">
+            <button type="submit" disabled={txBusy}
+              className="h-10 w-full rounded-xl text-sm font-semibold text-ink-900 hover:opacity-90 disabled:opacity-60 transition-all"
+              style={{ background: "#C17A3F" }}>
+              {txBusy ? "Saving…" : txDirection === "in" ? "Add income" : "Record"}
+            </button>
+          </div>
+          {txMsg && (
+            <div className={cn("text-sm text-center", txMsg.includes("Error") || txMsg.includes("error") ? "text-rust-600" : "text-teal-300")}>
+              {txMsg}
+            </div>
+          )}
+        </form>
+      </div>
+
       {/* Bank + TBB stats */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border bg-white p-4" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
@@ -481,88 +563,6 @@ export default function Budget() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* ── Log a Transaction (dark panel) ───────────── */}
-      <div className="rounded-2xl p-5 shadow-lg mt-4" style={{ background: "#1B4243" }}>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-2 w-2 rounded-full bg-rust-500 animate-pulse" />
-          <span className="text-sm font-semibold text-white">Log a Transaction</span>
-          <span className="text-xs text-teal-300 ml-auto">Quick entry</span>
-        </div>
-
-        {/* Direction toggle */}
-        <div className="inline-flex rounded-xl border border-teal-900 bg-teal-800 p-1 mb-4">
-          <button type="button" onClick={() => {
-            setTxDirection("out");
-            setTxCategoryId(cats[0]?.id ?? "");
-          }}
-            className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-              txDirection === "out" ? "text-white shadow-sm" : "text-ink-500 hover:text-white")}
-            style={txDirection === "out" ? { background: "#C17A3F" } : {}}>
-            Outflow
-          </button>
-          <button type="button" onClick={() => {
-            setTxDirection("in");
-            const income = cats.find((c) => c.direction === "inflow");
-            if (income) setTxCategoryId(income.id);
-          }}
-            className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-              txDirection === "in" ? "text-white shadow-sm" : "text-ink-500 hover:text-white")}
-            style={txDirection === "in" ? { background: "#2D6E70" } : {}}>
-            Income
-          </button>
-        </div>
-
-        <form onSubmit={submitTransaction} className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Category</span>
-              <select
-                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
-                value={txCategoryId}
-                onChange={(e) => setTxCategoryId(e.target.value)}
-                disabled={txDirection === "in"}>
-                {(txDirection === "in"
-                  ? cats.filter((c) => c.direction === "inflow")
-                  : cats.filter((c) => c.direction !== "inflow")
-                ).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Amount</span>
-              <input
-                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all tabular-nums"
-                value={txAmount} onChange={(e) => setTxAmount(e.target.value)}
-                placeholder="0.00" inputMode="decimal" />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Date</span>
-              <input type="date"
-                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
-                value={txDate} onChange={(e) => setTxDate(e.target.value)} />
-            </label>
-          </div>
-          <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Note (optional)</span>
-            <input
-              className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
-              value={txNote} onChange={(e) => setTxNote(e.target.value)}
-              placeholder={txDirection === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
-          </label>
-          <div className="flex items-center gap-3 pt-1">
-            <button type="submit" disabled={txBusy}
-              className="h-10 w-full rounded-xl text-sm font-semibold text-ink-900 hover:opacity-90 disabled:opacity-60 transition-all"
-              style={{ background: "#C17A3F" }}>
-              {txBusy ? "Saving…" : txDirection === "in" ? "Add income" : "Record"}
-            </button>
-          </div>
-          {txMsg && (
-            <div className={cn("text-sm text-center", txMsg.includes("Error") || txMsg.includes("error") ? "text-rust-600" : "text-teal-300")}>
-              {txMsg}
-            </div>
-          )}
-        </form>
       </div>
 
     </div>
