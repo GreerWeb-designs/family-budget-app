@@ -371,16 +371,21 @@ export default function Home() {
           <div className="space-y-2">
             {!upcoming || upcoming.events.length === 0 ? (
               <p className="text-sm text-ink-500">Nothing on the horizon.</p>
-            ) : upcoming.events.slice(0, 5).map((ev) => {
-              const d = new Date(ev.start_at);
-              const pretty = d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-              return (
-                <div key={ev.id} className="rounded-xl border border-cream-100 bg-cream-50 px-3 py-2">
-                  <div className="text-sm font-medium text-ink-900">{ev.title}</div>
-                  <div className="text-xs text-ink-500 mt-0.5">{pretty}{ev.location ? ` · ${ev.location}` : ""}</div>
-                </div>
-              );
-            })}
+            ) : (() => {
+              const cutoff = new Date(Date.now() + 7 * 86400000);
+              const next7  = upcoming.events.filter(ev => new Date(ev.start_at) <= cutoff);
+              if (next7.length === 0) return <p className="text-sm text-ink-500">Nothing on the horizon.</p>;
+              return next7.slice(0, 5).map((ev) => {
+                const d = new Date(ev.start_at);
+                const pretty = d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                return (
+                  <div key={ev.id} className="rounded-xl border border-cream-100 bg-cream-50 px-3 py-2">
+                    <div className="text-sm font-medium text-ink-900">{ev.title}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">{pretty}{ev.location ? ` · ${ev.location}` : ""}</div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
 
