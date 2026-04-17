@@ -19,7 +19,7 @@ type Variables = {
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-const APP_ORIGIN = "https://app.ducharmefamilybudget.com";
+const APP_ORIGIN = "https://app.nestotter.com";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 

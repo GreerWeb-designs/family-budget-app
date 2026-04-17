@@ -27,4 +27,4 @@ preview_database_id = "dd44c966-4b30-4c6c-a887-a03969fdaacd"
 # The address admin signup alerts go TO (your inbox)
 ADMIN_EMAIL = "robert@ducharmefamily.ca"
 # The verified sender address in your Resend account/domain
-RESEND_FROM_EMAIL = "noreply@ducharmefamilybudget.com"
+RESEND_FROM_EMAIL = "noreply@nestotter.com"

@@ -149,7 +149,7 @@ function HouseholdSection({ currentUserId }: { currentUserId: string }) {
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinMsg, setJoinMsg]   = useState<{ ok: boolean; text: string } | null>(null);
 
-  const APP_URL = "https://app.ducharmefamilybudget.com";
+  const APP_URL = "https://app.nestotter.com";
 
   async function loadHousehold() {
     try {
