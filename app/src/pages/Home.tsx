@@ -948,7 +948,7 @@ function DayPlanner({
                 className="w-full h-9 rounded-xl border px-3 text-sm outline-none transition-all"
                 style={{ borderColor: "rgba(27,66,67,0.25)", background: "rgba(255,255,255,0.8)", color: "#0F2A2B" }}
               />
-              <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#5C7A7B" }}>Start</label>
                   <input
