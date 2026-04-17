@@ -426,8 +426,8 @@ function ChildrenSection() {
       {children.length === 0 && !showForm && (
         <div className="rounded-xl border border-dashed border-cream-200 px-4 py-8 text-center">
           <div className="text-2xl mb-2">🧒</div>
-          <p className="text-sm text-ink-500">No children added yet.</p>
-          <p className="text-xs text-ink-500 mt-0.5">Add a child to assign them chores without giving them an account.</p>
+          <p className="text-sm text-ink-500">No dependents added yet.</p>
+          <p className="text-xs text-ink-500 mt-0.5">Add a dependent to assign them chores without giving them an account.</p>
         </div>
       )}
 
@@ -436,7 +436,7 @@ function ChildrenSection() {
           className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold text-white transition-all"
           style={{ background: "#1B4243" }}>
           <UserPlus size={14} />
-          Add child
+          Add dependent non-account
         </button>
       ) : (
         <Card>
