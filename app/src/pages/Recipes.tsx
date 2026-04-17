@@ -467,6 +467,9 @@ function DetailView({
   const [selectedListId, setSelectedListId] = useState("");
   const [addingToGrocery, setAddingToGrocery] = useState(false);
   const [groceryMsg, setGroceryMsg] = useState<string | null>(null);
+  const [newListName, setNewListName] = useState("");
+  const [showNewListInput, setShowNewListInput] = useState(false);
+  const [creatingList, setCreatingList] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Meal plan state
@@ -502,24 +505,46 @@ function DetailView({
     });
   }
 
+  async function addItemsToList(listId: string, listName: string) {
+    const selected = detail.ingredients.filter((_, i) => checkedIngredients.has(i));
+    for (const ing of selected) {
+      const name = [ing.quantity, ing.unit, ing.name].filter(Boolean).join(" ");
+      await api(`/api/grocery/lists/${listId}/items`, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+    }
+    setGroceryMsg(`Added ${selected.length} item${selected.length !== 1 ? "s" : ""} to ${listName} ✓`);
+    setCheckedIngredients(new Set());
+    setGroceryPopover(false);
+  }
+
   async function addToGrocery() {
     if (!selectedListId || checkedIngredients.size === 0) return;
     setAddingToGrocery(true); setGroceryMsg(null);
-    const selected = detail.ingredients.filter((_, i) => checkedIngredients.has(i));
     try {
-      for (const ing of selected) {
-        const name = [ing.quantity, ing.unit, ing.name].filter(Boolean).join(" ");
-        await api(`/api/grocery/lists/${selectedListId}/items`, {
-          method: "POST",
-          body: JSON.stringify({ name }),
-        });
-      }
       const listName = groceryLists.find((l) => l.id === selectedListId)?.name ?? "list";
-      setGroceryMsg(`Added ${selected.length} item${selected.length !== 1 ? "s" : ""} to ${listName} ✓`);
-      setCheckedIngredients(new Set());
-      setGroceryPopover(false);
+      await addItemsToList(selectedListId, listName);
     } catch { setGroceryMsg("Failed to add items."); }
     finally { setAddingToGrocery(false); }
+  }
+
+  async function createListAndAdd() {
+    const name = newListName.trim();
+    if (!name || checkedIngredients.size === 0) return;
+    setCreatingList(true); setGroceryMsg(null);
+    try {
+      const res = await api<{ ok: boolean; id: string }>("/api/grocery/lists", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      setGroceryLists((prev) => [...prev, { id: res.id, name, total_items: 0, checked_items: 0 }]);
+      setSelectedListId(res.id);
+      setNewListName("");
+      setShowNewListInput(false);
+      await addItemsToList(res.id, name);
+    } catch { setGroceryMsg("Failed to create list."); }
+    finally { setCreatingList(false); }
   }
 
   async function addToMealPlan() {
@@ -635,22 +660,25 @@ function DetailView({
             <div className="relative" ref={popoverRef}>
               <button
                 type="button"
-                onClick={() => setGroceryPopover((v) => !v)}
+                onClick={() => {
+                  setGroceryPopover((v) => {
+                    if (v) { setShowNewListInput(false); setNewListName(""); }
+                    return !v;
+                  });
+                }}
                 className="h-9 rounded-xl bg-teal-600 px-4 text-xs font-semibold text-white hover:bg-teal-700 transition-all"
               >
                 🛒 Add {checkedIngredients.size} to grocery list
               </button>
               {groceryPopover && (
-                <div className="absolute left-0 top-full mt-2 z-20 w-64 rounded-xl border border-cream-200 bg-white shadow-lg p-3">
-                  <p className="text-xs font-semibold text-ink-500 mb-2 uppercase tracking-wider">Add to which list?</p>
-                  {groceryLists.length === 0 ? (
-                    <p className="text-xs text-ink-500">No grocery lists yet. Create one first.</p>
-                  ) : (
+                <div className="absolute left-0 top-full mt-2 z-20 w-68 rounded-xl border border-cream-200 bg-white shadow-lg p-3 space-y-2">
+                  {groceryLists.length > 0 && !showNewListInput && (
                     <>
+                      <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Add to which list?</p>
                       <select
                         value={selectedListId}
                         onChange={(e) => setSelectedListId(e.target.value)}
-                        className={cn(inputCls, "w-full mb-2")}
+                        className={cn(inputCls, "w-full")}
                       >
                         {groceryLists.map((l) => (
                           <option key={l.id} value={l.id}>{l.name}</option>
@@ -664,6 +692,46 @@ function DetailView({
                       >
                         {addingToGrocery ? "Adding…" : "Confirm"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewListInput(true)}
+                        className="w-full text-xs text-ink-500 hover:text-teal-600 transition-colors text-left"
+                      >
+                        + New list
+                      </button>
+                    </>
+                  )}
+
+                  {(groceryLists.length === 0 || showNewListInput) && (
+                    <>
+                      <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">
+                        {groceryLists.length === 0 ? "No lists yet — create one" : "New list name"}
+                      </p>
+                      <input
+                        autoFocus
+                        value={newListName}
+                        onChange={(e) => setNewListName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && !creatingList && createListAndAdd()}
+                        placeholder="e.g. Weekly shop"
+                        className={cn(inputCls, "w-full")}
+                      />
+                      <button
+                        type="button"
+                        onClick={createListAndAdd}
+                        disabled={creatingList || !newListName.trim()}
+                        className="h-9 w-full rounded-xl bg-teal-700 text-xs font-semibold text-white hover:bg-teal-600 disabled:opacity-50 transition-all"
+                      >
+                        {creatingList ? "Creating…" : "Create & Add"}
+                      </button>
+                      {showNewListInput && (
+                        <button
+                          type="button"
+                          onClick={() => { setShowNewListInput(false); setNewListName(""); }}
+                          className="w-full text-xs text-ink-500 hover:text-ink-900 transition-colors text-left"
+                        >
+                          ← Back
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
