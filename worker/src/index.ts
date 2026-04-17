@@ -23,6 +23,87 @@ const APP_ORIGIN = "https://app.ducharmefamilybudget.com";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// ── Email ──────────────────────────────────────────────────────────────────────
+
+async function sendEmail(
+  apiKey: string,
+  { to, subject, html }: { to: string; subject: string; html: string }
+) {
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from: "NestOtter <hello@send.nestotter.com>",
+    to,
+    subject,
+    html,
+  });
+  if (error) throw new Error(`Resend: ${error.message}`);
+}
+
+function passwordResetHtml(resetUrl: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FAF6EE;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#FAF6EE;padding:40px 16px">
+  <tr><td align="center">
+    <table width="100%" style="max-width:520px;background:#FFFDF8;border-radius:16px;border:1px solid #EDE7D8;overflow:hidden">
+      <tr><td style="background:#2D6E70;padding:28px 32px;text-align:center">
+        <span style="font-family:Georgia,serif;font-size:22px;font-weight:600;color:#FFFDF8;letter-spacing:-0.3px">NestOtter</span>
+      </td></tr>
+      <tr><td style="padding:32px">
+        <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;font-weight:500;color:#1C2A33">Reset your password</h1>
+        <p style="margin:0 0 24px;font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6;color:#3F5260">
+          We received a request to reset your NestOtter password. Click the button below — this link expires in <strong>1 hour</strong>.
+        </p>
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px">
+          <tr><td style="background:#2D6E70;border-radius:10px;padding:14px 28px">
+            <a href="${resetUrl}" style="font-family:-apple-system,sans-serif;font-size:14px;font-weight:600;color:#FFFDF8;text-decoration:none;display:block">Reset password →</a>
+          </td></tr>
+        </table>
+        <p style="margin:0 0 8px;font-family:-apple-system,sans-serif;font-size:13px;color:#6B7A85">Or copy this link:</p>
+        <p style="margin:0 0 24px;font-family:monospace;font-size:12px;color:#6B7A85;word-break:break-all;background:#FAF6EE;padding:10px 12px;border-radius:8px;border:1px solid #EDE7D8">${resetUrl}</p>
+        <p style="margin:0;font-family:-apple-system,sans-serif;font-size:13px;color:#A8B3BB">Didn't request this? You can safely ignore this email.</p>
+      </td></tr>
+      <tr><td style="padding:20px 32px;border-top:1px solid #EDE7D8;text-align:center">
+        <p style="margin:0;font-family:-apple-system,sans-serif;font-size:12px;color:#A8B3BB">NestOtter — Your home, organized.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+function householdInviteHtml(inviterName: string, householdName: string, joinUrl: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FAF6EE;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#FAF6EE;padding:40px 16px">
+  <tr><td align="center">
+    <table width="100%" style="max-width:520px;background:#FFFDF8;border-radius:16px;border:1px solid #EDE7D8;overflow:hidden">
+      <tr><td style="background:#2D6E70;padding:28px 32px;text-align:center">
+        <span style="font-family:Georgia,serif;font-size:22px;font-weight:600;color:#FFFDF8;letter-spacing:-0.3px">NestOtter</span>
+      </td></tr>
+      <tr><td style="padding:32px">
+        <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;font-weight:500;color:#1C2A33">You're invited 🏠</h1>
+        <p style="margin:0 0 24px;font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6;color:#3F5260">
+          <strong>${inviterName}</strong> has invited you to join the <strong>${householdName}</strong> household on NestOtter — a shared space for budgets, meals, chores, and more.
+        </p>
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px">
+          <tr><td style="background:#2D6E70;border-radius:10px;padding:14px 28px">
+            <a href="${joinUrl}" style="font-family:-apple-system,sans-serif;font-size:14px;font-weight:600;color:#FFFDF8;text-decoration:none;display:block">Join household →</a>
+          </td></tr>
+        </table>
+        <p style="margin:0 0 8px;font-family:-apple-system,sans-serif;font-size:13px;color:#6B7A85">
+          This invite expires in <strong>48 hours</strong>. You'll need a NestOtter account to join.
+        </p>
+        <p style="margin:0;font-family:-apple-system,sans-serif;font-size:13px;color:#A8B3BB">Not expecting this? You can safely ignore it.</p>
+      </td></tr>
+      <tr><td style="padding:20px 32px;border-top:1px solid #EDE7D8;text-align:center">
+        <p style="margin:0;font-family:-apple-system,sans-serif;font-size:12px;color:#A8B3BB">NestOtter — Your home, organized.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
 app.use("*", async (c, next) => {
   const origin = c.req.header("Origin");
   const isAllowedOrigin = origin === APP_ORIGIN;
@@ -440,7 +521,18 @@ app.post("/api/auth/forgot-password", async (c) => {
     `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, ?, 0, ?)`
   ).bind(uid(), user.id, tokenHash, expiresAt, now).run();
 
-  return c.json({ ok: true, devToken: token });
+  const resetUrl = `${APP_ORIGIN}/reset-password?token=${token}`;
+  try {
+    await sendEmail(c.env.RESEND_API_KEY, {
+      to: email,
+      subject: "Reset your NestOtter password",
+      html: passwordResetHtml(resetUrl),
+    });
+  } catch (e) {
+    console.error("Failed to send password reset email:", e);
+  }
+
+  return c.json({ ok: true });
 });
 
 app.post("/api/auth/reset-password", async (c) => {
@@ -1495,6 +1587,9 @@ app.post("/api/household/invite", requireUser, async (c) => {
   const householdId = await getUserHouseholdId(c.env.DB, userId);
   if (!householdId) return c.json({ error: "No household" }, 404);
 
+  const body = await c.req.json<{ inviteeEmail?: string }>().catch(() => ({}));
+  const inviteeEmail = (body.inviteeEmail || "").toLowerCase().trim();
+
   const code = Math.random().toString(36).substring(2, 8).toUpperCase();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString();
   const now = new Date().toISOString();
@@ -1503,6 +1598,29 @@ app.post("/api/household/invite", requireUser, async (c) => {
     `INSERT INTO household_invites (id, household_id, code, created_by, expires_at, used, created_at)
      VALUES (?, ?, ?, ?, ?, 0, ?)`
   ).bind(uid(), householdId, code, userId, expiresAt, now).run();
+
+  if (inviteeEmail) {
+    const [inviter, household] = await Promise.all([
+      c.env.DB.prepare(`SELECT name FROM users WHERE id = ? LIMIT 1`)
+        .bind(userId).first<{ name: string }>(),
+      c.env.DB.prepare(`SELECT name FROM households WHERE id = ? LIMIT 1`)
+        .bind(householdId).first<{ name: string }>(),
+    ]);
+    const joinUrl = `${APP_ORIGIN}/join/${code}`;
+    try {
+      await sendEmail(c.env.RESEND_API_KEY, {
+        to: inviteeEmail,
+        subject: `${inviter?.name ?? "Someone"} invited you to join NestOtter`,
+        html: householdInviteHtml(
+          inviter?.name ?? "Your household",
+          household?.name ?? "NestOtter",
+          joinUrl
+        ),
+      });
+    } catch (e) {
+      console.error("Failed to send invite email:", e);
+    }
+  }
 
   return c.json({ ok: true, code, expiresAt });
 });
