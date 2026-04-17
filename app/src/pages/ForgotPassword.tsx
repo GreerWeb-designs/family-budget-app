@@ -5,22 +5,20 @@ import { inputCls, labelCls, AuthError, PrimaryBtn } from "./Login";
 import { BrandMark, Wordmark } from "../components/ui";
 
 export default function ForgotPassword() {
-  const [email, setEmail]       = useState("");
-  const [busy, setBusy]         = useState(false);
-  const [done, setDone]         = useState(false);
-  const [devToken, setDevToken] = useState<string | null>(null);
-  const [err, setErr]           = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy]   = useState(false);
+  const [done, setDone]   = useState(false);
+  const [err, setErr]     = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     setBusy(true);
     try {
-      const res = await api<{ ok: boolean; devToken?: string }>("/api/auth/forgot-password", {
+      await api("/api/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      setDevToken(res.devToken ?? null);
       setDone(true);
     } catch (e: any) {
       setErr(e?.message || "Something went wrong — please try again.");
@@ -42,15 +40,6 @@ export default function ForgotPassword() {
               <div className="rounded-xl bg-teal-50 border border-teal-500/30 px-4 py-3 text-sm text-teal-600">
                 If an account with that email exists, you'll receive reset instructions shortly.
               </div>
-              {devToken && (
-                <div className="rounded-xl bg-cream-100 border border-cream-200 px-4 py-3 text-xs text-ink-700 space-y-2">
-                  <div className="font-semibold text-amber-600">Dev mode — reset link:</div>
-                  <Link to={`/reset-password?token=${devToken}`}
-                    className="text-teal-500 hover:text-teal-600 break-all block transition-colors">
-                    /reset-password?token={devToken.slice(0, 16)}…
-                  </Link>
-                </div>
-              )}
               <Link to="/login"
                 className="block text-center text-sm text-ink-500 hover:text-ink-700 transition-colors">
                 ← Back to sign in
