@@ -2231,6 +2231,163 @@ app.get("/api/allowance/mine", requireUser, async (c) => {
   return c.json({ allowance: row ?? null });
 });
 
+// ── Allowance budget endpoints ────────────────────────────────────────────────
+
+type AllowanceBudgetRow = { totalDeposited: number; categories: AlCat[]; deposits: AlDeposit[] };
+type AlCat     = { id: string; name: string; emoji: string; budgeted: number; sort_order: number };
+type AlDeposit = { id: string; amount: number; note: string | null; added_by_name: string; created_at: string };
+
+async function getAllowanceBudget(
+  db: D1Database, householdId: string, userId: string
+): Promise<AllowanceBudgetRow> {
+  const [depRow, catsRow, depositsRow] = await Promise.all([
+    db.prepare(`SELECT SUM(amount) as total FROM allowance_deposits WHERE user_id = ? AND household_id = ?`)
+      .bind(userId, householdId).first<{ total: number | null }>(),
+    db.prepare(`SELECT id, name, emoji, budgeted, sort_order FROM allowance_categories WHERE user_id = ? AND household_id = ? ORDER BY sort_order ASC, created_at ASC`)
+      .bind(userId, householdId).all<AlCat>(),
+    db.prepare(`SELECT ad.id, ad.amount, ad.note, ad.created_at, u.name as added_by_name FROM allowance_deposits ad JOIN users u ON u.id = ad.added_by WHERE ad.user_id = ? AND ad.household_id = ? ORDER BY ad.created_at DESC LIMIT 20`)
+      .bind(userId, householdId).all<AlDeposit>(),
+  ]);
+
+  let cats = catsRow.results ?? [];
+
+  // Seed default categories if none exist
+  if (cats.length === 0) {
+    const now = new Date().toISOString();
+    const defaults = [
+      { emoji: "🤲", name: "Giving",  order: 0 },
+      { emoji: "🎮", name: "Fun",     order: 1 },
+      { emoji: "🏦", name: "Savings", order: 2 },
+    ];
+    for (const d of defaults) {
+      const catId = uid();
+      await db.prepare(
+        `INSERT INTO allowance_categories (id, household_id, user_id, name, emoji, budgeted, sort_order, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)`
+      ).bind(catId, householdId, userId, d.name, d.emoji, d.order, now).run();
+      cats.push({ id: catId, name: d.name, emoji: d.emoji, budgeted: 0, sort_order: d.order });
+    }
+  }
+
+  return {
+    totalDeposited: Number(depRow?.total ?? 0),
+    categories: cats,
+    deposits: depositsRow.results ?? [],
+  };
+}
+
+// Dependent: get own budget
+app.get("/api/allowance/budget/me", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const budget = await getAllowanceBudget(c.env.DB, householdId, userId);
+  return c.json(budget);
+});
+
+// Admin: get budget for a specific dependent
+app.get("/api/allowance/budget/:userId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+  if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  const budget = await getAllowanceBudget(c.env.DB, householdId, targetUserId);
+  return c.json(budget);
+});
+
+// Admin: add money (deposit) to a dependent's allowance pool
+app.post("/api/allowance/deposit/:userId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+  if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json<{ amount?: number; note?: string }>();
+  const amount = Number(body.amount ?? 0);
+  if (amount <= 0) return c.json({ error: "Amount must be positive" }, 400);
+  const note = (body.note ?? "").trim() || null;
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO allowance_deposits (id, household_id, user_id, amount, note, added_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(uid(), householdId, targetUserId, amount, note, requesterId, now).run();
+  return c.json({ ok: true });
+});
+
+// Admin or dependent: add a category
+app.post("/api/allowance/categories/:userId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const isSelf = requesterId === targetUserId;
+  if (!isSelf) {
+    const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+    if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  }
+  const body = await c.req.json<{ name?: string; emoji?: string }>();
+  const name = (body.name ?? "").trim();
+  if (!name) return c.json({ error: "Name required" }, 400);
+  const emoji = (body.emoji ?? "💰").trim() || "💰";
+  const maxOrder = await c.env.DB.prepare(
+    `SELECT COALESCE(MAX(sort_order), -1) as m FROM allowance_categories WHERE user_id = ? AND household_id = ?`
+  ).bind(targetUserId, householdId).first<{ m: number }>();
+  const now = new Date().toISOString();
+  const catId = uid();
+  await c.env.DB.prepare(
+    `INSERT INTO allowance_categories (id, household_id, user_id, name, emoji, budgeted, sort_order, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)`
+  ).bind(catId, householdId, targetUserId, name, emoji, (maxOrder?.m ?? -1) + 1, now).run();
+  return c.json({ ok: true, id: catId });
+});
+
+// Admin or dependent: update a category (name, emoji, budgeted amount)
+app.patch("/api/allowance/categories/:catId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const catId = c.req.param("catId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  // Verify category belongs to this household
+  const cat = await c.env.DB.prepare(
+    `SELECT user_id FROM allowance_categories WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(catId, householdId).first<{ user_id: string }>();
+  if (!cat) return c.json({ error: "Not found" }, 404);
+  const isSelf = requesterId === cat.user_id;
+  if (!isSelf) {
+    const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+    if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  }
+  const body = await c.req.json<{ name?: string; emoji?: string; budgeted?: number }>();
+  const sets: string[] = [];
+  const binds: unknown[] = [];
+  if (body.name !== undefined) { sets.push("name = ?"); binds.push(body.name.trim()); }
+  if (body.emoji !== undefined) { sets.push("emoji = ?"); binds.push(body.emoji.trim() || "💰"); }
+  if (body.budgeted !== undefined) { sets.push("budgeted = ?"); binds.push(Math.max(0, Number(body.budgeted))); }
+  if (sets.length === 0) return c.json({ error: "Nothing to update" }, 400);
+  binds.push(catId);
+  await c.env.DB.prepare(`UPDATE allowance_categories SET ${sets.join(", ")} WHERE id = ?`).bind(...binds).run();
+  return c.json({ ok: true });
+});
+
+// Admin or dependent: delete a category
+app.delete("/api/allowance/categories/:catId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const catId = c.req.param("catId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const cat = await c.env.DB.prepare(
+    `SELECT user_id FROM allowance_categories WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(catId, householdId).first<{ user_id: string }>();
+  if (!cat) return c.json({ error: "Not found" }, 404);
+  const isSelf = requesterId === cat.user_id;
+  if (!isSelf) {
+    const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+    if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  }
+  await c.env.DB.prepare(`DELETE FROM allowance_categories WHERE id = ?`).bind(catId).run();
+  return c.json({ ok: true });
+});
+
 // Update household member role (admin only)
 app.patch("/api/household/members/:userId/role", requireUser, async (c) => {
   const requesterId = c.get("userId");
