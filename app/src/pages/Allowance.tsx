@@ -51,10 +51,9 @@ function ToAssignPill({ value }: { value: number }) {
 
 /* ── Category row ────────────────────────────────────── */
 function CategoryRow({
-  cat, userId, onUpdate, onDelete,
+  cat, onUpdate, onDelete,
 }: {
   cat: AlCat;
-  userId: string;
   onUpdate: (id: string, patch: Partial<AlCat>) => void;
   onDelete: (id: string) => void;
 }) {
@@ -381,7 +380,6 @@ function BudgetPanel({
             <CategoryRow
               key={cat.id}
               cat={cat}
-              userId={userId}
               onUpdate={updateCat}
               onDelete={deleteCat}
             />
@@ -426,7 +424,7 @@ function BudgetPanel({
 
       {budget.deposits.length === 0 && (
         <div className="text-center py-6 text-sm text-ink-500">
-          No deposits yet.{isAdmin ? " Use "Add money" to fund this allowance." : " Ask a parent to add your first deposit."}
+          No deposits yet.{isAdmin ? ' Use "Add money" to fund this allowance.' : " Ask a parent to add your first deposit."}
         </div>
       )}
 
