@@ -17,12 +17,17 @@ function passwordStrength(pw: string): { label: string; color: string; pct: numb
   return              { label: "Strong", color: "#2D6E70", pct: 100 };
 }
 
+// TESTING: set to false to remove the test code gate
+const TEST_CODE_REQUIRED = true;
+const VALID_TEST_CODE    = "TestUser12!";
+
 export default function Signup() {
   const nav = useNavigate();
   const [name, setName]         = useState("");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm]   = useState("");
+  const [testCode, setTestCode] = useState("");
   const [err, setErr]           = useState<string | null>(null);
   const [busy, setBusy]         = useState(false);
 
@@ -31,12 +36,23 @@ export default function Signup() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    if (TEST_CODE_REQUIRED && testCode !== VALID_TEST_CODE) {
+      setErr("Incorrect test code. Contact the admin for access.");
+      return;
+    }
     if (password !== confirm)   { setErr("Passwords don't match."); return; }
     if (password.length < 8)    { setErr("Password must be at least 8 characters."); return; }
     setBusy(true);
     try {
-      await api("/api/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password }) });
-      nav("/check-email", { state: { email } });
+      const res = await api<{ requiresVerification?: boolean }>("/api/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password }),
+      });
+      if (res.requiresVerification) {
+        nav("/check-email", { state: { email } });
+      } else {
+        nav("/login", { state: { justSignedUp: true } });
+      }
     } catch (e: any) {
       setErr(e?.message || "Couldn't create account — please try again.");
     } finally { setBusy(false); }
@@ -58,6 +74,21 @@ export default function Signup() {
             Create your account
           </h2>
           <form onSubmit={onSubmit} className="space-y-4">
+            {TEST_CODE_REQUIRED && (
+              <label className="block">
+                <span className={labelCls}>Test code</span>
+                <input
+                  className={inputCls + (testCode && testCode !== VALID_TEST_CODE ? " border-rust-500/60" : "")}
+                  placeholder="Enter test code to continue"
+                  value={testCode}
+                  onChange={(e) => setTestCode(e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+                <p className="mt-1 text-[11px] text-ink-400">NestOtter is currently in closed testing. Contact the admin for your code.</p>
+              </label>
+            )}
+
             <label className="block">
               <span className={labelCls}>Full name</span>
               <input className={inputCls} placeholder="Your name"

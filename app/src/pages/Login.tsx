@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
 import { Wordmark } from "../components/ui";
@@ -90,6 +90,7 @@ export function PrimaryBtn({ busy, label, loadingLabel }: { busy: boolean; label
 
 export default function Login() {
   const nav = useNavigate();
+  const { state } = useLocation() as { state: { justSignedUp?: boolean } | null };
   const [email, setEmail]               = useState("");
   const [password, setPassword]         = useState("");
   const [err, setErr]                   = useState<string | null>(null);
@@ -132,6 +133,12 @@ export default function Login() {
           Welcome back
         </h2>
         <p className="text-ink-500 mb-6" style={{ fontSize: 14 }}>Sign in to your household</p>
+
+        {state?.justSignedUp && (
+          <div className="mb-4 rounded-lg border border-teal-400/40 bg-teal-50 px-3 py-2.5 text-sm text-teal-800">
+            Account created! You can sign in now.
+          </div>
+        )}
 
         <form onSubmit={onSubmit} className="space-y-4">
           <label className="block">

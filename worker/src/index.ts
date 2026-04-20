@@ -369,7 +369,7 @@ app.post("/api/auth/login", async (c) => {
   const candidate = await sha256(password + c.env.SESSION_SECRET);
   if (candidate !== user.password_hash) return c.json({ error: "Invalid credentials" }, 401);
 
-  if (!user.email_verified) {
+  if (REQUIRE_EMAIL_VERIFICATION && !user.email_verified) {
     return c.json({ error: "Please verify your email before signing in. Check your inbox for the verification link.", code: "EMAIL_NOT_VERIFIED" }, 403);
   }
 
@@ -447,6 +447,9 @@ app.get("/api/auth/me", requireUser, async (c) => {
   });
 });
 
+// ── TESTING FLAG — set to true to re-enable email verification ───────────────
+const REQUIRE_EMAIL_VERIFICATION = false;
+
 app.post("/api/auth/signup", async (c) => {
   const body = await c.req.json<{ name?: string; email?: string; password?: string }>();
   const name = (body.name || "").trim();
@@ -465,9 +468,10 @@ app.post("/api/auth/signup", async (c) => {
   const now = new Date().toISOString();
   const userId = uid();
 
+  // email_verified = 1 when REQUIRE_EMAIL_VERIFICATION is off (testing mode)
   await c.env.DB.prepare(
-    `INSERT INTO users (id, name, email, password_hash, email_verified, created_at) VALUES (?, ?, ?, ?, 0, ?)`
-  ).bind(userId, name, email, passwordHash, now).run();
+    `INSERT INTO users (id, name, email, password_hash, email_verified, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(userId, name, email, passwordHash, REQUIRE_EMAIL_VERIFICATION ? 0 : 1, now).run();
 
   const householdId = uid();
   await c.env.DB.prepare(`INSERT INTO households (id, name, created_at) VALUES (?, ?, ?)`)
@@ -506,44 +510,56 @@ app.post("/api/auth/signup", async (c) => {
     ).bind(catId, cat.name, cat.direction, userId, householdId).run();
   }
 
-  // Generate verification token
-  const verifyToken = uid();
-  const verifyTokenHash = await sha256(verifyToken + c.env.SESSION_SECRET);
-  const verifyExpires = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(); // 24 hours
-  await c.env.DB.prepare(
-    `INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`
-  ).bind(uid(), userId, verifyTokenHash, verifyExpires, now).run();
+  if (REQUIRE_EMAIL_VERIFICATION) {
+    // Generate and send verification token
+    const verifyToken = uid();
+    const verifyTokenHash = await sha256(verifyToken + c.env.SESSION_SECRET);
+    const verifyExpires = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
+    await c.env.DB.prepare(
+      `INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`
+    ).bind(uid(), userId, verifyTokenHash, verifyExpires, now).run();
 
-  const verifyUrl = `${APP_ORIGIN}/verify-email?token=${verifyToken}`;
+    const verifyUrl = `${APP_ORIGIN}/verify-email?token=${verifyToken}`;
+    const householdName = `${name}'s Household`;
+    c.executionCtx.waitUntil(
+      (async () => {
+        try {
+          await sendEmail(c.env.RESEND_API_KEY, {
+            to: email,
+            subject: "Verify your NestOtter email",
+            html: emailVerificationHtml(name, verifyUrl),
+          });
+        } catch (err) { console.error("[resend] Verification email failed:", err); }
+        try {
+          const resend = new Resend(c.env.RESEND_API_KEY);
+          await resend.emails.send({
+            from: c.env.RESEND_FROM_EMAIL,
+            to:   c.env.ADMIN_EMAIL,
+            subject: "New signup: NestOtter",
+            html: `<p>New signup.</p><ul><li><strong>Name:</strong> ${name}</li><li><strong>Household:</strong> ${householdName}</li><li><strong>At:</strong> ${now} (UTC)</li></ul>`,
+          });
+        } catch (err) { console.error("[resend] Admin notification failed:", err); }
+      })()
+    );
+    return c.json({ ok: true, email, requiresVerification: true });
+  }
 
-  // Send verification email + admin notification — fire-and-forget
-  const householdName = `${name}'s Household`;
+  // Testing mode: skip verification — admin notification only
   c.executionCtx.waitUntil(
     (async () => {
-      try {
-        await sendEmail(c.env.RESEND_API_KEY, {
-          to: email,
-          subject: "Verify your NestOtter email",
-          html: emailVerificationHtml(name, verifyUrl),
-        });
-      } catch (err) {
-        console.error("[resend] Verification email failed:", err);
-      }
       try {
         const resend = new Resend(c.env.RESEND_API_KEY);
         await resend.emails.send({
           from: c.env.RESEND_FROM_EMAIL,
           to:   c.env.ADMIN_EMAIL,
-          subject: "New signup: NestOtter",
-          html: `<p>New signup.</p><ul><li><strong>Name:</strong> ${name}</li><li><strong>Household:</strong> ${householdName}</li><li><strong>At:</strong> ${now} (UTC)</li></ul>`,
+          subject: "New signup: NestOtter (testing)",
+          html: `<p>New signup (verification skipped — testing mode).</p><ul><li><strong>Name:</strong> ${name}</li><li><strong>At:</strong> ${now} (UTC)</li></ul>`,
         });
-      } catch (err) {
-        console.error("[resend] Admin notification failed:", err);
-      }
+      } catch { /* silent */ }
     })()
   );
 
-  return c.json({ ok: true, email });
+  return c.json({ ok: true, email, requiresVerification: false });
 });
 
 // ── Waitlist (public, no auth) ─────────────────────────
