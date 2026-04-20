@@ -7,7 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 
 import { api } from "../lib/api";
 import { cn, money, round2 } from "../lib/utils";
 import { useUser } from "../lib/UserContext";
-import { canAccess } from "../lib/permissions";
+import { canAccess, financesEnabled } from "../lib/permissions";
 
 /* ── Types ──────────────────────────────────────────── */
 type Category   = { id: string; name: string; direction?: string };
@@ -88,7 +88,10 @@ function AvailPill({ val }: { val: number | null | undefined }) {
 ═══════════════════════════════════════════════════════ */
 export default function Home() {
   const { user } = useUser();
+  const canSeeFinances     = financesEnabled(user);
+  const canSeeBudget       = canAccess(user, "can_see_budget");
   const canSeeTransactions = canAccess(user, "can_see_transactions");
+  const canSeeBills        = canAccess(user, "can_see_bills");
   const canViewNotes       = canAccess(user, "can_view_notes");
   const canPostNotes       = canAccess(user, "can_post_notes");
   const [cats, setCats]         = useState<Category[]>([]);
@@ -263,31 +266,33 @@ export default function Home() {
     <div className="space-y-5">
 
       {/* ── Hero: Bank Balance ─────────────────────────── */}
-      <div className="rounded-2xl border p-6 md:p-8" style={{
-        background: "linear-gradient(145deg, #FFFDF8 0%, #FAF6EC 100%)",
-        borderColor: "#DDD7C8",
-        boxShadow: "0 1px 3px rgba(27,66,67,0.04), 0 4px 16px rgba(27,66,67,0.06)",
-      }}>
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-1">Bank Balance</div>
-            <div className={cn("font-display text-5xl md:text-6xl font-semibold tabular-nums leading-none",
-              bankBalance < 0 ? "text-rust-600" : "text-ink-900")}>
-              {money(bankBalance)}
+      {canSeeFinances && (
+        <div className="rounded-2xl border p-6 md:p-8" style={{
+          background: "linear-gradient(145deg, #FFFDF8 0%, #FAF6EC 100%)",
+          borderColor: "#DDD7C8",
+          boxShadow: "0 1px 3px rgba(27,66,67,0.04), 0 4px 16px rgba(27,66,67,0.06)",
+        }}>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-1">Bank Balance</div>
+              <div className={cn("font-display text-5xl md:text-6xl font-semibold tabular-nums leading-none",
+                bankBalance < 0 ? "text-rust-600" : "text-ink-900")}>
+                {money(bankBalance)}
+              </div>
+              {!loading && summaryLine.text && (
+                <p className={cn("mt-3 text-sm max-w-lg", summaryLine.cls)}>{summaryLine.text}</p>
+              )}
             </div>
-            {!loading && summaryLine.text && (
-              <p className={cn("mt-3 text-sm max-w-lg", summaryLine.cls)}>{summaryLine.text}</p>
-            )}
-          </div>
-          {/* Month progress */}
-          <div className="shrink-0 text-right">
-            <div className="text-xs text-ink-500 mb-1.5">Month {monthPct}% done · Day {dayOfMonth} of {daysInMonth}</div>
-            <div className="w-40 h-1.5 rounded-full bg-cream-100 overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${monthPct}%`, background: "var(--color-primary)" }} />
+            {/* Month progress */}
+            <div className="shrink-0 text-right">
+              <div className="text-xs text-ink-500 mb-1.5">Month {monthPct}% done · Day {dayOfMonth} of {daysInMonth}</div>
+              <div className="w-40 h-1.5 rounded-full bg-cream-100 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${monthPct}%`, background: "var(--color-primary)" }} />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── Day Planner ───────────────────────────────── */}
       <DayPlanner
@@ -299,73 +304,77 @@ export default function Home() {
       />
 
       {/* ── This Month ────────────────────────────────── */}
-      <Card>
-        <CardHeader title="This Month" sub="Income vs. spending" icon={TrendingUp} />
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barData} barCategoryGap="30%" margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#78716C" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#A8A29E" }} axisLine={false} tickLine={false}
-                tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
-              <Tooltip
-                formatter={(v) => [money(Number(v)), ""]}
-                contentStyle={{ borderRadius: "12px", border: "1px solid #E7E5E4", fontSize: 12 }}
-                cursor={{ fill: "#F5F5F4" }} />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-2 flex gap-4 text-xs text-ink-500">
-          <div><span className="font-semibold text-teal-600">{money(totalIncome)}</span> in</div>
-          <div><span className="font-semibold text-rust-600">{money(totalSpending)}</span> spent</div>
-        </div>
-      </Card>
+      {canSeeBudget && (
+        <Card>
+          <CardHeader title="This Month" sub="Income vs. spending" icon={TrendingUp} />
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} barCategoryGap="30%" margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#78716C" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#A8A29E" }} axisLine={false} tickLine={false}
+                  tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                <Tooltip
+                  formatter={(v) => [money(Number(v)), ""]}
+                  contentStyle={{ borderRadius: "12px", border: "1px solid #E7E5E4", fontSize: 12 }}
+                  cursor={{ fill: "#F5F5F4" }} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 flex gap-4 text-xs text-ink-500">
+            <div><span className="font-semibold text-teal-600">{money(totalIncome)}</span> in</div>
+            <div><span className="font-semibold text-rust-600">{money(totalSpending)}</span> spent</div>
+          </div>
+        </Card>
+      )}
 
       {/* ── Upcoming (combined) ───────────────────────── */}
       <Card>
         <div className="text-sm font-semibold text-ink-900 mb-4">Upcoming</div>
 
         {/* Bills */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <Receipt size={13} className="text-ink-500" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">Bills</span>
+        {canSeeBills && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Receipt size={13} className="text-ink-500" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">Bills</span>
+              </div>
+              <span className="text-xs text-ink-500">3 days</span>
             </div>
-            <span className="text-xs text-ink-500">3 days</span>
-          </div>
-          <div className="space-y-2">
-            {!upcoming || upcoming.bills.length === 0 ? (
-              <p className="text-sm text-ink-500">Clear skies — no bills due soon.</p>
-            ) : upcoming.bills.filter(b => {
-              const today = new Date().getDate();
-              return b.day_of_month >= today && b.day_of_month <= today + 3;
-            }).slice(0, 5).map((bill) => {
-              const diff    = bill.day_of_month - new Date().getDate();
-              const isAuto  = bill.mode === "auto";
-              const urgency = diff === 0 ? "today" : `in ${diff}d`;
-              return (
-                <div key={bill.id} className={cn(
-                  "flex items-center justify-between rounded-xl px-3 py-2 text-sm",
-                  isAuto ? "bg-blue-50 border border-blue-100" : "bg-amber-50 border border-amber-100"
-                )}>
-                  <span className={cn("font-medium truncate", isAuto ? "text-blue-800" : "text-amber-800")}>{bill.name}</span>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <span className={cn("text-xs", isAuto ? "text-blue-600" : "text-amber-600")}>{urgency}</span>
-                    <span className={cn("text-[10px] font-semibold rounded-full px-1.5 py-0.5",
-                      isAuto ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700")}>
-                      {isAuto ? "auto" : "manual"}
-                    </span>
+            <div className="space-y-2">
+              {!upcoming || upcoming.bills.length === 0 ? (
+                <p className="text-sm text-ink-500">Clear skies — no bills due soon.</p>
+              ) : upcoming.bills.filter(b => {
+                const today = new Date().getDate();
+                return b.day_of_month >= today && b.day_of_month <= today + 3;
+              }).slice(0, 5).map((bill) => {
+                const diff    = bill.day_of_month - new Date().getDate();
+                const isAuto  = bill.mode === "auto";
+                const urgency = diff === 0 ? "today" : `in ${diff}d`;
+                return (
+                  <div key={bill.id} className={cn(
+                    "flex items-center justify-between rounded-xl px-3 py-2 text-sm",
+                    isAuto ? "bg-blue-50 border border-blue-100" : "bg-amber-50 border border-amber-100"
+                  )}>
+                    <span className={cn("font-medium truncate", isAuto ? "text-blue-800" : "text-amber-800")}>{bill.name}</span>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <span className={cn("text-xs", isAuto ? "text-blue-600" : "text-amber-600")}>{urgency}</span>
+                      <span className={cn("text-[10px] font-semibold rounded-full px-1.5 py-0.5",
+                        isAuto ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700")}>
+                        {isAuto ? "auto" : "manual"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="border-b border-cream-100 mb-4" />
+        {canSeeBills && <div className="border-b border-cream-100 mb-4" />}
 
         {/* Events */}
         <div className="mb-4">
@@ -507,34 +516,36 @@ export default function Home() {
       </Card>}
 
       {/* ── Budget snapshot ────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-3">Category detail</div>
-          {summary?.byCategory.find(c => c.id === categoryId) ? (() => {
-            const cur = summary!.byCategory.find(c => c.id === categoryId)!;
-            return (
-              <>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-semibold text-ink-900">{cur.name}</span>
-                  <AvailPill val={cur.available} />
-                </div>
-                <div className="space-y-2 text-sm">
-                  {([["Budgeted", cur.budgeted], ["Activity", cur.activity], ["Available", cur.available]] as [string, number][]).map(([lbl, val]) => (
-                    <div key={lbl} className="flex justify-between">
-                      <span className="text-ink-500">{lbl}</span>
-                      <span className={cn("font-semibold tabular-nums",
-                        lbl === "Available" && val < 0 ? "text-rust-600" :
-                        lbl === "Available" ? "text-teal-600" : "text-ink-900")}>
-                        {money(val)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            );
-          })() : <p className="text-sm text-ink-500 mt-2">Select a category to view details.</p>}
-        </Card>
-      </div>
+      {canSeeBudget && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-3">Category detail</div>
+            {summary?.byCategory.find(c => c.id === categoryId) ? (() => {
+              const cur = summary!.byCategory.find(c => c.id === categoryId)!;
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-ink-900">{cur.name}</span>
+                    <AvailPill val={cur.available} />
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {([["Budgeted", cur.budgeted], ["Activity", cur.activity], ["Available", cur.available]] as [string, number][]).map(([lbl, val]) => (
+                      <div key={lbl} className="flex justify-between">
+                        <span className="text-ink-500">{lbl}</span>
+                        <span className={cn("font-semibold tabular-nums",
+                          lbl === "Available" && val < 0 ? "text-rust-600" :
+                          lbl === "Available" ? "text-teal-600" : "text-ink-900")}>
+                          {money(val)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })() : <p className="text-sm text-ink-500 mt-2">Select a category to view details.</p>}
+          </Card>
+        </div>
+      )}
 
       {/* ── Transaction History ───────────────────────── */}
       {canSeeTransactions && <Card className="p-0! overflow-hidden">

@@ -5,6 +5,8 @@ import {
 } from "recharts";
 import { api } from "../lib/api";
 import { money, round2 } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 type SummaryRow = { id: string; name: string; budgeted: number; activity: number; available: number };
 
@@ -33,7 +35,24 @@ function nextMonth(m: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function LockedPage({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="h-14 w-14 rounded-full flex items-center justify-center mb-4"
+        style={{ background: "rgba(27,66,67,0.08)" }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1B4243" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <p className="text-base font-semibold text-ink-900" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>{label} is locked</p>
+      <p className="text-sm text-ink-500 mt-1">Ask a parent to enable this feature.</p>
+    </div>
+  );
+}
+
 export default function Spending() {
+  const { user } = useUser();
+  if (!canAccess(user, "can_see_spending")) return <LockedPage label="Spending" />;
   const [month, setMonth] = useState(currentMonthKey());
   const [rows, setRows] = useState<SummaryRow[]>([]);
   const [loading, setLoading] = useState(true);

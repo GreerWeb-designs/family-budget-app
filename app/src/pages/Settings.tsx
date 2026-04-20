@@ -7,10 +7,13 @@ import { useUser } from "../lib/UserContext";
 import { isAdminOrPrimary } from "../lib/permissions";
 
 type DepPermissions = {
+  finances_enabled: boolean;
   can_see_budget: boolean; can_see_transactions: boolean; can_see_bills: boolean;
-  can_see_debts: boolean; can_see_goals: boolean; can_add_chores: boolean;
-  can_add_grocery: boolean; can_add_calendar: boolean; can_view_notes: boolean;
-  can_post_notes: boolean;
+  can_see_debts: boolean; can_see_spending: boolean; can_see_goals: boolean;
+  can_add_chores: boolean; can_add_grocery: boolean; can_add_calendar: boolean;
+  can_view_notes: boolean; can_post_notes: boolean;
+  can_see_recipes: boolean; can_see_meals: boolean; can_see_todo: boolean;
+  can_see_allowance: boolean;
 };
 type Member    = { id: string; name: string; email: string; role: string; joined_at: string; account_type?: string; permissions?: DepPermissions | null };
 type Household = { id: string; name: string; created_at: string };
@@ -475,17 +478,34 @@ function ChildrenSection() {
 }
 
 // ── Dependents section ─────────────────────────────────
-const PERM_LABELS: { key: keyof DepPermissions; label: string }[] = [
-  { key: "can_see_budget",       label: "See budget" },
-  { key: "can_see_transactions", label: "See transactions" },
-  { key: "can_see_bills",        label: "See bills" },
-  { key: "can_see_debts",        label: "See debts" },
-  { key: "can_see_goals",        label: "See goals" },
-  { key: "can_add_chores",       label: "Add/manage chores" },
-  { key: "can_add_grocery",      label: "Add grocery items" },
-  { key: "can_add_calendar",     label: "Add calendar events" },
-  { key: "can_view_notes",       label: "View crew notes" },
-  { key: "can_post_notes",       label: "Post crew notes" },
+type PermGroup = { heading: string; items: { key: keyof DepPermissions; label: string }[] };
+
+const PERM_GROUPS: PermGroup[] = [
+  {
+    heading: "Household",
+    items: [
+      { key: "can_see_goals",    label: "See goals" },
+      { key: "can_add_chores",   label: "Add/manage chores" },
+      { key: "can_add_grocery",  label: "Add grocery items" },
+      { key: "can_add_calendar", label: "Add calendar events" },
+      { key: "can_view_notes",   label: "View crew notes" },
+      { key: "can_post_notes",   label: "Post crew notes" },
+      { key: "can_see_recipes",  label: "See recipes" },
+      { key: "can_see_meals",    label: "See meal plan" },
+      { key: "can_see_todo",     label: "See to-do lists" },
+      { key: "can_see_allowance",label: "See allowance" },
+    ],
+  },
+  {
+    heading: "Finances (requires master switch on)",
+    items: [
+      { key: "can_see_budget",       label: "See budget" },
+      { key: "can_see_transactions", label: "See transactions" },
+      { key: "can_see_spending",     label: "See spending charts" },
+      { key: "can_see_bills",        label: "See bills" },
+      { key: "can_see_debts",        label: "See debts" },
+    ],
+  },
 ];
 
 function PermToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -567,31 +587,61 @@ function DependentsSection() {
         </div>
       )}
 
-      {dependents.length > 0 && dependents.map((dep) => (
-        <Card key={dep.id}>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="text-sm font-semibold text-ink-900">{dep.name}</div>
-              <div className="text-xs text-ink-500">{dep.email}</div>
+      {dependents.length > 0 && dependents.map((dep) => {
+        const perms = dep.permissions as DepPermissions;
+        const finOn = !!perms?.finances_enabled;
+        return (
+          <Card key={dep.id}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-sm font-semibold text-ink-900">{dep.name}</div>
+                <div className="text-xs text-ink-500">{dep.email}</div>
+              </div>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-teal-50 text-teal-600 border-teal-500/30">
+                Dependent
+              </span>
             </div>
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-teal-50 text-teal-600 border-teal-500/30">
-              Dependent
-            </span>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {PERM_LABELS.map(({ key, label }) => (
-              <div key={key} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-ink-500">{label}</span>
+
+            {/* Master Finances toggle */}
+            <div className="rounded-xl border mb-4 overflow-hidden" style={{ borderColor: finOn ? "rgba(45,110,112,0.25)" : "rgba(193,122,63,0.25)" }}>
+              <div className="flex items-center justify-between px-3 py-2.5" style={{
+                background: finOn ? "rgba(45,110,112,0.08)" : "rgba(193,122,63,0.08)"
+              }}>
+                <div>
+                  <span className="text-xs font-bold text-ink-900">Finances</span>
+                  <p className="text-[11px] text-ink-500 mt-0.5">Master switch — locks all financial features</p>
+                </div>
                 <PermToggle
-                  checked={!!(dep.permissions as DepPermissions)?.[key]}
-                  onChange={(v) => updatePerm(dep.id, key, v)}
+                  checked={finOn}
+                  onChange={(v) => updatePerm(dep.id, "finances_enabled", v)}
                 />
               </div>
-            ))}
-          </div>
-          {saving === dep.id && <div className="text-xs text-ink-500 mt-2 text-right">Saving…</div>}
-        </Card>
-      ))}
+            </div>
+
+            {/* Grouped permission rows */}
+            <div className="space-y-4">
+              {PERM_GROUPS.map((group) => (
+                <div key={group.heading}>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-2">{group.heading}</div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {group.items.map(({ key, label }) => (
+                      <div key={key} className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-ink-500">{label}</span>
+                        <PermToggle
+                          checked={!!perms?.[key]}
+                          onChange={(v) => updatePerm(dep.id, key, v)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {saving === dep.id && <div className="text-xs text-ink-500 mt-2 text-right">Saving…</div>}
+          </Card>
+        );
+      })}
 
       {dependents.length === 0 && !showAddForm && (
         <div className="rounded-xl border border-dashed border-cream-200 px-4 py-8 text-center">

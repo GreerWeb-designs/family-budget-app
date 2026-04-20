@@ -8,12 +8,12 @@ import {
   Home, Wallet, HousePlus,
   PieChart, Receipt, CreditCard,
   Target, CalendarDays, BookOpen, Utensils, ShoppingCart, CheckSquare, ListTodo,
-  BarChart2,
+  BarChart2, Lock, Coins,
 } from "lucide-react";
 import { api } from "./lib/api";
 import { cn, money } from "./lib/utils";
 import { UserProvider, useUser } from "./lib/UserContext";
-import { canAccess, isDependent } from "./lib/permissions";
+import { canAccess, financesEnabled, isDependent } from "./lib/permissions";
 import { Wordmark, SegmentedTabs, BottomNav, ToastProvider } from "./components/ui";
 import { InactivityGuard } from "./components/InactivityGuard";
 import { Splash } from "./components/Splash";
@@ -40,6 +40,7 @@ import Recipes        from "./pages/Recipes";
 import Meals          from "./pages/Meals";
 import Spending       from "./pages/Spending";
 import TodoLists      from "./pages/TodoLists";
+import Allowance      from "./pages/Allowance";
 import DesignSystem   from "./pages/DesignSystem";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -73,13 +74,14 @@ const NAV_GROUPS: NavGroup[] = [
   {
     to: "/household-hub", label: "Household", icon: <HousePlus size={16} />,
     children: [
-      { to: "/goals",     label: "Goals",     icon: <Target size={14} /> },
-      { to: "/calendar",  label: "Calendar",  icon: <CalendarDays size={14} /> },
-      { to: "/recipes",   label: "Recipes",   icon: <BookOpen size={14} /> },
-      { to: "/meals",     label: "Meal plan", icon: <Utensils size={14} /> },
-      { to: "/grocery",   label: "Grocery",   icon: <ShoppingCart size={14} /> },
-      { to: "/chores",    label: "Chores",    icon: <CheckSquare size={14} /> },
-      { to: "/todo",      label: "To-do",     icon: <ListTodo size={14} /> },
+      { to: "/goals",      label: "Goals",     icon: <Target size={14} /> },
+      { to: "/calendar",   label: "Calendar",  icon: <CalendarDays size={14} /> },
+      { to: "/recipes",    label: "Recipes",   icon: <BookOpen size={14} /> },
+      { to: "/meals",      label: "Meal plan", icon: <Utensils size={14} /> },
+      { to: "/grocery",    label: "Grocery",   icon: <ShoppingCart size={14} /> },
+      { to: "/chores",     label: "Chores",    icon: <CheckSquare size={14} /> },
+      { to: "/todo",       label: "To-do",     icon: <ListTodo size={14} /> },
+      { to: "/allowance",  label: "Allowance", icon: <Coins size={14} /> },
     ],
   },
   { to: "/settings",      label: "Settings",  icon: <SettingsIcon size={16} />, exact: true },
@@ -93,13 +95,14 @@ const SUB_NAV: Record<string, { to: string; label: string; icon: ReactNode }[]> 
     { to: "/debts",    label: "Debts",     icon: <CreditCard size={13} /> },
   ],
   household: [
-    { to: "/goals",    label: "Goals",     icon: <Target size={13} /> },
-    { to: "/calendar", label: "Calendar",  icon: <CalendarDays size={13} /> },
-    { to: "/recipes",  label: "Recipes",   icon: <BookOpen size={13} /> },
-    { to: "/meals",    label: "Meal plan", icon: <Utensils size={13} /> },
-    { to: "/grocery",  label: "Grocery",   icon: <ShoppingCart size={13} /> },
-    { to: "/chores",   label: "Chores",    icon: <CheckSquare size={13} /> },
-    { to: "/todo",     label: "To-do",     icon: <ListTodo size={13} /> },
+    { to: "/goals",     label: "Goals",     icon: <Target size={13} /> },
+    { to: "/calendar",  label: "Calendar",  icon: <CalendarDays size={13} /> },
+    { to: "/recipes",   label: "Recipes",   icon: <BookOpen size={13} /> },
+    { to: "/meals",     label: "Meal plan", icon: <Utensils size={13} /> },
+    { to: "/grocery",   label: "Grocery",   icon: <ShoppingCart size={13} /> },
+    { to: "/chores",    label: "Chores",    icon: <CheckSquare size={13} /> },
+    { to: "/todo",      label: "To-do",     icon: <ListTodo size={13} /> },
+    { to: "/allowance", label: "Allowance", icon: <Coins size={13} /> },
   ],
 };
 
@@ -114,7 +117,8 @@ const ROUTE_GROUP: Record<string, string> = {
   "/meals":    "household",
   "/grocery":  "household",
   "/chores":   "household",
-  "/todo":     "household",
+  "/todo":      "household",
+  "/allowance": "household",
 };
 
 // ── Auth spinner ──────────────────────────────────────────────────────────────
@@ -212,13 +216,32 @@ function TbbPill({ tbb, loading }: { tbb: number; loading: boolean }) {
 function SubNav() {
   const { pathname } = useLocation();
   const nav = useNavigate();
+  const { user } = useUser();
 
   const groupKey = Object.entries(ROUTE_GROUP).find(
     ([prefix]) => pathname === prefix || pathname.startsWith(prefix + "/")
   )?.[1];
 
-  const tabs = groupKey ? SUB_NAV[groupKey] : null;
-  if (!tabs) return null;
+  const allTabs = groupKey ? SUB_NAV[groupKey] : null;
+  if (!allTabs) return null;
+
+  // Filter locked tabs for dependents
+  const tabs = allTabs.filter(t => {
+    if (!isDependent(user)) return true;
+    if (t.to === "/allowance") return canAccess(user, "can_see_allowance");
+    if (!financesEnabled(user) && ["/budget","/spending","/bills","/debts"].includes(t.to)) return false;
+    if (t.to === "/budget")   return canAccess(user, "can_see_budget");
+    if (t.to === "/spending") return canAccess(user, "can_see_spending");
+    if (t.to === "/bills")    return canAccess(user, "can_see_bills");
+    if (t.to === "/debts")    return canAccess(user, "can_see_debts");
+    if (t.to === "/goals")    return canAccess(user, "can_see_goals");
+    if (t.to === "/recipes")  return canAccess(user, "can_see_recipes");
+    if (t.to === "/meals")    return canAccess(user, "can_see_meals");
+    if (t.to === "/todo")     return canAccess(user, "can_see_todo");
+    return true;
+  });
+
+  if (tabs.length === 0) return null;
 
   const activeId =
     tabs.find(t => pathname === t.to || pathname.startsWith(t.to + "/"))?.to ??
@@ -357,46 +380,64 @@ function AppShell({ children }: { children: ReactNode }) {
           </p>
         </div>
 
-        {/* Ready to Assign card */}
-        <div className="px-3 pb-4 relative">
-          <div className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{
-            background: tbb < 0
-              ? "linear-gradient(135deg, rgba(193,122,63,0.18) 0%, rgba(193,122,63,0.08) 100%)"
-              : "linear-gradient(135deg, rgba(45,110,112,0.15) 0%, rgba(45,110,112,0.06) 100%)",
-            border: `1.5px solid ${tbb < 0 ? "rgba(193,122,63,0.28)" : "rgba(45,110,112,0.22)"}`,
-            boxShadow: "0 1px 8px rgba(27,66,67,0.06)",
-          }}>
-            <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-ink-500">
-              Ready to assign
-            </div>
-            <div
-              className={cn("text-2xl font-medium tabular-nums leading-tight",
-                tbb < 0 ? "text-rust-600" : "text-teal-700"
-              )}
-              style={{ fontFamily: "'Fraunces', Georgia, serif" }}
-            >
-              {loadingTotals ? "—" : money(tbb)}
-            </div>
-            <div className="text-[11px] mt-0.5 text-ink-500">
-              Available to budget
+        {/* Ready to Assign card — hidden for dependents with finances locked */}
+        {(!isDependent(user) || financesEnabled(user)) && (
+          <div className="px-3 pb-4 relative">
+            <div className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{
+              background: tbb < 0
+                ? "linear-gradient(135deg, rgba(193,122,63,0.18) 0%, rgba(193,122,63,0.08) 100%)"
+                : "linear-gradient(135deg, rgba(45,110,112,0.15) 0%, rgba(45,110,112,0.06) 100%)",
+              border: `1.5px solid ${tbb < 0 ? "rgba(193,122,63,0.28)" : "rgba(45,110,112,0.22)"}`,
+              boxShadow: "0 1px 8px rgba(27,66,67,0.06)",
+            }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-ink-500">
+                Ready to assign
+              </div>
+              <div
+                className={cn("text-2xl font-medium tabular-nums leading-tight",
+                  tbb < 0 ? "text-rust-600" : "text-teal-700"
+                )}
+                style={{ fontFamily: "'Fraunces', Georgia, serif" }}
+              >
+                {loadingTotals ? "—" : money(tbb)}
+              </div>
+              <div className="text-[11px] mt-0.5 text-ink-500">
+                Available to budget
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Nav items */}
         <nav className="flex-1 space-y-0.5 px-3">
           {NAV_GROUPS.map((group) => {
-            // Permission filtering for dependent accounts
+            // Finances group: completely locked when finances_enabled=false for dependent
+            const isFinancesGroup = group.label === "Finances";
+            const finLocked = isFinancesGroup && isDependent(user) && !financesEnabled(user);
+
+            // Determine which children are visible
             const visibleChildren = group.children?.filter((child) => {
-              if (child.to === "/budget") return canAccess(user, "can_see_budget");
-              if (child.to === "/bills")  return canAccess(user, "can_see_bills");
-              if (child.to === "/debts")  return canAccess(user, "can_see_debts");
-              if (child.to === "/goals")  return canAccess(user, "can_see_goals");
+              // Allowance: only show to admin/primary or if explicitly enabled
+              if (child.to === "/allowance")
+                return !isDependent(user) || canAccess(user, "can_see_allowance");
               return true;
             });
-            if (group.label === "Finances" && isDependent(user) && visibleChildren?.length === 0)
-              return null;
             const g = visibleChildren ? { ...group, children: visibleChildren } : group;
+
+            // Helper: is a specific child locked?
+            function isChildLocked(to: string): boolean {
+              if (!isDependent(user)) return false;
+              if (isFinancesGroup && !financesEnabled(user)) return true;
+              if (to === "/budget")   return !canAccess(user, "can_see_budget");
+              if (to === "/spending") return !canAccess(user, "can_see_spending");
+              if (to === "/bills")    return !canAccess(user, "can_see_bills");
+              if (to === "/debts")    return !canAccess(user, "can_see_debts");
+              if (to === "/goals")    return !canAccess(user, "can_see_goals");
+              if (to === "/recipes")  return !canAccess(user, "can_see_recipes");
+              if (to === "/meals")    return !canAccess(user, "can_see_meals");
+              if (to === "/todo")     return !canAccess(user, "can_see_todo");
+              return false;
+            }
 
             // Simple link (no children)
             if (!g.children) {
@@ -407,9 +448,7 @@ function AppShell({ children }: { children: ReactNode }) {
                   end={g.exact}
                   className={({ isActive }) => cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
-                    isActive
-                      ? "text-teal-700"
-                      : "text-ink-500 hover:text-ink-900"
+                    isActive ? "text-teal-700" : "text-ink-500 hover:text-ink-900"
                   )}
                   style={({ isActive }) => isActive ? {
                     background: "rgba(27,66,67,0.10)",
@@ -418,13 +457,9 @@ function AppShell({ children }: { children: ReactNode }) {
                 >
                   {({ isActive }) => (
                     <>
-                      <span className={cn("shrink-0", isActive ? "text-teal-500" : "")}>
-                        {g.icon}
-                      </span>
+                      <span className={cn("shrink-0", isActive ? "text-teal-500" : "")}>{g.icon}</span>
                       <span style={isActive ? { fontFamily: "'Fraunces', Georgia, serif" } : {}}>{g.label}</span>
-                      {isActive && (
-                        <div className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-500" />
-                      )}
+                      {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-500" />}
                     </>
                   )}
                 </NavLink>
@@ -434,7 +469,7 @@ function AppShell({ children }: { children: ReactNode }) {
             // Expandable group
             const groupKey = g.label.toLowerCase();
             const isExpanded = expandedGroups.includes(groupKey);
-            const hasActiveChild = g.children.some(
+            const hasActiveChild = !finLocked && g.children.some(
               c => location.pathname === c.to || location.pathname.startsWith(c.to + "/")
             );
 
@@ -442,20 +477,23 @@ function AppShell({ children }: { children: ReactNode }) {
               <div key={g.to}>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (finLocked) return;
                     setExpandedGroups(prev =>
                       prev.includes(groupKey)
                         ? prev.filter(x => x !== groupKey)
                         : [...prev, groupKey]
-                    )
-                  }
+                    );
+                  }}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
-                    hasActiveChild
-                      ? "text-teal-700 border-l-2 border-teal-500 pl-2.5"
-                      : "text-ink-500 hover:text-ink-900"
+                    finLocked
+                      ? "text-ink-300 cursor-default"
+                      : hasActiveChild
+                        ? "text-teal-700 border-l-2 border-teal-500 pl-2.5"
+                        : "text-ink-500 hover:text-ink-900"
                   )}
-                  style={hasActiveChild ? {
+                  style={hasActiveChild && !finLocked ? {
                     background: "rgba(27,66,67,0.09)",
                     boxShadow: "0 1px 4px rgba(27,66,67,0.07)",
                   } : {}}
@@ -463,30 +501,42 @@ function AppShell({ children }: { children: ReactNode }) {
                   <span className="shrink-0">{g.icon}</span>
                   <span>{g.label}</span>
                   <span className="ml-auto text-ink-300">
-                    {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                    {finLocked
+                      ? <Lock size={12} className="text-ink-300" />
+                      : isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />
+                    }
                   </span>
                 </button>
 
-                {isExpanded && (
+                {isExpanded && !finLocked && (
                   <div className="mt-0.5 space-y-0.5 pl-4">
-                    {g.children.map((child) => (
-                      <NavLink
-                        key={child.to}
-                        to={child.to}
-                        className={({ isActive }) => cn(
-                          "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150",
-                          isActive
-                            ? "text-teal-700"
-                            : "text-ink-500 hover:text-ink-900"
-                        )}
-                        style={({ isActive }) => isActive ? {
-                          background: "rgba(27,66,67,0.09)",
-                        } : {}}
-                      >
-                        <span className="shrink-0">{child.icon}</span>
-                        <span>{child.label}</span>
-                      </NavLink>
-                    ))}
+                    {g.children.map((child) => {
+                      const locked = isChildLocked(child.to);
+                      if (locked) {
+                        return (
+                          <div key={child.to}
+                            className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-ink-300 cursor-default select-none">
+                            <span className="shrink-0 opacity-50">{child.icon}</span>
+                            <span className="opacity-60">{child.label}</span>
+                            <Lock size={10} className="ml-auto text-ink-300" />
+                          </div>
+                        );
+                      }
+                      return (
+                        <NavLink
+                          key={child.to}
+                          to={child.to}
+                          className={({ isActive }) => cn(
+                            "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150",
+                            isActive ? "text-teal-700" : "text-ink-500 hover:text-ink-900"
+                          )}
+                          style={({ isActive }) => isActive ? { background: "rgba(27,66,67,0.09)" } : {}}
+                        >
+                          <span className="shrink-0">{child.icon}</span>
+                          <span>{child.label}</span>
+                        </NavLink>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -703,6 +753,7 @@ export default function App() {
             <Route path="/grocery"         element={<ProtectedLayout><Grocery /></ProtectedLayout>} />
             <Route path="/chores"          element={<ProtectedLayout><Chores /></ProtectedLayout>} />
             <Route path="/todo"            element={<ProtectedLayout><TodoLists /></ProtectedLayout>} />
+            <Route path="/allowance"       element={<ProtectedLayout><Allowance /></ProtectedLayout>} />
             <Route path="/recipes"         element={<ProtectedLayout><Recipes /></ProtectedLayout>} />
             <Route path="/meals"           element={<ProtectedLayout><Meals /></ProtectedLayout>} />
             <Route path="/settings"        element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />

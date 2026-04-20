@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
+import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 /* ── Types ───────────────────────────────────────────── */
 type Recipe = {
@@ -49,7 +51,24 @@ const inputCls =
   "h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all placeholder:text-ink-400";
 
 /* ── Main component ──────────────────────────────────── */
+function LockedPage({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="h-14 w-14 rounded-full flex items-center justify-center mb-4"
+        style={{ background: "rgba(27,66,67,0.08)" }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1B4243" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <p className="text-base font-semibold text-ink-900" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>{label} is locked</p>
+      <p className="text-sm text-ink-500 mt-1">Ask a parent to enable this feature.</p>
+    </div>
+  );
+}
+
 export default function Recipes() {
+  const { user } = useUser();
+  if (!canAccess(user, "can_see_recipes")) return <LockedPage label="Recipes" />;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");

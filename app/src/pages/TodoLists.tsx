@@ -3,6 +3,7 @@ import { Plus, Trash2, RefreshCw, X, Check, ListTodo, Repeat, Users, User } from
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
 import { useUser } from "../lib/UserContext";
+import { canAccess } from "../lib/permissions";
 
 function localReset2am(): string {
   const now = new Date();
@@ -184,8 +185,24 @@ function NewListModal({ members, currentUserId, onSave, onClose }: {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+function LockedPage({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="h-14 w-14 rounded-full flex items-center justify-center mb-4"
+        style={{ background: "rgba(27,66,67,0.08)" }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1B4243" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <p className="text-base font-semibold text-ink-900" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>{label} is locked</p>
+      <p className="text-sm text-ink-500 mt-1">Ask a parent to enable this feature.</p>
+    </div>
+  );
+}
+
 export default function TodoLists() {
   const { user } = useUser();
+  if (!canAccess(user, "can_see_todo")) return <LockedPage label="To-do lists" />;
   const currentUserId = user?.userId ?? "";
 
   const [lists, setLists]       = useState<TodoList[]>([]);

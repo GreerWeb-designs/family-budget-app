@@ -421,16 +421,22 @@ app.get("/api/auth/me", requireUser, async (c) => {
     ).bind(userId).first<Record<string, number | string>>();
     if (perm) {
       permissions = {
+        finances_enabled: perm.finances_enabled !== undefined ? !!perm.finances_enabled : true,
         can_see_budget: !!perm.can_see_budget,
         can_see_transactions: !!perm.can_see_transactions,
         can_see_bills: !!perm.can_see_bills,
         can_see_debts: !!perm.can_see_debts,
+        can_see_spending: !!perm.can_see_spending,
         can_see_goals: !!perm.can_see_goals,
         can_add_chores: !!perm.can_add_chores,
         can_add_grocery: !!perm.can_add_grocery,
         can_add_calendar: !!perm.can_add_calendar,
         can_view_notes: !!perm.can_view_notes,
         can_post_notes: !!perm.can_post_notes,
+        can_see_recipes: perm.can_see_recipes !== undefined ? !!perm.can_see_recipes : true,
+        can_see_meals: perm.can_see_meals !== undefined ? !!perm.can_see_meals : true,
+        can_see_todo: perm.can_see_todo !== undefined ? !!perm.can_see_todo : true,
+        can_see_allowance: !!perm.can_see_allowance,
       };
     }
   }
@@ -1910,16 +1916,22 @@ app.get("/api/household", requireUser, async (c) => {
     ).bind(depId).first<Record<string, number | string>>();
     if (perm) {
       permsMap.set(depId, {
+        finances_enabled: perm.finances_enabled !== undefined ? !!perm.finances_enabled : true,
         can_see_budget: !!perm.can_see_budget,
         can_see_transactions: !!perm.can_see_transactions,
         can_see_bills: !!perm.can_see_bills,
         can_see_debts: !!perm.can_see_debts,
+        can_see_spending: !!perm.can_see_spending,
         can_see_goals: !!perm.can_see_goals,
         can_add_chores: !!perm.can_add_chores,
         can_add_grocery: !!perm.can_add_grocery,
         can_add_calendar: !!perm.can_add_calendar,
         can_view_notes: !!perm.can_view_notes,
         can_post_notes: !!perm.can_post_notes,
+        can_see_recipes: perm.can_see_recipes !== undefined ? !!perm.can_see_recipes : true,
+        can_see_meals: perm.can_see_meals !== undefined ? !!perm.can_see_meals : true,
+        can_see_todo: perm.can_see_todo !== undefined ? !!perm.can_see_todo : true,
+        can_see_allowance: !!perm.can_see_allowance,
       });
     }
   }
@@ -2106,10 +2118,15 @@ app.post("/api/auth/signup-dependent", requireUser, async (c) => {
     `INSERT INTO household_members (id, household_id, user_id, role, joined_at) VALUES (?, ?, ?, 'member', ?)`
   ).bind(uid(), householdId, depUserId, now).run();
 
-  // Seed default permissions (goals + chores + grocery on; everything financial off)
+  // Seed default permissions (household features on; everything financial off)
   await c.env.DB.prepare(
-    `INSERT INTO dependent_permissions (id, user_id, household_id, can_see_budget, can_see_transactions, can_see_bills, can_see_debts, can_see_goals, can_add_chores, can_add_grocery, can_add_calendar, can_view_notes, can_post_notes, created_at, updated_at)
-     VALUES (?, ?, ?, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, ?, ?)`
+    `INSERT INTO dependent_permissions
+       (id, user_id, household_id,
+        finances_enabled, can_see_budget, can_see_transactions, can_see_bills, can_see_debts, can_see_spending,
+        can_see_goals, can_add_chores, can_add_grocery, can_add_calendar, can_view_notes, can_post_notes,
+        can_see_recipes, can_see_meals, can_see_todo, can_see_allowance,
+        created_at, updated_at)
+     VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, ?, ?)`
   ).bind(uid(), depUserId, householdId, now, now).run();
 
   return c.json({ ok: true, userId: depUserId, name });
@@ -2127,9 +2144,11 @@ app.patch("/api/household/members/:userId/permissions", requireUser, async (c) =
 
   const body = await c.req.json<Record<string, boolean>>();
   const allowed = [
-    "can_see_budget","can_see_transactions","can_see_bills","can_see_debts",
+    "finances_enabled",
+    "can_see_budget","can_see_transactions","can_see_bills","can_see_debts","can_see_spending",
     "can_see_goals","can_add_chores","can_add_grocery","can_add_calendar",
     "can_view_notes","can_post_notes",
+    "can_see_recipes","can_see_meals","can_see_todo","can_see_allowance",
   ];
 
   const sets: string[] = [];
@@ -2152,6 +2171,64 @@ app.patch("/api/household/members/:userId/permissions", requireUser, async (c) =
   ).bind(...binds).run();
 
   return c.json({ ok: true });
+});
+
+// ── Allowance endpoints ───────────────────────────────────────────────────────
+
+// Parent: get allowance for a specific dependent
+app.get("/api/allowance/:userId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+  if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  const row = await c.env.DB.prepare(
+    `SELECT * FROM allowances WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(targetUserId, householdId).first<{ id: string; amount: number; frequency: string; notes: string | null }>();
+  return c.json({ allowance: row ?? null });
+});
+
+// Parent: set/update allowance for a dependent
+app.put("/api/allowance/:userId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+  if (!canManage) return c.json({ error: "Forbidden" }, 403);
+
+  const body = await c.req.json<{ amount?: number; frequency?: string; notes?: string }>();
+  const amount = Number(body.amount ?? 0);
+  const frequency = ["weekly", "monthly"].includes(body.frequency ?? "") ? body.frequency! : "weekly";
+  const notes = (body.notes ?? "").trim() || null;
+  const now = new Date().toISOString();
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id FROM allowances WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(targetUserId, householdId).first<{ id: string }>();
+
+  if (existing) {
+    await c.env.DB.prepare(
+      `UPDATE allowances SET amount = ?, frequency = ?, notes = ?, updated_at = ? WHERE id = ?`
+    ).bind(amount, frequency, notes, now, existing.id).run();
+  } else {
+    await c.env.DB.prepare(
+      `INSERT INTO allowances (id, household_id, user_id, amount, frequency, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(uid(), householdId, targetUserId, amount, frequency, notes, now, now).run();
+  }
+  return c.json({ ok: true });
+});
+
+// Dependent: get own allowance
+app.get("/api/allowance/mine", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const row = await c.env.DB.prepare(
+    `SELECT amount, frequency, notes FROM allowances WHERE user_id = ? AND household_id = ? LIMIT 1`
+  ).bind(userId, householdId).first<{ amount: number; frequency: string; notes: string | null }>();
+  return c.json({ allowance: row ?? null });
 });
 
 // Update household member role (admin only)
