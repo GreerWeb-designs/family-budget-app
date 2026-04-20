@@ -7,7 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 
 import { api } from "../lib/api";
 import { cn, money, round2 } from "../lib/utils";
 import { useUser } from "../lib/UserContext";
-import { canAccess, financesEnabled } from "../lib/permissions";
+import { canAccess, financesEnabled, isDependent } from "../lib/permissions";
 
 /* ── Types ──────────────────────────────────────────── */
 type Category   = { id: string; name: string; direction?: string };
@@ -22,6 +22,7 @@ type UpcomingMeal = { id: string; planned_date: string; meal_type: string; recip
 type Goal = { id: string; title: string; status: "active" | "done"; due_date: string | null; notes: string | null };
 type Note = { id: string; user_id: string; body: string; created_at: string; author_name?: string };
 type AccountRes = { bankBalance: number; toBeBudgeted: number };
+type AllowanceOverview = { totalDeposited: number; totalIncome: number; toAssign: number };
 
 /* ── Helpers ────────────────────────────────────────── */
 function timeAgo(iso: string) {
@@ -94,6 +95,8 @@ export default function Home() {
   const canSeeBills        = canAccess(user, "can_see_bills");
   const canViewNotes       = canAccess(user, "can_view_notes");
   const canPostNotes       = canAccess(user, "can_post_notes");
+  const canSeeBankBalance  = canAccess(user, "can_see_bank_balance");
+  const canSeeAllowance    = canAccess(user, "can_see_allowance");
   const [cats, setCats]         = useState<Category[]>([]);
   const INCOME_ID = useMemo(() => cats.find((c) => c.direction === "inflow")?.id ?? "income", [cats]);
   const [summary, setSummary]   = useState<SummaryRes | null>(null);
@@ -110,6 +113,7 @@ export default function Home() {
   const [noteInput, setNoteInput] = useState("");
   const [myUserId, setMyUserId] = useState<string>("");
   const [upcomingMeals, setUpcomingMeals] = useState<UpcomingMeal[]>([]);
+  const [allowanceOverview, setAllowanceOverview] = useState<AllowanceOverview | null>(null);
 
   const catNameById = useMemo(() => {
     const m: Record<string, string> = {};
@@ -181,6 +185,7 @@ export default function Home() {
   }, [toBeBudgeted, loading]);
 
   async function refresh() {
+    const fetchAllowance = isDependent(user) && canSeeAllowance;
     const [catRes, sumRes, spendRes, upRes, goalsRes, notesRes, meRes, accRes, mealsRes] = await Promise.all([
       api<{ categories: Category[] }>("/api/categories"),
       api<SummaryRes>("/api/spend/summary"),
@@ -192,6 +197,9 @@ export default function Home() {
       api<AccountRes>("/api/account"),
       api<{ meals: UpcomingMeal[] }>("/api/meals/upcoming").catch(() => ({ meals: [] })),
     ]);
+    if (fetchAllowance) {
+      api<AllowanceOverview>("/api/allowance/budget/me").then(r => setAllowanceOverview(r)).catch(() => {});
+    }
     const allCats = Array.from(
       new Map((catRes.categories ?? []).map((c: Category) => [c.id, c])).values()
     ) as Category[];
@@ -265,8 +273,8 @@ export default function Home() {
   return (
     <div className="space-y-5">
 
-      {/* ── Hero: Bank Balance ─────────────────────────── */}
-      {canSeeFinances && (
+      {/* ── Hero: Bank Balance (hidden from dependents by default) ─── */}
+      {canSeeBankBalance && canSeeFinances && (
         <div className="rounded-2xl border p-6 md:p-8" style={{
           background: "linear-gradient(145deg, #FFFDF8 0%, #FAF6EC 100%)",
           borderColor: "#DDD7C8",
@@ -290,6 +298,31 @@ export default function Home() {
                 <div className="h-full rounded-full" style={{ width: `${monthPct}%`, background: "var(--color-primary)" }} />
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hero: Allowance overview (dependents only) ─── */}
+      {isDependent(user) && canSeeAllowance && allowanceOverview && (
+        <div className="rounded-2xl border p-6 md:p-8" style={{
+          background: "linear-gradient(145deg, #FFFDF8 0%, #FAF6EC 100%)",
+          borderColor: "#DDD7C8",
+          boxShadow: "0 1px 3px rgba(27,66,67,0.04), 0 4px 16px rgba(27,66,67,0.06)",
+        }}>
+          <div className="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-1">My Allowance</div>
+          <div className="font-display text-5xl md:text-6xl font-semibold tabular-nums leading-none text-teal-700">
+            {money(allowanceOverview.totalDeposited + allowanceOverview.totalIncome)}
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            {allowanceOverview.toAssign >= 0 ? (
+              <p className="text-sm text-ink-500">
+                {money(allowanceOverview.toAssign)} left to assign to a category
+              </p>
+            ) : (
+              <p className="text-sm text-rust-600">
+                {money(Math.abs(allowanceOverview.toAssign))} over-assigned — trim a category
+              </p>
+            )}
           </div>
         </div>
       )}

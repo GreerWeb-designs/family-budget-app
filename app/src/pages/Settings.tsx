@@ -14,6 +14,7 @@ type DepPermissions = {
   can_view_notes: boolean; can_post_notes: boolean;
   can_see_recipes: boolean; can_see_meals: boolean; can_see_todo: boolean;
   can_see_allowance: boolean;
+  can_see_bank_balance: boolean;
 };
 type Member    = { id: string; name: string; email: string; role: string; joined_at: string; account_type?: string; permissions?: DepPermissions | null };
 type Household = { id: string; name: string; created_at: string };
@@ -493,12 +494,13 @@ const PERM_GROUPS: PermGroup[] = [
       { key: "can_see_recipes",  label: "See recipes" },
       { key: "can_see_meals",    label: "See meal plan" },
       { key: "can_see_todo",     label: "See to-do lists" },
-      { key: "can_see_allowance",label: "See allowance" },
+      { key: "can_see_allowance",    label: "See allowance" },
     ],
   },
   {
     heading: "Finances (requires master switch on)",
     items: [
+      { key: "can_see_bank_balance",  label: "See household bank balance" },
       { key: "can_see_budget",       label: "See budget" },
       { key: "can_see_transactions", label: "See transactions" },
       { key: "can_see_spending",     label: "See spending charts" },

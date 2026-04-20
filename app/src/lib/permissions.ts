@@ -15,6 +15,7 @@ export type UserPermissions = {
   can_see_meals: boolean;
   can_see_todo: boolean;
   can_see_allowance: boolean;
+  can_see_bank_balance: boolean;
 };
 
 export type UserInfo = {
@@ -45,12 +46,13 @@ const OPEN_PERMISSIONS: UserPermissions = {
   can_see_meals: true,
   can_see_todo: true,
   can_see_allowance: false,
+  can_see_bank_balance: false,
 };
 
 // Financial permissions that are blocked when finances_enabled = false
 const FINANCE_PERMS = new Set<keyof UserPermissions>([
   "can_see_budget", "can_see_transactions", "can_see_bills",
-  "can_see_debts", "can_see_spending",
+  "can_see_debts", "can_see_spending", "can_see_bank_balance",
 ]);
 
 export function isDependent(user: UserInfo | null): boolean {

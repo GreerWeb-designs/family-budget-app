@@ -55,6 +55,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
               can_see_meals: data.permissions.can_see_meals !== false,
               can_see_todo: data.permissions.can_see_todo !== false,
               can_see_allowance: !!data.permissions.can_see_allowance,
+              can_see_bank_balance: !!data.permissions.can_see_bank_balance,
             }
           : null,
         onboardingCompletedAt: data.onboardingCompletedAt,

@@ -437,6 +437,7 @@ app.get("/api/auth/me", requireUser, async (c) => {
         can_see_meals: perm.can_see_meals !== undefined ? !!perm.can_see_meals : true,
         can_see_todo: perm.can_see_todo !== undefined ? !!perm.can_see_todo : true,
         can_see_allowance: !!perm.can_see_allowance,
+        can_see_bank_balance: !!perm.can_see_bank_balance,
       };
     }
   }
@@ -1932,6 +1933,7 @@ app.get("/api/household", requireUser, async (c) => {
         can_see_meals: perm.can_see_meals !== undefined ? !!perm.can_see_meals : true,
         can_see_todo: perm.can_see_todo !== undefined ? !!perm.can_see_todo : true,
         can_see_allowance: !!perm.can_see_allowance,
+        can_see_bank_balance: !!perm.can_see_bank_balance,
       });
     }
   }
@@ -1964,8 +1966,8 @@ app.post("/api/household/invite", requireUser, async (c) => {
   const householdId = await getUserHouseholdId(c.env.DB, userId);
   if (!householdId) return c.json({ error: "No household" }, 404);
 
-  const body = await c.req.json<{ inviteeEmail?: string }>().catch(() => ({}));
-  const inviteeEmail = (body.inviteeEmail || "").toLowerCase().trim();
+  const body = await c.req.json<{ inviteeEmail?: string }>().catch(() => ({ inviteeEmail: undefined }));
+  const inviteeEmail = ((body as { inviteeEmail?: string }).inviteeEmail || "").toLowerCase().trim();
 
   const code = Math.random().toString(36).substring(2, 8).toUpperCase();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString();
@@ -2124,9 +2126,9 @@ app.post("/api/auth/signup-dependent", requireUser, async (c) => {
        (id, user_id, household_id,
         finances_enabled, can_see_budget, can_see_transactions, can_see_bills, can_see_debts, can_see_spending,
         can_see_goals, can_add_chores, can_add_grocery, can_add_calendar, can_view_notes, can_post_notes,
-        can_see_recipes, can_see_meals, can_see_todo, can_see_allowance,
+        can_see_recipes, can_see_meals, can_see_todo, can_see_allowance, can_see_bank_balance,
         created_at, updated_at)
-     VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, ?, ?)`
+     VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, ?, ?)`
   ).bind(uid(), depUserId, householdId, now, now).run();
 
   return c.json({ ok: true, userId: depUserId, name });
@@ -2148,7 +2150,7 @@ app.patch("/api/household/members/:userId/permissions", requireUser, async (c) =
     "can_see_budget","can_see_transactions","can_see_bills","can_see_debts","can_see_spending",
     "can_see_goals","can_add_chores","can_add_grocery","can_add_calendar",
     "can_view_notes","can_post_notes",
-    "can_see_recipes","can_see_meals","can_see_todo","can_see_allowance",
+    "can_see_recipes","can_see_meals","can_see_todo","can_see_allowance","can_see_bank_balance",
   ];
 
   const sets: string[] = [];
@@ -2233,20 +2235,24 @@ app.get("/api/allowance/mine", requireUser, async (c) => {
 
 // ── Allowance budget endpoints ────────────────────────────────────────────────
 
-type AllowanceBudgetRow = { totalDeposited: number; categories: AlCat[]; deposits: AlDeposit[] };
-type AlCat     = { id: string; name: string; emoji: string; budgeted: number; sort_order: number };
+type AllowanceBudgetRow = { totalDeposited: number; totalIncome: number; toAssign: number; categories: AlCat[]; deposits: AlDeposit[] };
+type AlCat     = { id: string; name: string; emoji: string; budgeted: number; activity: number; available: number; sort_order: number };
 type AlDeposit = { id: string; amount: number; note: string | null; added_by_name: string; created_at: string };
 
 async function getAllowanceBudget(
   db: D1Database, householdId: string, userId: string
 ): Promise<AllowanceBudgetRow> {
-  const [depRow, catsRow, depositsRow] = await Promise.all([
-    db.prepare(`SELECT SUM(amount) as total FROM allowance_deposits WHERE user_id = ? AND household_id = ?`)
-      .bind(userId, householdId).first<{ total: number | null }>(),
+  const [depRow, catsRow, depositsRow, incomeRow, activityRow] = await Promise.all([
+    db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM allowance_deposits WHERE user_id = ? AND household_id = ?`)
+      .bind(userId, householdId).first<{ total: number }>(),
     db.prepare(`SELECT id, name, emoji, budgeted, sort_order FROM allowance_categories WHERE user_id = ? AND household_id = ? ORDER BY sort_order ASC, created_at ASC`)
-      .bind(userId, householdId).all<AlCat>(),
+      .bind(userId, householdId).all<{ id: string; name: string; emoji: string; budgeted: number; sort_order: number }>(),
     db.prepare(`SELECT ad.id, ad.amount, ad.note, ad.created_at, u.name as added_by_name FROM allowance_deposits ad JOIN users u ON u.id = ad.added_by WHERE ad.user_id = ? AND ad.household_id = ? ORDER BY ad.created_at DESC LIMIT 20`)
       .bind(userId, householdId).all<AlDeposit>(),
+    db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM allowance_transactions WHERE user_id = ? AND household_id = ? AND direction = 'in'`)
+      .bind(userId, householdId).first<{ total: number }>(),
+    db.prepare(`SELECT category_id, COALESCE(SUM(amount), 0) as activity FROM allowance_transactions WHERE user_id = ? AND household_id = ? AND direction = 'out' GROUP BY category_id`)
+      .bind(userId, householdId).all<{ category_id: string; activity: number }>(),
   ]);
 
   let cats = catsRow.results ?? [];
@@ -2268,9 +2274,32 @@ async function getAllowanceBudget(
     }
   }
 
+  const activityMap = new Map<string, number>();
+  for (const row of activityRow.results ?? []) {
+    activityMap.set(row.category_id, Number(row.activity ?? 0));
+  }
+
+  const totalDeposited = Number(depRow?.total ?? 0);
+  const totalIncome    = Number(incomeRow?.total ?? 0);
+
+  const categoriesWithActivity: AlCat[] = cats.map(c => {
+    const activity = Number(activityMap.get(c.id) ?? 0);
+    return {
+      id: c.id, name: c.name, emoji: c.emoji, sort_order: c.sort_order,
+      budgeted:  Math.round(Number(c.budgeted) * 100) / 100,
+      activity:  Math.round(activity * 100) / 100,
+      available: Math.round((Number(c.budgeted) - activity) * 100) / 100,
+    };
+  });
+
+  const totalBudgeted = categoriesWithActivity.reduce((s, c) => s + c.budgeted, 0);
+  const toAssign = Math.round((totalDeposited + totalIncome - totalBudgeted) * 100) / 100;
+
   return {
-    totalDeposited: Number(depRow?.total ?? 0),
-    categories: cats,
+    totalDeposited,
+    totalIncome,
+    toAssign,
+    categories: categoriesWithActivity,
     deposits: depositsRow.results ?? [],
   };
 }
@@ -2385,6 +2414,80 @@ app.delete("/api/allowance/categories/:catId", requireUser, async (c) => {
     if (!canManage) return c.json({ error: "Forbidden" }, 403);
   }
   await c.env.DB.prepare(`DELETE FROM allowance_categories WHERE id = ?`).bind(catId).run();
+  return c.json({ ok: true });
+});
+
+// ── Allowance transaction endpoints ──────────────────────────────────────────
+
+// Dependent: list own transactions
+app.get("/api/allowance/txns/me", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const rows = await c.env.DB.prepare(
+    `SELECT t.id, t.category_id, COALESCE(c.name, 'Income') as category_name,
+            t.amount, t.direction, t.date, t.note, t.created_at
+     FROM allowance_transactions t
+     LEFT JOIN allowance_categories c ON c.id = t.category_id AND c.household_id = ?
+     WHERE t.user_id = ? AND t.household_id = ?
+     ORDER BY t.date DESC, t.created_at DESC LIMIT 200`
+  ).bind(householdId, userId, householdId).all();
+  return c.json({ transactions: rows.results ?? [] });
+});
+
+// Dependent: create own transaction
+app.post("/api/allowance/txns/me", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const body = await c.req.json<{ categoryId?: string; amount?: number; direction?: string; date?: string; note?: string }>();
+  const amount = Math.round(Number(body.amount ?? 0) * 100) / 100;
+  if (amount <= 0) return c.json({ error: "Amount must be positive" }, 400);
+  const direction = body.direction === "in" ? "in" : "out";
+  const categoryId = (body.categoryId ?? "income").trim();
+  const date = body.date ?? new Date().toISOString().slice(0, 10);
+  const note = (body.note ?? "").trim() || null;
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO allowance_transactions (id, household_id, user_id, category_id, amount, direction, date, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(uid(), householdId, userId, categoryId, amount, direction, date, note, now).run();
+  return c.json({ ok: true });
+});
+
+// Admin: view a dependent's transactions
+app.get("/api/allowance/txns/:userId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const targetUserId = c.req.param("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+  if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  const rows = await c.env.DB.prepare(
+    `SELECT t.id, t.category_id, COALESCE(c.name, 'Income') as category_name,
+            t.amount, t.direction, t.date, t.note, t.created_at
+     FROM allowance_transactions t
+     LEFT JOIN allowance_categories c ON c.id = t.category_id AND c.household_id = ?
+     WHERE t.user_id = ? AND t.household_id = ?
+     ORDER BY t.date DESC, t.created_at DESC LIMIT 200`
+  ).bind(householdId, targetUserId, householdId).all();
+  return c.json({ transactions: rows.results ?? [] });
+});
+
+// Delete a transaction (owner or admin)
+app.delete("/api/allowance/txns/entry/:txId", requireUser, async (c) => {
+  const requesterId = c.get("userId");
+  const txId = c.req.param("txId");
+  const householdId = await getUserHouseholdId(c.env.DB, requesterId);
+  if (!householdId) return c.json({ error: "No household" }, 404);
+  const tx = await c.env.DB.prepare(
+    `SELECT user_id FROM allowance_transactions WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(txId, householdId).first<{ user_id: string }>();
+  if (!tx) return c.json({ error: "Not found" }, 404);
+  if (requesterId !== tx.user_id) {
+    const canManage = await isAdminOrPrimary(c.env.DB, requesterId, householdId);
+    if (!canManage) return c.json({ error: "Forbidden" }, 403);
+  }
+  await c.env.DB.prepare(`DELETE FROM allowance_transactions WHERE id = ?`).bind(txId).run();
   return c.json({ ok: true });
 });
 
