@@ -84,7 +84,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/allowance",  label: "Allowance", icon: <Coins size={14} /> },
     ],
   },
-  { to: "/settings",      label: "Settings",  icon: <SettingsIcon size={16} />, exact: true },
+  { to: "/settings",      label: "Household Settings", icon: <SettingsIcon size={16} />, exact: true },
 ];
 
 const SUB_NAV: Record<string, { to: string; label: string; icon: ReactNode }[]> = {
@@ -196,20 +196,6 @@ function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" })
   );
 }
 
-function TbbPill({ tbb, loading }: { tbb: number; loading: boolean }) {
-  const positive = tbb >= 0;
-  return (
-    <div className={cn(
-      "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tabular-nums border",
-      positive
-        ? "bg-teal-50 text-teal-600 border-teal-300/50"
-        : "bg-rust-50 text-rust-600 border-rust-300/50"
-    )}>
-      <span className="text-[10px] uppercase tracking-wider opacity-60">TBB</span>
-      <span>{loading ? "—" : money(tbb)}</span>
-    </div>
-  );
-}
 
 // ── Sub-nav strip (uses SegmentedTabs) ────────────────────────────────────────
 
@@ -609,12 +595,8 @@ function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          {/* Right: TBB pill + user dropdown */}
+          {/* Right: user dropdown */}
           <div className="flex items-center gap-2.5">
-            <div className="hidden sm:block">
-              <TbbPill tbb={tbb} loading={loadingTotals} />
-            </div>
-
             {userName && (
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -653,13 +635,7 @@ function AppShell({ children }: { children: ReactNode }) {
                         onClick={() => { setDropdownOpen(false); nav("/settings"); }}
                         className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-ink-900 hover:bg-cream-100 transition-colors">
                         <SettingsIcon size={14} className="text-ink-500" />
-                        Settings
-                      </button>
-                      <button type="button"
-                        onClick={() => { setDropdownOpen(false); nav("/settings#household"); }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-ink-900 hover:bg-cream-100 transition-colors">
-                        <HousePlus size={14} className="text-ink-500" />
-                        Household
+                        Household Settings
                       </button>
                       <button type="button"
                         onClick={() => { setDropdownOpen(false); refreshTotals(); }}
