@@ -263,16 +263,11 @@ export default function Home() {
     <div className="space-y-5">
 
       {/* ── Hero: Bank Balance ─────────────────────────── */}
-      <div className="rounded-3xl border p-6 md:p-8 relative overflow-hidden" style={{
-        background: "linear-gradient(160deg, #FDFAF2 0%, #F5EDD8 60%, #EAE4D0 100%)",
-        borderColor: "#C9CBAA",
-        boxShadow: "0 6px 32px rgba(27,66,67,0.09), 0 1px 0 rgba(255,255,255,0.85) inset",
+      <div className="rounded-2xl border p-6 md:p-8" style={{
+        background: "linear-gradient(145deg, #FFFDF8 0%, #FAF6EC 100%)",
+        borderColor: "#DDD7C8",
+        boxShadow: "0 1px 3px rgba(27,66,67,0.04), 0 4px 16px rgba(27,66,67,0.06)",
       }}>
-        {/* Decorative bloom */}
-        <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full opacity-[0.10]"
-          style={{ background: "radial-gradient(circle, #2D6E70 0%, transparent 70%)" }} />
-        <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full opacity-[0.08]"
-          style={{ background: "radial-gradient(circle, #C17A3F 0%, transparent 70%)" }} />
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-1">Bank Balance</div>
