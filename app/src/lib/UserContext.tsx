@@ -49,6 +49,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
               can_add_calendar: !!data.permissions.can_add_calendar,
               can_view_notes: !!data.permissions.can_view_notes,
               can_post_notes: !!data.permissions.can_post_notes,
+              finances_enabled: data.permissions.finances_enabled !== false,
+              can_see_spending: !!data.permissions.can_see_spending,
+              can_see_recipes: data.permissions.can_see_recipes !== false,
+              can_see_meals: data.permissions.can_see_meals !== false,
+              can_see_todo: data.permissions.can_see_todo !== false,
+              can_see_allowance: !!data.permissions.can_see_allowance,
             }
           : null,
         onboardingCompletedAt: data.onboardingCompletedAt,
