@@ -380,8 +380,8 @@ function AppShell({ children }: { children: ReactNode }) {
           </p>
         </div>
 
-        {/* Ready to Assign card — hidden for dependents with finances locked */}
-        {(!isDependent(user) || financesEnabled(user)) && (
+        {/* Ready to Assign card — hidden for all dependents */}
+        {!isDependent(user) && (
           <div className="px-3 pb-4 relative">
             <div className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{
               background: tbb < 0
