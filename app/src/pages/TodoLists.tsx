@@ -143,7 +143,6 @@ export default function TodoLists() {
   const [lists, setLists] = useState<TodoList[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [items, setItems] = useState<TodoItem[]>([]);
-  const [listType, setListType] = useState<"daily" | "onetime">("onetime");
   const [loading, setLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [showNewList, setShowNewList] = useState(false);
@@ -171,7 +170,6 @@ export default function TodoLists() {
         query: { resetBefore: localReset2am() },
       });
       setItems(res.items ?? []);
-      setListType(res.listType ?? "onetime");
     } catch {
       setMsg("Failed to load items.");
     } finally {

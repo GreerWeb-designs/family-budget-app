@@ -56,7 +56,7 @@ function nextScreen(cur: ScreenId, features: string[], householdType: string): S
   return cur;
 }
 
-function prevScreen(cur: ScreenId, features: string[], householdType: string): ScreenId {
+function prevScreen(cur: ScreenId, _features: string[], householdType: string): ScreenId {
   if (cur === "features")      return "welcome";
   if (cur === "household")     return "features";
   if (cur === "householdSize") return "household";
@@ -432,7 +432,7 @@ export default function Onboarding() {
 
   // Progress dots for middle screens (everything between welcome and done)
   const flow = buildFlow(features, householdType);
-  const middle = flow.filter(s => s !== "welcome" && s !== "done");
+  const middle = flow.filter(s => s !== "welcome" && s !== "done") as ScreenId[];
   const midIdx = middle.indexOf(screen);
   const progress = midIdx >= 0 ? { current: midIdx, total: middle.length } : undefined;
 
