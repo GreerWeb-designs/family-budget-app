@@ -15,6 +15,7 @@ import { cn, money } from "./lib/utils";
 import { UserProvider, useUser } from "./lib/UserContext";
 import { canAccess, isDependent } from "./lib/permissions";
 import { Wordmark, SegmentedTabs, BottomNav, ToastProvider } from "./components/ui";
+import { InactivityGuard } from "./components/InactivityGuard";
 import { Splash } from "./components/Splash";
 import { useIsMobile } from "./hooks/useIsMobile";
 
@@ -603,6 +604,8 @@ function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom nav — uses the Phase 1 primitive */}
       <BottomNav />
+
+      <InactivityGuard />
     </div>
   );
 }
