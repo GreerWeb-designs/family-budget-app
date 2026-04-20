@@ -2982,6 +2982,17 @@ function todayReset2amUTC(): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 2, 0, 0)).toISOString();
 }
 
+function validResetBefore(raw: string | undefined): string {
+  if (!raw) return todayReset2amUTC();
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return todayReset2amUTC();
+  // Clamp: must be within ±14 hours of UTC midnight today to be a plausible "2am local"
+  const nowUtc = Date.now();
+  const diff = Math.abs(nowUtc - d.getTime());
+  if (diff > 14 * 60 * 60 * 1000 * 2) return todayReset2amUTC(); // sanity check
+  return d.toISOString();
+}
+
 app.get("/api/todo/lists", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
@@ -3043,10 +3054,11 @@ app.get("/api/todo/lists/:id/items", requireUser, async (c) => {
   ).bind(listId, householdId).first<{ list_type: string }>();
   if (!list) return c.json({ error: "Not found" }, 404);
   if (list.list_type === "daily") {
+    const resetBefore = validResetBefore(c.req.query("resetBefore"));
     await c.env.DB.prepare(
       `UPDATE todo_items SET completed = 0, completed_at = NULL
        WHERE list_id = ? AND completed = 1 AND completed_at < ?`
-    ).bind(listId, todayReset2amUTC()).run();
+    ).bind(listId, resetBefore).run();
   }
   const rows = await c.env.DB.prepare(
     `SELECT id, title, completed, completed_at, created_at

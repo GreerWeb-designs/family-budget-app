@@ -3,6 +3,11 @@ import { Plus, Trash2, RefreshCw, X, Check, ListTodo, Repeat } from "lucide-reac
 import { api } from "../lib/api";
 import { cn } from "../lib/utils";
 
+function localReset2am(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 2, 0, 0).toISOString();
+}
+
 type TodoList = { id: string; title: string; list_type: "daily" | "onetime"; created_at: string };
 type TodoItem = { id: string; title: string; completed: number; completed_at: string | null; created_at: string };
 
@@ -162,7 +167,9 @@ export default function TodoLists() {
   async function loadItems(listId: string) {
     setItemsLoading(true);
     try {
-      const res = await api<{ items: TodoItem[]; listType: "daily" | "onetime" }>(`/api/todo/lists/${listId}/items`);
+      const res = await api<{ items: TodoItem[]; listType: "daily" | "onetime" }>(`/api/todo/lists/${listId}/items`, {
+        query: { resetBefore: localReset2am() },
+      });
       setItems(res.items ?? []);
       setListType(res.listType ?? "onetime");
     } catch {
