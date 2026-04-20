@@ -2975,6 +2975,130 @@ app.delete("/api/chores/:id", requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
+// ---- TODO LISTS ----
+
+function todayReset2amUTC(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 2, 0, 0)).toISOString();
+}
+
+app.get("/api/todo/lists", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ lists: [] });
+  const rows = await c.env.DB.prepare(
+    `SELECT id, title, list_type, created_at FROM todo_lists WHERE household_id = ? ORDER BY created_at ASC`
+  ).bind(householdId).all<{ id: string; title: string; list_type: string; created_at: string }>();
+  return c.json({ lists: rows.results ?? [] });
+});
+
+app.post("/api/todo/lists", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+  const body = await c.req.json<{ title?: string; listType?: string }>();
+  const title = (body.title || "").trim();
+  if (!title) return c.json({ error: "Title required" }, 400);
+  const listType = body.listType === "daily" ? "daily" : "onetime";
+  const id = uid();
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO todo_lists (id, household_id, title, list_type, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(id, householdId, title, listType, userId, now).run();
+  return c.json({ ok: true, id });
+});
+
+app.patch("/api/todo/lists/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+  const body = await c.req.json<{ title?: string }>();
+  const title = (body.title || "").trim();
+  if (!title) return c.json({ error: "Title required" }, 400);
+  await c.env.DB.prepare(
+    `UPDATE todo_lists SET title = ? WHERE id = ? AND household_id = ?`
+  ).bind(title, id, householdId).run();
+  return c.json({ ok: true });
+});
+
+app.delete("/api/todo/lists/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+  await c.env.DB.prepare(
+    `DELETE FROM todo_lists WHERE id = ? AND household_id = ?`
+  ).bind(id, householdId).run();
+  return c.json({ ok: true });
+});
+
+app.get("/api/todo/lists/:id/items", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const listId = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ items: [], listType: "onetime" });
+  const list = await c.env.DB.prepare(
+    `SELECT list_type FROM todo_lists WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(listId, householdId).first<{ list_type: string }>();
+  if (!list) return c.json({ error: "Not found" }, 404);
+  if (list.list_type === "daily") {
+    await c.env.DB.prepare(
+      `UPDATE todo_items SET completed = 0, completed_at = NULL
+       WHERE list_id = ? AND completed = 1 AND completed_at < ?`
+    ).bind(listId, todayReset2amUTC()).run();
+  }
+  const rows = await c.env.DB.prepare(
+    `SELECT id, title, completed, completed_at, created_at
+     FROM todo_items WHERE list_id = ? ORDER BY created_at ASC`
+  ).bind(listId).all<{ id: string; title: string; completed: number; completed_at: string | null; created_at: string }>();
+  return c.json({ items: rows.results ?? [], listType: list.list_type });
+});
+
+app.post("/api/todo/lists/:id/items", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const listId = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+  const body = await c.req.json<{ title?: string }>();
+  const title = (body.title || "").trim();
+  if (!title) return c.json({ error: "Title required" }, 400);
+  const id = uid();
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO todo_items (id, list_id, household_id, title, completed, created_at) VALUES (?, ?, ?, ?, 0, ?)`
+  ).bind(id, listId, householdId, title, now).run();
+  return c.json({ ok: true, id });
+});
+
+app.patch("/api/todo/items/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+  const item = await c.env.DB.prepare(
+    `SELECT completed FROM todo_items WHERE id = ? AND household_id = ? LIMIT 1`
+  ).bind(id, householdId).first<{ completed: number }>();
+  if (!item) return c.json({ error: "Not found" }, 404);
+  const newCompleted = item.completed ? 0 : 1;
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `UPDATE todo_items SET completed = ?, completed_at = ? WHERE id = ? AND household_id = ?`
+  ).bind(newCompleted, newCompleted ? now : null, id, householdId).run();
+  return c.json({ ok: true });
+});
+
+app.delete("/api/todo/items/:id", requireUser, async (c) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const householdId = await getUserHouseholdId(c.env.DB, userId);
+  if (!householdId) return c.json({ error: "No household" }, 400);
+  await c.env.DB.prepare(
+    `DELETE FROM todo_items WHERE id = ? AND household_id = ?`
+  ).bind(id, householdId).run();
+  return c.json({ ok: true });
+});
+
 // ---- ADMIN API ----
 
 const admin = new Hono<{ Bindings: Bindings }>();

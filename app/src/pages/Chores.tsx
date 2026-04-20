@@ -322,14 +322,14 @@ export default function Chores() {
                   type="button"
                   onClick={() => toggleComplete(chore.id)}
                   className={cn(
-                    "mt-0.5 h-6 w-6 shrink-0 rounded-full border-2 flex items-center justify-center transition-all",
+                    "mt-0.5 h-7 w-7 shrink-0 rounded border-2 flex items-center justify-center transition-all",
                     chore.completed
                       ? "bg-teal-500 border-teal-500 text-white"
-                      : "border-cream-200 hover:border-teal-500"
+                      : "border-cream-300 bg-white hover:border-teal-500"
                   )}
                   aria-label={chore.completed ? "Mark incomplete" : "Mark complete"}
                 >
-                  {chore.completed && <span className="text-[11px] leading-none font-bold">✓</span>}
+                  {!!chore.completed && <span className="text-[11px] leading-none font-bold">✓</span>}
                 </button>
 
                 {/* Content */}
@@ -356,7 +356,7 @@ export default function Chores() {
                       </span>
                     )}
 
-                    {chore.completed && chore.completed_at && (
+                    {!!chore.completed && chore.completed_at && (
                       <span className="text-xs text-teal-600">
                         Done · {timeAgo(chore.completed_at)}
                       </span>

@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight,
   Home, Wallet, HousePlus,
   PieChart, Receipt, CreditCard,
-  Target, CalendarDays, BookOpen, Utensils, ShoppingCart, CheckSquare,
+  Target, CalendarDays, BookOpen, Utensils, ShoppingCart, CheckSquare, ListTodo,
   BarChart2,
 } from "lucide-react";
 import { api } from "./lib/api";
@@ -38,6 +38,7 @@ import Chores         from "./pages/Chores";
 import Recipes        from "./pages/Recipes";
 import Meals          from "./pages/Meals";
 import Spending       from "./pages/Spending";
+import TodoLists      from "./pages/TodoLists";
 import DesignSystem   from "./pages/DesignSystem";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/meals",     label: "Meal plan", icon: <Utensils size={14} /> },
       { to: "/grocery",   label: "Grocery",   icon: <ShoppingCart size={14} /> },
       { to: "/chores",    label: "Chores",    icon: <CheckSquare size={14} /> },
+      { to: "/todo",      label: "To-do",     icon: <ListTodo size={14} /> },
     ],
   },
   { to: "/settings",      label: "Settings",  icon: <SettingsIcon size={16} />, exact: true },
@@ -96,6 +98,7 @@ const SUB_NAV: Record<string, { to: string; label: string; icon: ReactNode }[]> 
     { to: "/meals",    label: "Meal plan", icon: <Utensils size={13} /> },
     { to: "/grocery",  label: "Grocery",   icon: <ShoppingCart size={13} /> },
     { to: "/chores",   label: "Chores",    icon: <CheckSquare size={13} /> },
+    { to: "/todo",     label: "To-do",     icon: <ListTodo size={13} /> },
   ],
 };
 
@@ -110,6 +113,7 @@ const ROUTE_GROUP: Record<string, string> = {
   "/meals":    "household",
   "/grocery":  "household",
   "/chores":   "household",
+  "/todo":     "household",
 };
 
 // ── Auth spinner ──────────────────────────────────────────────────────────────
@@ -652,6 +656,7 @@ export default function App() {
             <Route path="/calendar"        element={<ProtectedLayout><Calendar /></ProtectedLayout>} />
             <Route path="/grocery"         element={<ProtectedLayout><Grocery /></ProtectedLayout>} />
             <Route path="/chores"          element={<ProtectedLayout><Chores /></ProtectedLayout>} />
+            <Route path="/todo"            element={<ProtectedLayout><TodoLists /></ProtectedLayout>} />
             <Route path="/recipes"         element={<ProtectedLayout><Recipes /></ProtectedLayout>} />
             <Route path="/meals"           element={<ProtectedLayout><Meals /></ProtectedLayout>} />
             <Route path="/settings"        element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
