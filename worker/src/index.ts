@@ -3013,9 +3013,19 @@ app.get("/api/todo/lists", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
   if (!householdId) return c.json({ lists: [] });
+  // Return family lists (owner_user_id IS NULL) + this user's personal lists
   const rows = await c.env.DB.prepare(
-    `SELECT id, title, list_type, created_at FROM todo_lists WHERE household_id = ? ORDER BY created_at ASC`
-  ).bind(householdId).all<{ id: string; title: string; list_type: string; created_at: string }>();
+    `SELECT tl.id, tl.title, tl.list_type, tl.owner_user_id,
+            u.name AS owner_name, tl.created_at
+     FROM todo_lists tl
+     LEFT JOIN users u ON u.id = tl.owner_user_id
+     WHERE tl.household_id = ?
+       AND (tl.owner_user_id IS NULL OR tl.owner_user_id = ?)
+     ORDER BY tl.owner_user_id IS NOT NULL ASC, tl.created_at ASC`
+  ).bind(householdId, userId).all<{
+    id: string; title: string; list_type: string;
+    owner_user_id: string | null; owner_name: string | null; created_at: string;
+  }>();
   return c.json({ lists: rows.results ?? [] });
 });
 
@@ -3023,15 +3033,25 @@ app.post("/api/todo/lists", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getUserHouseholdId(c.env.DB, userId);
   if (!householdId) return c.json({ error: "No household" }, 400);
-  const body = await c.req.json<{ title?: string; listType?: string }>();
+  const body = await c.req.json<{ title?: string; listType?: string; ownerUserId?: string | null }>();
   const title = (body.title || "").trim();
   if (!title) return c.json({ error: "Title required" }, 400);
   const listType = body.listType === "daily" ? "daily" : "onetime";
+  // null = family/shared; a userId = personal to that member
+  let ownerUserId: string | null = null;
+  if (body.ownerUserId && body.ownerUserId !== "family") {
+    // Verify the target user is in the same household
+    const member = await c.env.DB.prepare(
+      `SELECT user_id FROM household_members WHERE user_id = ? AND household_id = ? LIMIT 1`
+    ).bind(body.ownerUserId, householdId).first<{ user_id: string }>();
+    if (member) ownerUserId = body.ownerUserId;
+  }
   const id = uid();
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `INSERT INTO todo_lists (id, household_id, title, list_type, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(id, householdId, title, listType, userId, now).run();
+    `INSERT INTO todo_lists (id, household_id, title, list_type, owner_user_id, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, householdId, title, listType, ownerUserId, userId, now).run();
   return c.json({ ok: true, id });
 });
 
