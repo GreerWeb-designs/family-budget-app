@@ -35,8 +35,10 @@ export function Card({
     className
   );
 
-  // Use warm off-white, not pure white
-  const style = { backgroundColor: "#FFFDF8", ...rest.style };
+  const style = {
+    background: "linear-gradient(145deg, #FFFDF8 0%, #FAF6EC 100%)",
+    ...rest.style,
+  };
 
   if (interactive) {
     return (

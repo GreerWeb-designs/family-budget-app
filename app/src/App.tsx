@@ -226,8 +226,12 @@ function SubNav() {
 
   return (
     <div
-      className="sticky z-10 px-4 py-2 bg-cream-50/95 backdrop-blur-sm border-b border-cream-200"
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}
+      className="sticky z-10 px-4 py-2 backdrop-blur-sm"
+      style={{
+        top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)",
+        background: "rgba(250,246,238,0.94)",
+        borderBottom: "1.5px solid rgba(201,203,170,0.45)",
+      }}
     >
       <SegmentedTabs
         layoutId="sub-nav-pill"
@@ -315,13 +319,36 @@ function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-cream-50 overflow-x-hidden w-full">
+    <div className="flex min-h-screen overflow-x-hidden w-full" style={{ background: "transparent" }}>
 
       {/* ── Desktop Sidebar ───────────────────────────────── */}
       <aside
-        className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0 fixed left-0 top-0 bottom-0 z-30 overflow-y-auto bg-cream-50"
-        style={{ borderRight: "1px solid var(--color-cream-200)" }}
+        className="hidden lg:flex lg:w-60 lg:flex-col lg:shrink-0 fixed left-0 top-0 bottom-0 z-30 overflow-y-auto"
+        style={{
+          background: "linear-gradient(180deg, #FDFAF2 0%, #F8F3E8 55%, #F2ECD8 100%)",
+          borderRight: "1.5px solid #C9CBAA",
+        }}
       >
+        {/* Decorative botanical blobs */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-10 -left-10 h-44 w-44 rounded-full opacity-[0.10]"
+            style={{ background: "radial-gradient(circle, #2D6E70 0%, transparent 70%)" }} />
+          <div className="absolute bottom-1/3 -right-10 h-36 w-36 rounded-full opacity-[0.07]"
+            style={{ background: "radial-gradient(circle, #C17A3F 0%, transparent 70%)" }} />
+          <div className="absolute top-2/3 -left-8 h-28 w-28 rounded-full opacity-[0.06]"
+            style={{ background: "radial-gradient(circle, #8B7EC8 0%, transparent 70%)" }} />
+          {[
+            { top: "22%",  left: "85%", size: 3,   color: "#2D6E70", opacity: 0.16 },
+            { top: "68%",  left: "90%", size: 3.5, color: "#C17A3F", opacity: 0.18 },
+            { top: "45%",  left: "6%",  size: 2.5, color: "#8B7EC8", opacity: 0.14 },
+          ].map((dot, i) => (
+            <div key={i} className="absolute rounded-full" style={{
+              top: dot.top, left: dot.left,
+              width: dot.size, height: dot.size,
+              background: dot.color, opacity: dot.opacity,
+            }} />
+          ))}
+        </div>
         {/* Logo */}
         <div className="px-5 pt-6 pb-5">
           <Wordmark size="xl" />
@@ -331,13 +358,14 @@ function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Ready to Assign card */}
-        <div className="px-3 pb-4">
-          <div className={cn(
-            "rounded-lg px-4 py-3 border",
-            tbb < 0
-              ? "bg-rust-50 border-rust-500/30"
-              : "bg-teal-50 border-teal-500/20"
-          )}>
+        <div className="px-3 pb-4 relative">
+          <div className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{
+            background: tbb < 0
+              ? "linear-gradient(135deg, rgba(193,122,63,0.18) 0%, rgba(193,122,63,0.08) 100%)"
+              : "linear-gradient(135deg, rgba(45,110,112,0.15) 0%, rgba(45,110,112,0.06) 100%)",
+            border: `1.5px solid ${tbb < 0 ? "rgba(193,122,63,0.28)" : "rgba(45,110,112,0.22)"}`,
+            boxShadow: "0 1px 8px rgba(27,66,67,0.06)",
+          }}>
             <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-ink-500">
               Ready to assign
             </div>
@@ -378,18 +406,22 @@ function AppShell({ children }: { children: ReactNode }) {
                   to={g.to}
                   end={g.exact}
                   className={({ isActive }) => cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     isActive
-                      ? "text-teal-700 bg-teal-500/10"
-                      : "text-ink-500 hover:text-ink-900 hover:bg-cream-100"
+                      ? "text-teal-700"
+                      : "text-ink-500 hover:text-ink-900"
                   )}
+                  style={({ isActive }) => isActive ? {
+                    background: "rgba(27,66,67,0.10)",
+                    boxShadow: "0 1px 4px rgba(27,66,67,0.08)",
+                  } : {}}
                 >
                   {({ isActive }) => (
                     <>
                       <span className={cn("shrink-0", isActive ? "text-teal-500" : "")}>
                         {g.icon}
                       </span>
-                      <span>{g.label}</span>
+                      <span style={isActive ? { fontFamily: "'Fraunces', Georgia, serif" } : {}}>{g.label}</span>
                       {isActive && (
                         <div className="ml-auto h-1.5 w-1.5 rounded-full bg-teal-500" />
                       )}
@@ -418,11 +450,15 @@ function AppShell({ children }: { children: ReactNode }) {
                     )
                   }
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     hasActiveChild
-                      ? "text-teal-700 bg-teal-500/10 border-l-2 border-teal-500 pl-2.5"
-                      : "text-ink-500 hover:text-ink-900 hover:bg-cream-100"
+                      ? "text-teal-700 border-l-2 border-teal-500 pl-2.5"
+                      : "text-ink-500 hover:text-ink-900"
                   )}
+                  style={hasActiveChild ? {
+                    background: "rgba(27,66,67,0.09)",
+                    boxShadow: "0 1px 4px rgba(27,66,67,0.07)",
+                  } : {}}
                 >
                   <span className="shrink-0">{g.icon}</span>
                   <span>{g.label}</span>
@@ -438,11 +474,14 @@ function AppShell({ children }: { children: ReactNode }) {
                         key={child.to}
                         to={child.to}
                         className={({ isActive }) => cn(
-                          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150",
+                          "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150",
                           isActive
-                            ? "text-teal-700 bg-teal-500/10"
-                            : "text-ink-500 hover:text-ink-900 hover:bg-cream-100"
+                            ? "text-teal-700"
+                            : "text-ink-500 hover:text-ink-900"
                         )}
+                        style={({ isActive }) => isActive ? {
+                          background: "rgba(27,66,67,0.09)",
+                        } : {}}
                       >
                         <span className="shrink-0">{child.icon}</span>
                         <span>{child.label}</span>
@@ -456,7 +495,7 @@ function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* User footer */}
-        <div className="px-3 py-4 space-y-1 border-t border-cream-200">
+        <div className="relative px-3 py-4 space-y-1" style={{ borderTop: "1.5px solid rgba(201,203,170,0.6)" }}>
           {userName && (
             <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
               <UserAvatar name={userName} size="sm" />
@@ -473,7 +512,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={refreshTotals}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all text-ink-500 hover:text-ink-900 hover:bg-cream-100"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs transition-all text-ink-500 hover:text-ink-900 hover:bg-[rgba(27,66,67,0.05)]"
           >
             <RefreshCw size={13} />
             <span>Refresh totals</span>
@@ -481,7 +520,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all text-ink-500 hover:text-rust-600 hover:bg-rust-50"
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs transition-all text-ink-500 hover:text-rust-600 hover:bg-rust-50"
           >
             <LogOut size={13} />
             <span>Sign out</span>
@@ -494,8 +533,12 @@ function AppShell({ children }: { children: ReactNode }) {
 
         {/* Top bar */}
         <header
-          className="sticky top-0 z-20 flex min-h-14 items-center justify-between border-b border-cream-200 bg-cream-50/95 backdrop-blur-sm px-4 md:px-6"
-          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+          className="sticky top-0 z-20 flex min-h-14 items-center justify-between backdrop-blur-sm px-4 md:px-6"
+          style={{
+            paddingTop: "env(safe-area-inset-top, 0px)",
+            background: "rgba(253,250,242,0.92)",
+            borderBottom: "1.5px solid rgba(201,203,170,0.55)",
+          }}
         >
 
           {/* Left: Wordmark on mobile, page title on desktop */}
