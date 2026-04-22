@@ -104,7 +104,6 @@ export default function Home() {
   const [spends, setSpends]     = useState<SpendRow[]>([]);
   const [upcoming, setUpcoming] = useState<HomeUpcomingRes | null>(null);
   const [sortBy, setSortBy]     = useState<"date" | "category">("date");
-  const [categoryId, setCategoryId] = useState("");
   const [msg, setMsg]           = useState<string | null>(null);
   const [busy, setBusy]         = useState(false);
   const [loading, setLoading]   = useState(true);
@@ -212,11 +211,6 @@ export default function Home() {
     if (meRes.userId) setMyUserId(meRes.userId);
     setAccount(accRes);
     setUpcomingMeals(mealsRes.meals ?? []);
-    setCategoryId((prev) => {
-      const nonIncome = allCats.filter((c) => c.direction !== "inflow");
-      if (prev && nonIncome.some((c) => c.id === prev)) return prev;
-      return nonIncome[0]?.id ?? "";
-    });
   }
 
   useEffect(() => {
