@@ -40,18 +40,6 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
   );
 }
 
-/* ── "To assign" pill ────────────────────────────────── */
-function ToAssignPill({ value }: { value: number }) {
-  const over = value < 0;
-  return (
-    <span className={cn(
-      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums border",
-      over ? "bg-rust-50 text-rust-600 border-rust-500/30" : "bg-teal-50 text-teal-600 border-teal-500/30"
-    )}>
-      {over ? `Over-assigned ${money(Math.abs(value))}` : `${money(value)} to assign`}
-    </span>
-  );
-}
 
 /* ── Add money modal ─────────────────────────────────── */
 function AddMoneyModal({ depName, userId, onClose, onAdded }: {
@@ -422,9 +410,6 @@ function BudgetPanel({ userId, depName, isAdmin }: { userId: string; depName: st
               <div className="text-4xl font-semibold tabular-nums text-teal-700 leading-none"
                 style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
                 {money(balance)}
-              </div>
-              <div className="mt-2">
-                <ToAssignPill value={budget.toAssign} />
               </div>
             </div>
             {isAdmin && (

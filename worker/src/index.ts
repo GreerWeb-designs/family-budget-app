@@ -929,33 +929,51 @@ app.post("/api/account/set", requireUser, async (c) => {
   const userId = c.get("userId");
   const householdId = await getOrCreateHouseholdId(c.env.DB, userId);
   await ensureAccountState(c.env.DB, householdId);
-  const body = await c.req.json<{ bankBalance?: number }>();
+  const body = await c.req.json<{ bankBalance?: number; freshStart?: boolean }>();
   const bank = body.bankBalance;
+  const freshStart = body.freshStart === true;
 
   if (typeof bank !== "number" || Number.isNaN(bank)) {
     return c.json({ error: "bankBalance must be a number" }, 400);
   }
 
-  const categories = await getCategories(c.env.DB, householdId);
-  const validIds = categories.filter((c) => c.direction !== "inflow").map((c) => c.id);
-  let totalBudgeted = 0;
-
-  if (validIds.length > 0) {
-    const placeholders = validIds.map(() => "?").join(",");
-    const budgetRow = await c.env.DB.prepare(
-      `SELECT COALESCE(SUM(max_budgeted), 0) AS totalBudgeted FROM (SELECT category_id, MAX(amount_budgeted) as max_budgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ? GROUP BY category_id)`
-    )
-      .bind(...validIds, monthKey())
-      .first<{ totalBudgeted: number }>();
-    totalBudgeted = Number(budgetRow?.totalBudgeted ?? 0);
-  }
-
   const now = new Date().toISOString();
-  await c.env.DB.prepare(
-    `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, updated_at = ? WHERE id = ?`
-  )
-    .bind(bank, bank - totalBudgeted, now, householdId)
-    .run();
+
+  if (freshStart) {
+    // Zero out all budget lines for the current month
+    await c.env.DB.prepare(
+      `DELETE FROM budget_lines WHERE month = ? AND household_id = ?`
+    )
+      .bind(monthKey(), householdId)
+      .run();
+
+    // Set balance; TBB equals full balance since nothing is budgeted; stamp reset time
+    await c.env.DB.prepare(
+      `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, budget_reset_at = ?, updated_at = ? WHERE id = ?`
+    )
+      .bind(bank, bank, now, now, householdId)
+      .run();
+  } else {
+    const categories = await getCategories(c.env.DB, householdId);
+    const validIds = categories.filter((c) => c.direction !== "inflow").map((c) => c.id);
+    let totalBudgeted = 0;
+
+    if (validIds.length > 0) {
+      const placeholders = validIds.map(() => "?").join(",");
+      const budgetRow = await c.env.DB.prepare(
+        `SELECT COALESCE(SUM(max_budgeted), 0) AS totalBudgeted FROM (SELECT category_id, MAX(amount_budgeted) as max_budgeted FROM budget_lines WHERE category_id IN (${placeholders}) AND month = ? GROUP BY category_id)`
+      )
+        .bind(...validIds, monthKey())
+        .first<{ totalBudgeted: number }>();
+      totalBudgeted = Number(budgetRow?.totalBudgeted ?? 0);
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE account_state SET bank_balance = ?, to_be_budgeted = ?, updated_at = ? WHERE id = ?`
+    )
+      .bind(bank, bank - totalBudgeted, now, householdId)
+      .run();
+  }
 
   return c.json({ ok: true });
 });
@@ -1342,14 +1360,21 @@ app.get("/api/spend/summary", requireUser, async (c) => {
   const nextM = m === 12 ? 1 : m + 1;
   const endDate = `${nextY}-${String(nextM).padStart(2, "0")}-01`;
 
+  // Fetch reset cutoff — transactions created before this timestamp are excluded from activity
+  const acctRow = await c.env.DB.prepare(
+    `SELECT budget_reset_at FROM account_state WHERE id = ? LIMIT 1`
+  ).bind(householdId).first<{ budget_reset_at: string | null }>();
+  const resetAt = acctRow?.budget_reset_at ?? null;
+
   const activityRows = await c.env.DB.prepare(
     `SELECT category_id,
             COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END), 0) AS activity
      FROM manual_spends
      WHERE date >= ? AND date < ? AND household_id = ?
+       AND (? IS NULL OR created_at >= ?)
      GROUP BY category_id`
   )
-    .bind(startDate, endDate, householdId)
+    .bind(startDate, endDate, householdId, resetAt, resetAt)
     .all<{ category_id: string; activity: number }>();
 
   const budgetRows = await c.env.DB.prepare(

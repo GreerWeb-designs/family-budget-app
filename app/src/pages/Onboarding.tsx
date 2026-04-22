@@ -142,13 +142,14 @@ function TopBar({ onBack, onSkip, progress }: {
 }
 
 // ─── PrimaryBtn ────────────────────────────────────────────────────────────────
-function PrimaryBtn({ onClick, disabled, children }: {
+function PrimaryBtn({ onClick, disabled, type = "button", children }: {
   onClick?: () => void;
   disabled?: boolean;
+  type?: "button" | "submit";
   children: React.ReactNode;
 }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled}
+    <button type={type} onClick={onClick} disabled={disabled}
       className="h-12 w-full rounded-2xl text-sm font-semibold text-white transition-all disabled:opacity-40"
       style={{ background: "var(--color-primary)" }}>
       {children}
@@ -203,9 +204,9 @@ function ScreenFeatures({ selected, onToggle, onBack, onSkip, onContinue, progre
     <div className="flex flex-col flex-1 overflow-hidden">
       <TopBar onBack={onBack} onSkip={onSkip} progress={progress} />
       <div className="flex-1 flex flex-col px-5 py-2 overflow-y-auto">
-        <p className="font-display text-xl font-semibold text-ink-900 mb-1">What matters most?</p>
+        <p className="font-display text-xl font-semibold text-ink-900 mb-1">What could use a little more order?</p>
         <p className="text-xs text-ink-500 mb-4 leading-relaxed">
-          Pick everything that fits your household. You can always change this later.
+          Pick what you'd like help with — no pressure to get it perfect right now.
         </p>
         <div className="grid grid-cols-2 gap-2.5 pb-2">
           {FEATURES.map(({ id, label, Icon, grad, iconColor }) => {
@@ -249,8 +250,8 @@ function ScreenHousehold({ value, onChange, onBack, onSkip, onContinue, progress
     <div className="flex flex-col flex-1">
       <TopBar onBack={onBack} onSkip={onSkip} progress={progress} />
       <div className="flex-1 flex flex-col px-5 py-2">
-        <p className="font-display text-xl font-semibold text-ink-900 mb-1">Who's in your household?</p>
-        <p className="text-xs text-ink-500 mb-5">This helps us set up sharing and invites.</p>
+        <p className="font-display text-xl font-semibold text-ink-900 mb-1">Who's part of your daily juggle?</p>
+        <p className="text-xs text-ink-500 mb-5">Tell us who you're organizing life with.</p>
         <div className="space-y-2.5">
           {HOUSEHOLD_OPTIONS.map(({ id, label, Icon, desc }) => {
             const sel = value === id;
@@ -281,8 +282,7 @@ function ScreenHousehold({ value, onChange, onBack, onSkip, onContinue, progress
 }
 
 // ─── Screen: Household size ───────────────────────────────────────────────────
-function ScreenHouseholdSize({ householdType, value, onChange, onBack, onSkip, onContinue, progress }: {
-  householdType: string;
+function ScreenHouseholdSize({ value, onChange, onBack, onSkip, onContinue, progress }: {
   value: string;
   onChange: (v: string) => void;
   onBack: () => void;
@@ -290,9 +290,7 @@ function ScreenHouseholdSize({ householdType, value, onChange, onBack, onSkip, o
   onContinue: () => void;
   progress: { current: number; total: number };
 }) {
-  const question = householdType === "family"
-    ? "How many people in your family?"
-    : "How many people total?";
+  const question = "How many are you keeping up with?";
 
   return (
     <div className="flex flex-col flex-1">
@@ -336,9 +334,9 @@ function ScreenBudgetStyle({ value, onChange, onBack, onSkip, onContinue, progre
     <div className="flex flex-col flex-1">
       <TopBar onBack={onBack} onSkip={onSkip} progress={progress} />
       <div className="flex-1 flex flex-col px-5 py-2">
-        <p className="font-display text-xl font-semibold text-ink-900 mb-1">How do you budget today?</p>
+        <p className="font-display text-xl font-semibold text-ink-900 mb-1">How does keeping track of money feel for you?</p>
         <p className="text-xs text-ink-500 mb-5 leading-relaxed">
-          No right answer — just helps us understand where you're starting from.
+          No judgment here — this just helps us meet you where you are.
         </p>
         <div className="space-y-2.5">
           {BUDGET_STYLES.map(({ id, label, emoji }) => {
@@ -406,9 +404,9 @@ function ScreenBalance({ onContinue, onSkip, progress }: {
       <TopBar onSkip={onSkip} progress={progress} />
       <div className="flex-1 flex flex-col items-center justify-center px-7 text-center gap-6">
         <div>
-          <p className="font-display text-xl font-semibold text-ink-900 mb-2">What's your current balance?</p>
+          <p className="font-display text-xl font-semibold text-ink-900 mb-2">Where are things starting financially?</p>
           <p className="text-xs text-ink-500 leading-relaxed max-w-[260px] mx-auto">
-            We'll use this as your starting point. A rough estimate is totally fine.
+            A rough estimate is totally fine — just gives us a starting point.
           </p>
         </div>
         <div className="relative w-full max-w-[240px]">
@@ -514,9 +512,9 @@ function ScreenAddEvent({ onSkip, progress }: {
     <div className="flex flex-col flex-1">
       <TopBar onSkip={onSkip} progress={progress} />
       <div className="flex-1 flex flex-col px-5 py-2 overflow-y-auto">
-        <p className="font-display text-xl font-semibold text-ink-900 mb-1">Add a family event</p>
+        <p className="font-display text-xl font-semibold text-ink-900 mb-1">What's coming up for your family?</p>
         <p className="text-xs text-ink-500 mb-5 leading-relaxed">
-          Drop something on the calendar to get started — a birthday, appointment, anything.
+          Add something to kick off your calendar — a birthday, dinner, appointment, anything.
         </p>
         <form onSubmit={addEvent} className="space-y-3">
           <div>
@@ -543,7 +541,7 @@ function ScreenAddEvent({ onSkip, progress }: {
           </div>
           {err && <p className="text-xs text-rust-600">{err}</p>}
           <div className="pt-2 space-y-2">
-            <PrimaryBtn disabled={saving || !title.trim() || !date}>
+            <PrimaryBtn type="submit" disabled={saving || !title.trim() || !date}>
               {saving ? "Saving…" : "Add event"}
             </PrimaryBtn>
             <button type="button" onClick={onSkip}
@@ -639,7 +637,6 @@ export default function Onboarding() {
       case "householdSize":
         return (
           <ScreenHouseholdSize
-            householdType={householdType}
             value={householdSize}
             onChange={setHouseholdSize}
             onBack={goBack}

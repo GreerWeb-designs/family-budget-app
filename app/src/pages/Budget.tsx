@@ -54,6 +54,7 @@ export default function Budget() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy]       = useState(false);
   const [msg, setMsg]         = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   // Transaction panel state
   const [txDirection, setTxDirection] = useState<"out" | "in">("out");
@@ -140,15 +141,20 @@ export default function Budget() {
     } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setBusy(false); }
   }
 
-  async function handleResetBankBalance(e: React.FormEvent) {
+  function handleResetBankBalance(e: React.FormEvent) {
     e.preventDefault(); setMsg(null);
     const amount = Number(bankInput);
     if (Number.isNaN(amount)) { setMsg("Enter a valid balance."); return; }
-    if (!window.confirm("Set bank balance?")) return;
+    setShowResetModal(true);
+  }
+
+  async function doResetBalance(freshStart: boolean) {
+    setShowResetModal(false);
     setBusy(true);
     try {
-      await api("/api/account/set", { method: "POST", body: JSON.stringify({ bankBalance: amount }) });
-      setMsg("Bank balance updated."); await refresh(activeMonth);
+      await api("/api/account/set", { method: "POST", body: JSON.stringify({ bankBalance: Number(bankInput), freshStart }) });
+      setMsg(freshStart ? "Fresh start — budget reset." : "Bank balance updated.");
+      await refresh(activeMonth);
     } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setBusy(false); }
   }
 
@@ -236,22 +242,22 @@ export default function Budget() {
         </button>
       </div>
 
-      {/* ── Log a Transaction (dark panel) ───────────── */}
-      <div className="rounded-2xl p-5 shadow-lg" style={{ background: "#1B4243" }}>
+      {/* ── Log a Transaction ────────────────────────── */}
+      <div className="rounded-2xl border bg-white p-5" style={{ borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}>
         <div className="flex items-center gap-2 mb-4">
           <div className="h-2 w-2 rounded-full bg-rust-500 animate-pulse" />
-          <span className="text-sm font-semibold text-white">Log a Transaction</span>
-          <span className="text-xs text-teal-300 ml-auto">Quick entry</span>
+          <span className="text-sm font-semibold text-ink-900">Log a Transaction</span>
+          <span className="text-xs text-ink-400 ml-auto">Quick entry</span>
         </div>
 
         {/* Direction toggle */}
-        <div className="inline-flex rounded-xl border border-teal-900 bg-teal-800 p-1 mb-4">
+        <div className="inline-flex rounded-xl border border-cream-200 bg-cream-50 p-1 mb-4">
           <button type="button" onClick={() => {
             setTxDirection("out");
             setTxCategoryId(cats[0]?.id ?? "");
           }}
             className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-              txDirection === "out" ? "text-white shadow-sm" : "text-ink-500 hover:text-white")}
+              txDirection === "out" ? "text-white shadow-sm" : "text-ink-400 hover:text-ink-700")}
             style={txDirection === "out" ? { background: "#C17A3F" } : {}}>
             Outflow
           </button>
@@ -261,7 +267,7 @@ export default function Budget() {
             if (income) setTxCategoryId(income.id);
           }}
             className={cn("rounded-lg px-4 py-1.5 text-xs font-semibold transition-all",
-              txDirection === "in" ? "text-white shadow-sm" : "text-ink-500 hover:text-white")}
+              txDirection === "in" ? "text-white shadow-sm" : "text-ink-400 hover:text-ink-700")}
             style={txDirection === "in" ? { background: "#2D6E70" } : {}}>
             Income
           </button>
@@ -270,9 +276,9 @@ export default function Budget() {
         <form onSubmit={submitTransaction} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Category</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Category</span>
               <select
-                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
+                className="h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
                 value={txCategoryId}
                 onChange={(e) => setTxCategoryId(e.target.value)}
                 disabled={txDirection === "in"}>
@@ -283,35 +289,35 @@ export default function Budget() {
               </select>
             </label>
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Amount</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Amount</span>
               <input
-                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all tabular-nums"
+                className="h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all tabular-nums"
                 value={txAmount} onChange={(e) => setTxAmount(e.target.value)}
                 placeholder="0.00" inputMode="decimal" />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Date</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Date</span>
               <input type="date"
-                className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
+                className="h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
                 value={txDate} onChange={(e) => setTxDate(e.target.value)} />
             </label>
           </div>
           <label className="grid gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-teal-300">Note (optional)</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink-500">Note (optional)</span>
             <input
-              className="h-10 rounded-xl border border-teal-900 bg-teal-800 px-3 text-sm text-white outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20 transition-all"
+              className="h-10 rounded-xl border border-cream-200 bg-cream-50 px-3 text-sm text-ink-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
               value={txNote} onChange={(e) => setTxNote(e.target.value)}
               placeholder={txDirection === "in" ? "Paycheck, transfer, etc." : "Walmart, gas, etc."} />
           </label>
           <div className="flex items-center gap-3 pt-1">
             <button type="submit" disabled={txBusy}
-              className="h-10 w-full rounded-xl text-sm font-semibold text-ink-900 hover:opacity-90 disabled:opacity-60 transition-all"
+              className="h-10 w-full rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60 transition-all"
               style={{ background: "#C17A3F" }}>
               {txBusy ? "Saving…" : txDirection === "in" ? "Add income" : "Record"}
             </button>
           </div>
           {txMsg && (
-            <div className={cn("text-sm text-center", txMsg.includes("Error") || txMsg.includes("error") ? "text-rust-600" : "text-teal-300")}>
+            <div className={cn("text-sm text-center", txMsg.includes("Error") || txMsg.includes("error") ? "text-rust-600" : "text-teal-600")}>
               {txMsg}
             </div>
           )}
@@ -598,6 +604,36 @@ export default function Budget() {
         </div>
       </div>
 
+      {/* ── Fresh-start confirmation modal ───────────── */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !busy && setShowResetModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-cream-200 bg-white p-6 shadow-2xl space-y-4">
+            <div>
+              <p className="font-display text-lg font-semibold text-ink-900 mb-1">Update Bank Balance</p>
+              <p className="text-sm text-ink-500">Would you like to make a fresh start?</p>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 leading-relaxed">
+              <span className="font-semibold">Warning —</span> resetting your categories will clear all budgeted amounts for the current month. Your transaction history is kept, but past transactions won't count against your budget going forward.
+            </div>
+            <div className="space-y-2 pt-1">
+              <button type="button" onClick={() => doResetBalance(true)} disabled={busy}
+                className="h-11 w-full rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition-all"
+                style={{ background: "var(--color-primary)" }}>
+                Fresh Start
+              </button>
+              <button type="button" onClick={() => doResetBalance(false)} disabled={busy}
+                className="h-11 w-full rounded-xl border border-cream-200 bg-cream-50 text-sm font-semibold text-ink-700 hover:bg-cream-100 disabled:opacity-60 transition-all">
+                Just Update Balance
+              </button>
+              <button type="button" onClick={() => setShowResetModal(false)}
+                className="w-full h-9 text-xs font-medium text-ink-400 hover:text-ink-600 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

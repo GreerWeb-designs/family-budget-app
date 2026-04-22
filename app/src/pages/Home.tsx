@@ -548,37 +548,6 @@ export default function Home() {
         </div>
       </Card>}
 
-      {/* ── Budget snapshot ────────────────────────────── */}
-      {canSeeBudget && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card>
-            <div className="text-xs font-semibold uppercase tracking-wider text-ink-500 mb-3">Category detail</div>
-            {summary?.byCategory.find(c => c.id === categoryId) ? (() => {
-              const cur = summary!.byCategory.find(c => c.id === categoryId)!;
-              return (
-                <>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-ink-900">{cur.name}</span>
-                    <AvailPill val={cur.available} />
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    {([["Budgeted", cur.budgeted], ["Activity", cur.activity], ["Available", cur.available]] as [string, number][]).map(([lbl, val]) => (
-                      <div key={lbl} className="flex justify-between">
-                        <span className="text-ink-500">{lbl}</span>
-                        <span className={cn("font-semibold tabular-nums",
-                          lbl === "Available" && val < 0 ? "text-rust-600" :
-                          lbl === "Available" ? "text-teal-600" : "text-ink-900")}>
-                          {money(val)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })() : <p className="text-sm text-ink-500 mt-2">Select a category to view details.</p>}
-          </Card>
-        </div>
-      )}
 
       {/* ── Transaction History ───────────────────────── */}
       {canSeeTransactions && <Card className="p-0! overflow-hidden">
