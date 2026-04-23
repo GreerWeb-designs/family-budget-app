@@ -6,7 +6,7 @@ type ApiInit = RequestInit & {
   query?: Record<string, QueryValue>;
 };
 
-const DEFAULT_PROD_API_BASE = "https://family-budget-api.bob-31b.workers.dev";
+const DEFAULT_PROD_API_BASE = "https://api.nestotter.com";
 
 /**
  * Decide where API calls go:

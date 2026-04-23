@@ -5,6 +5,10 @@ main = "src/index.ts"
 compatibility_date = "2026-02-09"
 compatibility_flags = ["nodejs_compat"]
 
+[[routes]]
+pattern = "api.nestotter.com/*"
+custom_domain = true
+
 [[d1_databases]]
 # ✅ This MUST match c.env.DB in your worker
 binding = "DB"
