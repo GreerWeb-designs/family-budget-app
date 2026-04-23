@@ -147,7 +147,7 @@ app.use("*", async (c, next) => {
   if (isAllowedOrigin) {
     c.header("Access-Control-Allow-Origin", origin!);
     c.header("Access-Control-Allow-Credentials", "true");
-    c.header("Access-Control-Allow-Headers", "Content-Type");
+    c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
     c.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
     c.header("Vary", "Origin");
   }
@@ -163,7 +163,7 @@ app.use("*", async (c, next) => {
     if (isAllowedOrigin) {
       c.header("Access-Control-Allow-Origin", origin!);
       c.header("Access-Control-Allow-Credentials", "true");
-      c.header("Access-Control-Allow-Headers", "Content-Type");
+      c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
       c.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
       c.header("Vary", "Origin");
     }
@@ -252,7 +252,10 @@ async function getCategories(db: D1Database, householdId: string) {
 }
 
 const requireUser: MiddlewareHandler<{ Bindings: Bindings; Variables: Variables }> = async (c, next) => {
-  const token = getCookie(c.req.raw, "session");
+  const authHeader = c.req.header("Authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : getCookie(c.req.raw, "session");
   if (!token) return c.json({ error: "Unauthorized" }, 401);
 
   const tokenHash = await sha256(token + c.env.SESSION_SECRET);
@@ -385,7 +388,7 @@ app.post("/api/auth/login", async (c) => {
     .run();
 
   c.header("Set-Cookie", setCookie("session", sessionToken));
-  return c.json({ ok: true });
+  return c.json({ ok: true, token: sessionToken });
 });
 
 app.post("/api/auth/logout", async (c) => {

@@ -104,7 +104,8 @@ export default function Login() {
     setErr(null); setUnverified(false);
     setBusy(true);
     try {
-      await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+      const res = await api<{ ok: boolean; token?: string }>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+      if (res.token) localStorage.setItem("no_cookie_token", res.token);
       nav("/home");
     } catch (e: any) {
       if (e?.code === "EMAIL_NOT_VERIFIED") { setUnverified(true); }

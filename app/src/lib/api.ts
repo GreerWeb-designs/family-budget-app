@@ -6,7 +6,7 @@ type ApiInit = RequestInit & {
   query?: Record<string, QueryValue>;
 };
 
-const DEFAULT_PROD_API_BASE = "";
+const DEFAULT_PROD_API_BASE = "https://family-budget-api.bob-31b.workers.dev";
 
 /**
  * Decide where API calls go:
@@ -80,12 +80,15 @@ export async function api<T = any>(path: string, init: ApiInit = {}): Promise<T>
 
   const url = buildUrl(path, query);
 
+  const storedToken = localStorage.getItem("no_cookie_token");
+
   const res = await fetch(url, {
-    credentials: "include", // cookie-based session
+    credentials: "include",
     ...rest,
     headers: {
       Accept: "application/json",
       ...(rest.body ? { "Content-Type": "application/json" } : {}),
+      ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
       ...(headers ?? {}),
     },
   });

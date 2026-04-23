@@ -323,6 +323,7 @@ function AppShell({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    localStorage.removeItem("no_cookie_token");
     try { await api("/api/auth/logout", { method: "POST" }); }
     finally { nav("/login", { replace: true }); }
   }
