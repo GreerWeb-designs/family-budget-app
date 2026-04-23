@@ -216,7 +216,7 @@ export default function Budget() {
     } catch (err: any) { setMsg(err?.message || "Failed."); } finally { setClosingMonth(false); }
   }
 
-  const tbbPositive = toBeBudgeted >= 0;
+  const tbbPositive = Math.round(toBeBudgeted * 100) >= 0;
 
   return (
     <div className="space-y-4">
