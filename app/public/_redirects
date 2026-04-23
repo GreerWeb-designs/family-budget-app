@@ -1,1 +1,2 @@
+/api/* https://family-budget-api.bob-31b.workers.dev/api/:splat 200
 /* /index.html 200
