@@ -169,11 +169,12 @@ export default function Home() {
   /* Motivational subtitle */
   const summaryLine = useMemo(() => {
     if (loading) return { text: "", cls: "" };
-    if (toBeBudgeted === 0) return {
+    const tbbCents = Math.round(toBeBudgeted * 100);
+    if (tbbCents === 0) return {
       text: "Every dollar has a job. Well done.",
       cls: "text-teal-600",
     };
-    if (toBeBudgeted > 0) return {
+    if (tbbCents > 0) return {
       text: `You have ${money(toBeBudgeted)} left to assign. Give it a purpose.`,
       cls: "text-ink-500",
     };

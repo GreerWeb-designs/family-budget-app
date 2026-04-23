@@ -8,14 +8,15 @@ export function cn(...inputs: ClassValue[]) {
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export function money(n: number | null | undefined) {
-  const value = Number(n ?? 0);
-  const sign = value < 0 ? "-" : "";
-  return `${sign}$${Math.abs(value).toFixed(2)}`;
+  const cents = Math.round(Number(n ?? 0) * 100);
+  const sign = cents < 0 ? "-" : "";
+  return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
 export function moneyCompact(n: number | null | undefined) {
-  const value = Math.abs(Number(n ?? 0));
-  const sign = Number(n ?? 0) < 0 ? "-" : "";
-  if (value >= 1000) return `${sign}$${(value / 1000).toFixed(1)}k`;
-  return `${sign}$${value.toFixed(2)}`;
+  const cents = Math.round(Number(n ?? 0) * 100);
+  const sign = cents < 0 ? "-" : "";
+  const abs = Math.abs(cents) / 100;
+  if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}k`;
+  return `${sign}$${abs.toFixed(2)}`;
 }
